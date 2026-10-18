@@ -14,7 +14,7 @@ No account, no server, no analytics. Everything lives in a local SQLite database
 | Screen | What it does |
 |---|---|
 | **Track** | Today card: pouches or mg left, progress bar, the day's face. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** puts the pouch "in": a card with a timer and a **Remove** button appears; if you never tap Remove, the pouch counts as removed after the pouch time (30 min by default). Today's log shows each pouch with its time in, and you can adjust the time or delete an entry. |
-| **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL), when 90 % of each is gone and when it drops below the detection-level threshold. A chart with a solid line for the past and a dashed line for the forecast if you stop now; 24 h / 48 h / 7 d ranges. |
+| **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL) and when 95 % of each will be gone. A chart with a solid line for the past and a dashed line for the forecast if you stop now; 24 h / 48 h / 7 d ranges. |
 | **History** | Five weeks of day tiles: pouches and mg per day, coloured in seven steps by how the day went against the limit. Streak within the limit, days over the limit, weekly average, totals. Daily bars against the limit line, projected a week ahead. |
 | **Plan** | Limit counted in pouches or in mg of nicotine. Either a fixed daily limit or a taper: start value → target value by a date, with today's limit interpolated linearly. |
 | **Settings** | Manage pouches: brand from a catalogue (or any other), optional flavour, strength in mg, a "fast release" tick for mini / dry-slim lines, colour; hide and restore. Hour at which a new day starts. Body weight and pouch time. Theme. Export to CSV or JSON through the share sheet. |
@@ -121,9 +121,10 @@ From there it is a one-compartment model: nicotine is eliminated with a 2 h half
 becomes cotinine (mass-adjusted), and cotinine is eliminated with a 16 h half-life. The cascade is
 solved in closed form, so any instant is evaluated directly.
 
-"Cleared" means less than 0.1 mg of nicotine or 0.5 mg of cotinine left — roughly the usual blood
-detection thresholds. ng/mL uses volumes of distribution of 2.6 L/kg (nicotine) and 0.9 L/kg
-(cotinine) with the body weight from Settings.
+The Body screen quotes the moment 95 % of the current amount will be gone: log₂(20) ≈ 4.3 half-lives,
+about 8 h 40 min for nicotine and 2 d 21 h for cotinine once absorption has stopped. Body weight does
+not change these times; it only enters the ng/mL conversion, through volumes of distribution of
+2.6 L/kg (nicotine) and 0.9 L/kg (cotinine).
 
 Two numbers live side by side. The daily total and the limit count the labelled mg of each pouch —
 what you put in, independent of how long it stayed. The *absorbed* estimate (labelled × 30 % ×

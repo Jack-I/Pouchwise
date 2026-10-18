@@ -1,20 +1,59 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Open snus can with the lid leaning on the rim, a narrow pouch standing in it and tick marks on the wall.
+     Drawn on a 108 grid, then scaled into the adaptive-icon safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- pouch -->
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M30,52 h48 a12,12 0 0 1 0,24 h-48 a12,12 0 0 1 0,-24 z" />
-    <!-- leaf -->
-    <path
-        android:fillColor="#FFB9F6CA"
-        android:pathData="M52,48 C52,34 62,24 78,24 C78,42 68,52 52,48 z" />
-    <path
-        android:strokeColor="#FF1B5E20"
-        android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:pathData="M55,46 C61,40 66,35 73,29" />
+    <group
+        android:scaleX="0.64"
+        android:scaleY="0.64"
+        android:pivotX="54"
+        android:pivotY="54"
+        android:translateX="-2">
+        <!-- pouch -->
+        <group android:rotation="-8" android:pivotX="30.5" android:pivotY="62">
+            <path
+                android:pathData="M26.5,62 V18 a4,4 0 0,1 8,0 V62"
+                android:strokeColor="#FFFFFFFF"
+                android:strokeWidth="6"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+        </group>
+        <!-- can rim and body -->
+        <path
+            android:pathData="M9,62 a31,10.5 0 1,0 62,0 a31,10.5 0 1,0 -62,0 Z"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="6"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:pathData="M9,62 V80 a31,10.5 0 0,0 62,0 V62"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="6"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <!-- tick marks on the wall -->
+        <path
+            android:pathData="M25,77 V85 M32.5,77 V85 M40,77 V85 M47.5,77 V85 M55,77 V85"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="4"
+            android:strokeLineCap="round" />
+        <!-- lid -->
+        <group android:rotation="-40" android:pivotX="84" android:pivotY="46">
+            <path
+                android:pathData="M63,46 a21,6.5 0 1,0 42,0 a21,6.5 0 1,0 -42,0 Z"
+                android:strokeColor="#FFFFFFFF"
+                android:strokeWidth="6"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+            <path
+                android:pathData="M63,46 v4.5 a21,6.5 0 0,0 42,0 v-4.5"
+                android:strokeColor="#FFFFFFFF"
+                android:strokeWidth="6"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round" />
+        </group>
+    </group>
 </vector>

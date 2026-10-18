@@ -94,8 +94,7 @@
     <string name="nicotine">Nicotine</string>
     <string name="cotinine">Cotinine</string>
     <string name="approx_ng_ml">≈ %1$s ng/mL</string>
-    <string name="gone_90_in">90%% gone in %1$s (by %2$s)</string>
-    <string name="below_threshold_in">below %1$s mg in %2$s (by %3$s)</string>
+    <string name="gone_95_in">%1$s: 95%% gone in %2$s (by %3$s)</string>
     <string name="already_clear">%1$s has cleared</string>
     <string name="axis_nicotine">Nicotine, mg</string>
     <string name="axis_cotinine">Cotinine, mg</string>

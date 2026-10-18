@@ -125,20 +125,19 @@ class PharmacokineticsTest {
     }
 
     @Test
-    fun ninetyPercentGoneComesWellBeforeTheAbsoluteThreshold() {
+    fun ninetyFivePercentGoneTakesAboutFourAndAThirdHalfLives() {
         // A day's worth of pouches, last one two hours ago: nicotine is a few mg now.
         val now = 24 * h
         val doses = (0 until 8).map { Dose(now - (2 + it) * h - 30 * min, 8.0, full) }
         val levels = Pharmacokinetics.levelsAt(now, doses, p)
         assertTrue(levels.nicotineMg > 1.0)
-        val ninety = Pharmacokinetics.clearance(now, doses, p, nicotineThreshold = levels.nicotineMg * 0.1)
-        val clear = Pharmacokinetics.clearance(now, doses, p)
-        val ninetyH = (ninety.nicotineClearMs!! - now) / h.toDouble()
-        val clearH = (clear.nicotineClearMs!! - now) / h.toDouble()
-        // 90 % gone ≈ log2(10) half-lives ≈ 6.6 h; the 0.1 mg line needs log2(level/0.1) half-lives, i.e. longer.
-        assertEquals(6.6, ninetyH, 0.4)
-        assertTrue("clear $clearH > ninety $ninetyH", clearH > ninetyH)
-        assertEquals(2.0 * Math.log(levels.nicotineMg / 0.1) / Math.log(2.0), clearH, 0.4)
+        val gone95 = Pharmacokinetics.clearance(now, doses, p, nicotineThreshold = levels.nicotineMg * 0.05)
+        val gone95H = (gone95.nicotineClearMs!! - now) / h.toDouble()
+        // 95 % gone = log2(20) ≈ 4.32 half-lives ≈ 8.6 h with a 2 h half-life, whatever the body weight.
+        assertEquals(8.64, gone95H, 0.4)
+        // The absolute 0.1 mg line comes later and depends on the starting level.
+        val clearH = (Pharmacokinetics.clearance(now, doses, p).nicotineClearMs!! - now) / h.toDouble()
+        assertTrue("clear $clearH > 95% $gone95H", clearH > gone95H)
     }
 
     @Test

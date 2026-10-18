@@ -9,7 +9,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
@@ -38,12 +37,12 @@ fun BodyScreen(vm: AppViewModel) {
     val doses = remember(entries, settings) { entries.map { PouchTiming.toDose(it, settings) } }
     val levels = remember(doses, pk, now) { Pharmacokinetics.levelsAt(now, doses, pk) }
     val clearance = remember(doses, pk, now) { Pharmacokinetics.clearance(now, doses, pk) }
-    // "90 % gone": the moment the level stays below a tenth of what it is now.
+    // "95 % gone": the moment the level stays below a twentieth of what it is now.
     val mostlyGone = remember(doses, pk, now, levels) {
         Pharmacokinetics.clearance(
             now, doses, pk,
-            nicotineThreshold = max(levels.nicotineMg * 0.1, Pharmacokinetics.NICOTINE_CLEARED_MG),
-            cotinineThreshold = max(levels.cotinineMg * 0.1, Pharmacokinetics.COTININE_CLEARED_MG),
+            nicotineThreshold = max(levels.nicotineMg * 0.05, Pharmacokinetics.NICOTINE_CLEARED_MG),
+            cotinineThreshold = max(levels.cotinineMg * 0.05, Pharmacokinetics.COTININE_CLEARED_MG),
         )
     }
 
@@ -87,21 +86,19 @@ fun BodyScreen(vm: AppViewModel) {
         }
 
         SoftCard {
-            ClearanceBlock(
+            ClearanceLine(
                 name = stringResource(R.string.nicotine),
                 level = levels.nicotineMg,
                 threshold = Pharmacokinetics.NICOTINE_CLEARED_MG,
-                mostlyGoneMs = mostlyGone.nicotineClearMs,
-                clearMs = clearance.nicotineClearMs,
+                goneMs = mostlyGone.nicotineClearMs,
                 nowMs = now,
             )
-            Spacer(Modifier.height(10.dp))
-            ClearanceBlock(
+            Spacer(Modifier.height(6.dp))
+            ClearanceLine(
                 name = stringResource(R.string.cotinine),
                 level = levels.cotinineMg,
                 threshold = Pharmacokinetics.COTININE_CLEARED_MG,
-                mostlyGoneMs = mostlyGone.cotinineClearMs,
-                clearMs = clearance.cotinineClearMs,
+                goneMs = mostlyGone.cotinineClearMs,
                 nowMs = now,
             )
         }
@@ -156,23 +153,8 @@ fun BodyScreen(vm: AppViewModel) {
 }
 
 @Composable
-private fun ClearanceBlock(name: String, level: Double, threshold: Double, mostlyGoneMs: Long?, clearMs: Long?, nowMs: Long) {
-    Column {
-        Text(name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        if (level < threshold || clearMs == null || clearMs <= nowMs) {
-            Text(stringResource(R.string.already_clear, name), style = MaterialTheme.typography.bodyMedium)
-        } else {
-            if (mostlyGoneMs != null && mostlyGoneMs > nowMs) {
-                Text(
-                    stringResource(R.string.gone_90_in, durationText(mostlyGoneMs - nowMs), Fmt.timeOrDayTime(mostlyGoneMs, nowMs)),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
-            Text(
-                stringResource(R.string.below_threshold_in, Fmt.oneDecimal(threshold), durationText(clearMs - nowMs), Fmt.timeOrDayTime(clearMs, nowMs)),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+private fun ClearanceLine(name: String, level: Double, threshold: Double, goneMs: Long?, nowMs: Long) {
+    val text = if (level < threshold || goneMs == null || goneMs <= nowMs) stringResource(R.string.already_clear, name)
+               else stringResource(R.string.gone_95_in, name, durationText(goneMs - nowMs), Fmt.timeOrDayTime(goneMs, nowMs))
+    Text(text, style = MaterialTheme.typography.bodyLarge)
 }

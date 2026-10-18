@@ -95,8 +95,7 @@
     <string name="nicotine">Никотин</string>
     <string name="cotinine">Котинин</string>
     <string name="approx_ng_ml">≈ %1$s нг/мл</string>
-    <string name="gone_90_in">90%% выйдет через %1$s (к %2$s)</string>
-    <string name="below_threshold_in">меньше %1$s мг через %2$s (к %3$s)</string>
+    <string name="gone_95_in">%1$s: 95%% выйдет через %2$s (к %3$s)</string>
     <string name="already_clear">%1$s уже вышел</string>
     <string name="axis_nicotine">Никотин, мг</string>
     <string name="axis_cotinine">Котинин, мг</string>
