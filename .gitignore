@@ -1,0 +1,21 @@
+# Gradle / Android build outputs
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+.kotlin/
+
+# Machine-specific
+local.properties
+keystore.properties
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Session tooling
+.claude/

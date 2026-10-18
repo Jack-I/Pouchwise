@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Pouchwise</string>
+
+    <string name="tab_track">Учёт</string>
+    <string name="tab_body">Организм</string>
+    <string name="tab_history">История</string>
+    <string name="tab_plan">План</string>
+    <string name="settings">Настройки</string>
+    <string name="back">Назад</string>
+
+    <string name="cancel">Отмена</string>
+    <string name="save">Сохранить</string>
+    <string name="delete">Удалить</string>
+    <string name="ok">ОК</string>
+    <string name="close">Закрыть</string>
+    <string name="unit_mg">мг</string>
+    <string name="unit_pouches">паучей</string>
+    <string name="per_day">в день</string>
+    <string name="mg_value">%1$s мг</string>
+    <string name="duration_m">%1$d мин</string>
+    <string name="duration_h_m">%1$d ч %2$d мин</string>
+    <string name="duration_d_h">%1$d д %2$d ч</string>
+    <string name="time_now">сейчас</string>
+
+    <string name="today">Сегодня</string>
+    <plurals name="pouches_left_today">
+        <item quantity="one">Остался %d пауч на сегодня</item>
+        <item quantity="few">Осталось %d пауча на сегодня</item>
+        <item quantity="many">Осталось %d паучей на сегодня</item>
+        <item quantity="other">Осталось %d пауча на сегодня</item>
+    </plurals>
+    <string name="mg_left_today">Осталось %1$s мг на сегодня</string>
+    <string name="limit_reached">Лимит на сегодня исчерпан</string>
+    <plurals name="over_limit_by_pouches">
+        <item quantity="one">%d пауч сверх лимита</item>
+        <item quantity="few">%d пауча сверх лимита</item>
+        <item quantity="many">%d паучей сверх лимита</item>
+        <item quantity="other">%d пауча сверх лимита</item>
+    </plurals>
+    <string name="over_limit_by_mg">%1$s мг сверх лимита</string>
+    <string name="used_of_limit_count">%1$d из %2$d паучей · %3$s мг никотина</string>
+    <string name="used_of_limit_mg">%1$s из %2$s мг · паучей: %3$d</string>
+    <string name="last_pouch_ago">Последний пауч %1$s назад</string>
+    <string name="no_pouches_today">Сегодня ещё ни одного</string>
+    <string name="your_pouches">Ваши паучи</string>
+    <string name="edit_pouches">Редактировать паучи</string>
+    <string name="add_pouch_type">Добавить пауч</string>
+    <string name="todays_log">Записи за сегодня</string>
+    <string name="empty_log">Сегодня записей нет.</string>
+    <string name="no_types_title">Добавьте первый пауч</string>
+    <string name="no_types_body">Заведите пауч с названием и крепостью в мг. Нажимайте +, когда кладёте его, и «Убрать», когда вынимаете; иначе он считается убранным через время из настроек. Долгое нажатие на + — записать задним числом.</string>
+    <string name="log_one">Записать один</string>
+    <plurals name="fits_today">
+        <item quantity="one">Влезет ещё %d</item>
+        <item quantity="few">Влезет ещё %d</item>
+        <item quantity="many">Влезет ещё %d</item>
+        <item quantity="other">Влезет ещё %d</item>
+    </plurals>
+    <string name="none_fit_today">Больше не влезает</string>
+    <string name="in_mouth">Сейчас под губой</string>
+    <string name="remove_pouch">Убрать</string>
+    <string name="auto_remove_in">Сам снимется через %1$s</string>
+    <string name="over_limit_marker">Сверх лимита</string>
+    <string name="edit_time">Изменить время</string>
+    <string name="pick_time">Выберите время</string>
+    <string name="delete_entry_q">Удалить эту запись?</string>
+
+    <string name="pouch_name">Бренд / название</string>
+    <string name="pouch_strength">Крепость, мг на пауч</string>
+    <string name="pouch_color">Цвет</string>
+    <string name="new_pouch">Новый пауч</string>
+    <string name="edit_pouch">Изменить пауч</string>
+    <string name="archived">Скрытые</string>
+    <string name="restore">Вернуть</string>
+    <string name="delete_type_q">Убрать %1$s?</string>
+    <string name="delete_type_body">История останется в записях и графиках. Пауч исчезнет с экрана учёта, его можно вернуть позже.</string>
+    <string name="manage_pouches">Управление паучами</string>
+    <string name="no_types_yet">Паучей пока нет.</string>
+
+    <string name="body_title">В организме</string>
+    <string name="body_subtitle">Оценка по вашим записям через простую модель — не измерение.</string>
+    <string name="nicotine">Никотин</string>
+    <string name="cotinine">Котинин</string>
+    <string name="approx_ng_ml">≈ %1$s нг/мл</string>
+    <string name="clears_in">%1$s выйдет через %2$s (к %3$s)</string>
+    <string name="already_clear">%1$s уже вышел</string>
+    <string name="range_24h">24 ч</string>
+    <string name="range_48h">48 ч</string>
+    <string name="range_7d">7 д</string>
+    <string name="legend_past">было</string>
+    <string name="legend_future">если больше не брать</string>
+    <string name="model_summary">t½ никотина %1$s ч · t½ котинина %2$s ч · усваивается %3$d%% за %4$d мин</string>
+    <string name="adjust_in_settings">Параметры модели — в настройках</string>
+    <string name="no_data_yet">Запишите пауч, чтобы увидеть кривую.</string>
+
+    <string name="history_title">История</string>
+    <string name="garden_title">Ваш сад</string>
+    <string name="garden_subtitle">Одна плитка — один день. Цветёт — без паучей, пенёк — сильно за лимитом.</string>
+    <string name="stats_streak">Дней в лимите подряд</string>
+    <string name="stats_within_30">Дней в лимите из последних 30</string>
+    <string name="stats_avg7_count">Паучей в день, среднее за 7 дней</string>
+    <string name="stats_avg7_mg">Мг в день, среднее за 7 дней</string>
+    <string name="stats_total">Всего записано паучей</string>
+    <string name="daily_usage">По дням</string>
+    <string name="legend_usage">Использовано</string>
+    <string name="legend_limit">Дневной лимит</string>
+
+    <string name="plan_title">Мой план</string>
+    <string name="plan_subtitle">Ваш путь к меньшему никотину.</string>
+    <string name="responsible_usage">ОСОЗНАННОЕ ПОТРЕБЛЕНИЕ</string>
+    <plurals name="days_until_target">
+        <item quantity="one">%d день до целевой даты</item>
+        <item quantity="few">%d дня до целевой даты</item>
+        <item quantity="many">%d дней до целевой даты</item>
+        <item quantity="other">%d дня до целевой даты</item>
+    </plurals>
+    <string name="target_reached">Цель достигнута — так держать</string>
+    <string name="daily_limit_caption">ДНЕВНОЙ ЛИМИТ</string>
+    <string name="limit_mode">Считать лимит в</string>
+    <string name="mode_count">Паучах</string>
+    <string name="mode_mg">мг никотина</string>
+    <string name="daily_limit">Дневной лимит</string>
+    <string name="limit_today">Лимит сегодня</string>
+    <string name="taper_title">Снижать постепенно</string>
+    <string name="taper_body">Лимит понемногу уменьшается каждый день до целевой даты.</string>
+    <string name="start_value">Старт</string>
+    <string name="target_value">Цель</string>
+    <string name="start_date">Дата старта</string>
+    <string name="target_date">Целевая дата</string>
+    <string name="taper_summary">Сегодня: %1$s. Выйдем на %2$s к %3$s.</string>
+    <string name="taper_invalid">Целевая дата должна быть позже даты старта.</string>
+    <string name="warn_over_limit_hint">Превышение просто записывается: день подсвечивается красным, лишние паучи помечаются в списке.</string>
+
+    <string name="settings_pouches">Паучи</string>
+    <string name="settings_day">День</string>
+    <string name="day_starts_at">День начинается в</string>
+    <string name="day_starts_hint">Паучи до этого часа идут в зачёт предыдущего дня — удобно для ночных посиделок.</string>
+    <string name="settings_model">Модель организма</string>
+    <string name="weight">Вес тела, кг</string>
+    <string name="weight_hint">Нужен только для пересчёта мг в организме в примерную концентрацию в крови.</string>
+    <string name="absorption">Доля заявленного никотина, которая усваивается</string>
+    <string name="absorption_minutes">Время пауча под губой, мин</string>
+    <string name="pouch_time_hint">Столько пауч считается «под губой», если не убрать его раньше на экране учёта. Чем меньше время, тем меньше усвоилось никотина.</string>
+    <string name="nic_half_life">Период полувыведения никотина, ч</string>
+    <string name="cot_half_life">Период полувыведения котинина, ч</string>
+    <string name="cot_yield">Доля никотина, переходящая в котинин</string>
+    <string name="reset_defaults">Сбросить по умолчанию</string>
+    <string name="model_hint">Значения по умолчанию — средние из публикаций: около 30%% заявленного никотина попадает в кровь за ~30 мин, период полувыведения никотина ≈ 2 ч, котинина ≈ 16 ч, около 75%% никотина превращается в котинин.</string>
+    <string name="settings_appearance">Оформление</string>
+    <string name="theme_system">Как в системе</string>
+    <string name="theme_light">Светлая</string>
+    <string name="theme_dark">Тёмная</string>
+    <string name="settings_data">Данные</string>
+    <string name="export_csv">Экспорт CSV</string>
+    <string name="export_json">Экспорт JSON</string>
+    <string name="export_hint">Всё хранится только на этом телефоне. Экспортируйте для бэкапа или анализа.</string>
+    <string name="share_export">Поделиться экспортом</string>
+    <string name="about">О приложении</string>
+    <string name="disclaimer">Pouchwise — трекер привычки, а не медицинское устройство. Уровни в организме — грубая оценка по простой фармакокинетической модели.</string>
+    <string name="version">Версия %1$s</string>
+</resources>

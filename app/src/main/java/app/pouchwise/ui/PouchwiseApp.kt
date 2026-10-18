@@ -1,0 +1,130 @@
+package app.pouchwise.ui
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import app.pouchwise.AppViewModel
+import app.pouchwise.R
+import app.pouchwise.ui.screens.BodyScreen
+import app.pouchwise.ui.screens.HistoryScreen
+import app.pouchwise.ui.screens.PlanScreen
+import app.pouchwise.ui.screens.PouchTypesScreen
+import app.pouchwise.ui.screens.SettingsScreen
+import app.pouchwise.ui.screens.TrackScreen
+
+private enum class Tab(val labelRes: Int, val icon: ImageVector) {
+    TRACK(R.string.tab_track, Icons.Filled.AddCircle),
+    BODY(R.string.tab_body, Icons.Filled.Timeline),
+    HISTORY(R.string.tab_history, Icons.Filled.CalendarMonth),
+    PLAN(R.string.tab_plan, Icons.Filled.Flag),
+}
+
+private const val SCREEN_MAIN = 0
+private const val SCREEN_SETTINGS = 1
+private const val SCREEN_POUCHES = 2
+
+@Composable
+fun PouchwiseApp(vm: AppViewModel) {
+    var tabIndex by rememberSaveable { mutableIntStateOf(0) }
+    var screen by rememberSaveable { mutableIntStateOf(SCREEN_MAIN) }
+    var pouchesOpenedFromSettings by rememberSaveable { mutableIntStateOf(0) }
+
+    BackHandler(enabled = screen != SCREEN_MAIN) {
+        screen = if (screen == SCREEN_POUCHES && pouchesOpenedFromSettings == 1) SCREEN_SETTINGS else SCREEN_MAIN
+    }
+
+    when (screen) {
+        SCREEN_SETTINGS -> SettingsScreen(
+            vm = vm,
+            onBack = { screen = SCREEN_MAIN },
+            onManagePouches = { pouchesOpenedFromSettings = 1; screen = SCREEN_POUCHES },
+        )
+        SCREEN_POUCHES -> PouchTypesScreen(
+            vm = vm,
+            onBack = { screen = if (pouchesOpenedFromSettings == 1) SCREEN_SETTINGS else SCREEN_MAIN },
+        )
+        else -> MainScaffold(
+            vm = vm,
+            tabIndex = tabIndex,
+            onTab = { tabIndex = it },
+            onOpenSettings = { screen = SCREEN_SETTINGS },
+            onEditPouches = { pouchesOpenedFromSettings = 0; screen = SCREEN_POUCHES },
+        )
+    }
+}
+
+@Composable
+private fun MainScaffold(
+    vm: AppViewModel,
+    tabIndex: Int,
+    onTab: (Int) -> Unit,
+    onOpenSettings: () -> Unit,
+    onEditPouches: () -> Unit,
+) {
+    val tabs = Tab.entries
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                    )
+                },
+                actions = {
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.settings))
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+            )
+        },
+        bottomBar = {
+            NavigationBar {
+                tabs.forEachIndexed { i, tab ->
+                    NavigationBarItem(
+                        selected = i == tabIndex,
+                        onClick = { onTab(i) },
+                        icon = { Icon(tab.icon, contentDescription = null) },
+                        label = { Text(stringResource(tab.labelRes)) },
+                    )
+                }
+            }
+        },
+    ) { inner ->
+        Box(Modifier.fillMaxSize().padding(inner)) {
+            when (tabs[tabIndex]) {
+                Tab.TRACK -> TrackScreen(vm = vm, onEditPouches = onEditPouches)
+                Tab.BODY -> BodyScreen(vm = vm, onOpenSettings = onOpenSettings)
+                Tab.HISTORY -> HistoryScreen(vm = vm)
+                Tab.PLAN -> PlanScreen(vm = vm)
+            }
+        }
+    }
+}
