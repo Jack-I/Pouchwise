@@ -18,7 +18,8 @@ alpha = ImageOps.invert(gray).point(lambda v: 0 if v < 24 else v)  # ink -> opaq
 alpha = alpha.crop(alpha.getbbox())
 w, h = alpha.size
 
-ART = 64 / 108  # artwork box inside the 66 dp safe zone
+ART = 62 / 108  # artwork box inside the 66 dp safe zone
+SHIFT_X = 3 / 108  # nudge right: the lid makes the drawing look left-heavy when the box is centred
 DENSITIES = {"mdpi": 1, "hdpi": 1.5, "xhdpi": 2, "xxhdpi": 3, "xxxhdpi": 4}
 
 
@@ -30,7 +31,7 @@ def foreground(size_px: int) -> Image.Image:
     fg = Image.new("RGBA", (aw, ah), (255, 255, 255, 255))
     fg.putalpha(a)
     canvas = Image.new("RGBA", (size_px, size_px), (0, 0, 0, 0))
-    canvas.alpha_composite(fg, ((size_px - aw) // 2, (size_px - ah) // 2))
+    canvas.alpha_composite(fg, ((size_px - aw) // 2 + round(size_px * SHIFT_X), (size_px - ah) // 2))
     return canvas
 
 

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_ring_desc"
+    android:initialLayout="@layout/widget_ring"
+    android:minWidth="57dp"
+    android:minHeight="57dp"
+    android:targetCellWidth="1"
+    android:targetCellHeight="1"
+    android:resizeMode="none"
+    android:updatePeriodMillis="3600000"
+    android:widgetCategory="home_screen" />

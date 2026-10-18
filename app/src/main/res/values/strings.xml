@@ -181,4 +181,15 @@
     <string name="about">About</string>
     <string name="disclaimer">Pouchwise is a habit tracker, not a medical device. Body levels are rough estimates from a simple pharmacokinetic model.</string>
     <string name="version">Version %1$s</string>
+
+    <!-- widgets -->
+    <string name="widget_ring_label">Pouchwise ring</string>
+    <string name="widget_ring_desc">Today against your daily limit</string>
+    <string name="widget_wide_label">Pouchwise counter</string>
+    <string name="widget_wide_desc">Today\'s count, the limit and one-tap logging</string>
+    <string name="widget_pouches_today">pouches today</string>
+    <string name="widget_mg_today">today</string>
+    <string name="widget_over">over the limit</string>
+    <string name="widget_add">Log %1$s</string>
+    <string name="widget_logged">%1$s logged</string>
 </resources>

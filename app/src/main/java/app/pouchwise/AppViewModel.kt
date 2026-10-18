@@ -14,6 +14,7 @@ import app.pouchwise.model.LimitMode
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.model.Settings
 import app.pouchwise.util.Export
+import app.pouchwise.widget.WidgetUpdater
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,8 +25,14 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
+    private val appContext: Context = app
     private val dao = AppDatabase.get(app).dao()
     private val settingsRepo = SettingsRepository(app)
+
+    /** Home-screen widgets mirror today's state; refresh them after anything that changes it. */
+    private suspend fun refreshWidgets() {
+        runCatching { WidgetUpdater.updateAll(appContext) }
+    }
 
     /** Null until the first read from the database completes. */
     val types: StateFlow<List<PouchType>?> = dao.observeTypes()
@@ -83,22 +90,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Puts a pouch in: it stays "active" until removed or until the default pouch time passes. */
     fun logPouch(type: PouchType, atMs: Long = System.currentTimeMillis()) = viewModelScope.launch {
         dao.insertEntry(LogEntry(pouchTypeId = type.id, timestamp = atMs, strengthMg = type.strengthMg, releaseK = type.releaseK))
+        refreshWidgets()
     }
 
     /** Takes the pouch out now; absorption stops here. */
     fun finishPouch(entry: LogEntry) = viewModelScope.launch {
         dao.updateEntry(PouchTiming.finish(entry, settings.value, System.currentTimeMillis()))
+        refreshWidgets()
     }
 
-    fun deleteEntry(entry: LogEntry) = viewModelScope.launch { dao.deleteEntry(entry) }
+    fun deleteEntry(entry: LogEntry) = viewModelScope.launch {
+        dao.deleteEntry(entry)
+        refreshWidgets()
+    }
 
     /** Moves the whole pouch (start and end) to a new start time. */
     fun moveEntry(entry: LogEntry, newTimestamp: Long) = viewModelScope.launch {
         val delta = newTimestamp - entry.timestamp
         dao.updateEntry(entry.copy(timestamp = newTimestamp, endTimestamp = entry.endTimestamp?.plus(delta)))
+        refreshWidgets()
     }
 
-    fun updateSettings(transform: (Settings) -> Settings) = viewModelScope.launch { settingsRepo.update(transform) }
+    fun updateSettings(transform: (Settings) -> Settings) = viewModelScope.launch {
+        settingsRepo.update(transform)
+        refreshWidgets()
+    }
 
     /**
      * First-launch setup: creates the usual pouch and a two-month plan. The limit is counted in pouches

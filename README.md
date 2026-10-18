@@ -22,6 +22,18 @@ No account, no server, no analytics. Everything lives in a local SQLite database
 On first launch the app asks for your usual pouch, how many you use per day, and where you want to be
 in two months, and turns that into a plan. Everything can be changed later.
 
+### Home-screen widgets
+
+Long-press the home screen → Widgets → Pouchwise. Two sizes:
+
+- **1×1 ring** — the logo inside a ring that fills up towards today's limit and turns red once you
+  are over it. Tap to open the app.
+- **2×1 counter** — the same ring plus "4 / 10" (or mg), and a **+** that logs your usual pouch
+  (the one you used last) without opening the app.
+
+Widgets refresh right after every change made in the app and once an hour on their own, so the day
+rolls over on time.
+
 Going over the limit never blocks logging. The day card turns red with "N pouches over the limit"
 and the extra entries are marked in the log — the data stays honest.
 

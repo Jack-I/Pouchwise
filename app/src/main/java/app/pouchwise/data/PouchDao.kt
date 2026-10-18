@@ -30,6 +30,15 @@ interface PouchDao {
     @Query("SELECT * FROM log_entries ORDER BY timestamp")
     fun observeEntries(): Flow<List<LogEntry>>
 
+    @Query("SELECT * FROM log_entries WHERE timestamp >= :fromMs AND timestamp < :toMs ORDER BY timestamp")
+    suspend fun entriesBetween(fromMs: Long, toMs: Long): List<LogEntry>
+
+    @Query("SELECT * FROM log_entries ORDER BY timestamp DESC LIMIT 1")
+    suspend fun latestEntry(): LogEntry?
+
+    @Query("SELECT * FROM pouch_types WHERE archived = 0 ORDER BY sortOrder, id")
+    suspend fun activeTypes(): List<PouchType>
+
     @Insert
     suspend fun insertEntry(entry: LogEntry): Long
 
