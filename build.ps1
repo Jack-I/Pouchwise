@@ -3,6 +3,7 @@
 #         .\build.ps1 release    -> release APK (signed with keystore.properties if present, otherwise the debug key)
 #         .\build.ps1 test       -> JVM unit tests
 #         .\build.ps1 install    -> build debug APK and install it on a USB-connected phone (adb)
+#         .\build.ps1 "<gradle tasks>" -> anything else, e.g. "testDebugUnitTest assembleRelease"
 #
 # JAVA_HOME and ANDROID_HOME are respected when set. Otherwise the script looks for a JDK under
 # %LOCALAPPDATA%\Android\jdk\<jdk-dir> and the SDK under %LOCALAPPDATA%\Android\Sdk.
@@ -41,6 +42,6 @@ switch ($Task) {
     }
     "test"    { .\gradlew.bat --console=plain testDebugUnitTest }
     "install" { .\gradlew.bat --console=plain installDebug }
-    default   { .\gradlew.bat --console=plain $Task }
+    default   { .\gradlew.bat --console=plain @($Task -split '\s+') }
 }
 exit $LASTEXITCODE

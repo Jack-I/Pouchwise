@@ -95,8 +95,8 @@
 
     <!-- history -->
     <string name="history_title">History</string>
-    <string name="garden_title">Your garden</string>
-    <string name="garden_subtitle">One tile per day. Blossom = no pouches, stump = far over the limit.</string>
+    <string name="garden_title">Your days</string>
+    <string name="garden_subtitle">One tile per day. The face sours as the day nears the limit and goes past it.</string>
     <string name="stats_streak">Days within limit in a row</string>
     <string name="stats_within_30">Days within limit, last 30</string>
     <string name="stats_avg7_count">Avg pouches / day, 7 days</string>

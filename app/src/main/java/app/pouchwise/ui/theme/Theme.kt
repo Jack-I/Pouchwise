@@ -68,11 +68,11 @@ private val DarkColors = darkColorScheme(
 object AppColors {
     val nicotine = Color(0xFF1E88E5)
     val cotinine = Color(0xFF8E24AA)
-    val gardenGood = Color(0xFF66BB6A)
-    val gardenOk = Color(0xFFC5E1A5)
-    val gardenWarn = Color(0xFFFFE082)
-    val gardenOver = Color(0xFFFFAB91)
-    val gardenBad = Color(0xFFE57373)
+    /** Tile colours for the seven day levels, best to worst. */
+    val garden = listOf(
+        Color(0xFF66BB6A), Color(0xFF9CCC65), Color(0xFFC5E1A5), Color(0xFFE6EE9C),
+        Color(0xFFFFE082), Color(0xFFFFAB91), Color(0xFFE57373),
+    )
 }
 
 val PouchPalette = listOf(

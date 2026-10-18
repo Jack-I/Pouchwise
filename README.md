@@ -1,7 +1,7 @@
 # Pouchwise
 
 A small, offline Android app for tracking nicotine pouches: how many today, a daily limit that
-highlights overuse instead of nagging, a gradual-reduction plan, a per-day "garden" view, and an
+highlights overuse instead of nagging, a gradual-reduction plan, a day-by-day mood grid, and an
 estimate of the nicotine and cotinine currently in your body with a forecast of when they clear.
 
 No account, no server, no analytics. Everything lives in a local SQLite database on the phone.
@@ -13,9 +13,9 @@ No account, no server, no analytics. Everything lives in a local SQLite database
 
 | Screen | What it does |
 |---|---|
-| **Track** | Today card: pouches or mg left, progress bar, the day's garden emoji. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** puts the pouch "in": a card with a timer and a **Remove** button appears; if you never tap Remove, the pouch counts as removed after the pouch time (30 min by default). Today's log shows each pouch with its time in, and you can adjust the time or delete an entry. |
+| **Track** | Today card: pouches or mg left, progress bar, the day's face. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** puts the pouch "in": a card with a timer and a **Remove** button appears; if you never tap Remove, the pouch counts as removed after the pouch time (30 min by default). Today's log shows each pouch with its time in, and you can adjust the time or delete an entry. |
 | **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL) and when each clears. A chart with a solid line for the past and a dashed line for the forecast if you stop now; 24 h / 48 h / 7 d ranges. |
-| **History** | A five-week garden: one tile per day, from a blossom for a pouch-free day down to a stump for far over the limit. Streak of days within the limit, weekly average. Daily bars against the limit line, projected a week ahead. |
+| **History** | Five weeks of faces: one tile per day in seven steps, from 😎 for a pouch-free day to 🤢 for far over the limit. Streak of days within the limit, weekly average. Daily bars against the limit line, projected a week ahead. |
 | **Plan** | Limit counted in pouches or in mg of nicotine. Either a fixed daily limit or a taper: start value → target value by a date, with today's limit interpolated linearly. |
 | **Settings** | Manage pouch brands (name, strength in mg, colour; hide and restore). Hour at which a new day starts. Body-model parameters. Theme. Export to CSV or JSON through the share sheet. |
 

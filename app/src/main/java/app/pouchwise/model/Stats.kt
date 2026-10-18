@@ -16,25 +16,29 @@ data class DayStat(
     val withinLimit: Boolean get() = used <= limit + 1e-9
 }
 
-/** Day tile in the "garden": blossom for a pouch-free day, down to a stump for far over the limit. */
-enum class GardenLevel(val emoji: String) {
-    EMPTY(""),
-    BLOOM("🌸"),
-    TREE("🌳"),
-    HERB("🌿"),
-    LEAVES("🍂"),
-    STUMP("🪵");
+/** Face for a day: from sunglasses for a pouch-free day down to nausea for far over the limit. */
+enum class GardenLevel(val emoji: String, val label: String) {
+    EMPTY("", ""),
+    CLEAN("😎", "0"),
+    GREAT("😁", "≤25%"),
+    GOOD("😊", "≤50%"),
+    OK("🙂", "≤75%"),
+    AT_LIMIT("😐", "≤100%"),
+    OVER("😬", "≤150%"),
+    FAR_OVER("🤢", ">150%");
 
     companion object {
         fun of(stat: DayStat?): GardenLevel {
             if (stat == null || !stat.hasData) return EMPTY
-            if (stat.count == 0) return BLOOM
+            if (stat.count == 0) return CLEAN
             val r = stat.ratio
             return when {
-                r <= 0.5 -> TREE
-                r <= 1.0 -> HERB
-                r <= 1.5 -> LEAVES
-                else -> STUMP
+                r <= 0.25 -> GREAT
+                r <= 0.5 -> GOOD
+                r <= 0.75 -> OK
+                r <= 1.0 -> AT_LIMIT
+                r <= 1.5 -> OVER
+                else -> FAR_OVER
             }
         }
     }

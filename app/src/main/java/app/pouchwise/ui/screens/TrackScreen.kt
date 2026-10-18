@@ -118,7 +118,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                     TextButton(onClick = { addDialog = true }) { Text(stringResource(R.string.add_pouch_type)) }
                 }
             }
-            items(active, key = { it.id }) { type ->
+            items(active, key = { "type-${it.id}" }) { type ->
                 val fits = Limits.remainingPouches(settings, limit, count, mg, type.strengthMg)
                 PouchTypeRow(
                     type = type,
@@ -138,7 +138,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         if (todays.isEmpty()) {
             item { Text(stringResource(R.string.empty_log), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
-            items(todays, key = { it.id }) { e ->
+            items(todays, key = { "entry-${it.id}" }) { e ->
                 LogRow(
                     entry = e,
                     name = typesById[e.pouchTypeId]?.name ?: "?",

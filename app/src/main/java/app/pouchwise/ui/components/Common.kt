@@ -155,14 +155,8 @@ fun durationText(ms: Long): String {
 }
 
 fun gardenColor(level: GardenLevel, isDark: Boolean): Color {
-    val c = when (level) {
-        GardenLevel.EMPTY -> return Color.Transparent
-        GardenLevel.BLOOM -> AppColors.gardenGood
-        GardenLevel.TREE -> AppColors.gardenOk
-        GardenLevel.HERB -> AppColors.gardenWarn
-        GardenLevel.LEAVES -> AppColors.gardenOver
-        GardenLevel.STUMP -> AppColors.gardenBad
-    }
+    if (level == GardenLevel.EMPTY) return Color.Transparent
+    val c = AppColors.garden[(level.ordinal - 1).coerceIn(0, AppColors.garden.lastIndex)]
     return if (isDark) c.copy(alpha = 0.55f) else c.copy(alpha = 0.75f)
 }
 

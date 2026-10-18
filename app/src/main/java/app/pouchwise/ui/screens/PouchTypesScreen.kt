@@ -62,7 +62,7 @@ fun PouchTypesScreen(vm: AppViewModel, onBack: () -> Unit) {
             if (types.isEmpty()) {
                 item { Text(stringResource(R.string.no_types_yet), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
-            items(active, key = { it.id }) { t ->
+            items(active, key = { "active-${it.id}" }) { t ->
                 TypeRow(
                     type = t,
                     trailing = {
@@ -73,7 +73,7 @@ fun PouchTypesScreen(vm: AppViewModel, onBack: () -> Unit) {
             }
             if (archived.isNotEmpty()) {
                 item { SectionTitle(stringResource(R.string.archived), modifier = Modifier.padding(top = 12.dp)) }
-                items(archived, key = { it.id }) { t ->
+                items(archived, key = { "archived-${it.id}" }) { t ->
                     TypeRow(
                         type = t,
                         trailing = {

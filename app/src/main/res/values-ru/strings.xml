@@ -95,8 +95,8 @@
     <string name="no_data_yet">Запишите пауч, чтобы увидеть кривую.</string>
 
     <string name="history_title">История</string>
-    <string name="garden_title">Ваш сад</string>
-    <string name="garden_subtitle">Одна плитка — один день. Цветёт — без паучей, пенёк — сильно за лимитом.</string>
+    <string name="garden_title">Ваши дни</string>
+    <string name="garden_subtitle">Одна плитка — один день. Чем ближе к лимиту и дальше за него, тем кислее лицо.</string>
     <string name="stats_streak">Дней в лимите подряд</string>
     <string name="stats_within_30">Дней в лимите из последних 30</string>
     <string name="stats_avg7_count">Паучей в день, среднее за 7 дней</string>

@@ -197,20 +197,14 @@ private fun GardenGrid(
 @Composable
 private fun GardenLegend() {
     val dark = isSystemInDarkTheme()
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        listOf(
-            GardenLevel.BLOOM to "0",
-            GardenLevel.TREE to "≤50%",
-            GardenLevel.HERB to "≤100%",
-            GardenLevel.LEAVES to "≤150%",
-            GardenLevel.STUMP to ">150%",
-        ).forEach { (lvl, txt) ->
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        GardenLevel.entries.filter { it != GardenLevel.EMPTY }.forEach { lvl ->
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(18.dp).clip(RoundedCornerShape(5.dp)).background(gardenColor(lvl, dark)), contentAlignment = Alignment.Center) {
-                    Text(lvl.emoji, fontSize = 11.sp)
+                Box(Modifier.size(20.dp).clip(RoundedCornerShape(5.dp)).background(gardenColor(lvl, dark)), contentAlignment = Alignment.Center) {
+                    Text(lvl.emoji, fontSize = 12.sp)
                 }
                 Spacer(Modifier.width(3.dp))
-                Text(txt, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(lvl.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
