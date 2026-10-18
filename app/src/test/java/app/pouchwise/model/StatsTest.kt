@@ -20,9 +20,9 @@ class StatsTest {
         assertEquals(GardenLevel.EMPTY, GardenLevel.of(stats[0]))
         assertEquals(2, stats[1].count)
         assertEquals(14.0, stats[1].mg, 1e-9)
-        assertEquals(GardenLevel.GOOD, GardenLevel.of(stats[1]))      // 2 of 4 = 50 %
+        assertEquals(GardenLevel.OK, GardenLevel.of(stats[1]))        // 2 of 4 = 50 %
         assertEquals(GardenLevel.CLEAN, GardenLevel.of(stats[2]))     // nothing that day
-        assertEquals(GardenLevel.GREAT, GardenLevel.of(stats[3]))     // 1 of 4 = 25 %
+        assertEquals(GardenLevel.GOOD, GardenLevel.of(stats[3]))      // 1 of 4 = 25 %
         assertEquals(3, Stats.streak(stats))
     }
 
@@ -30,12 +30,12 @@ class StatsTest {
     fun sevenLevelsCoverTheWholeRange() {
         fun lvl(count: Int, limit: Int) =
             GardenLevel.of(DayStat(0, count, 0.0, limit, LimitMode.COUNT, hasData = true))
-        assertEquals(GardenLevel.CLEAN, lvl(0, 8))
-        assertEquals(GardenLevel.GREAT, lvl(2, 8))
-        assertEquals(GardenLevel.GOOD, lvl(4, 8))
-        assertEquals(GardenLevel.OK, lvl(6, 8))
-        assertEquals(GardenLevel.AT_LIMIT, lvl(8, 8))
-        assertEquals(GardenLevel.OVER, lvl(12, 8))
-        assertEquals(GardenLevel.FAR_OVER, lvl(13, 8))
+        assertEquals(GardenLevel.CLEAN, lvl(0, 12))
+        assertEquals(GardenLevel.GOOD, lvl(4, 12))       // 33 %
+        assertEquals(GardenLevel.OK, lvl(8, 12))         // 66 %
+        assertEquals(GardenLevel.AT_LIMIT, lvl(12, 12))  // 100 %
+        assertEquals(GardenLevel.OVER, lvl(15, 12))      // 125 %
+        assertEquals(GardenLevel.SAD, lvl(18, 12))       // 150 %
+        assertEquals(GardenLevel.FAR_OVER, lvl(19, 12))
     }
 }

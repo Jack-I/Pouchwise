@@ -48,7 +48,7 @@
     <string name="todays_log">Today\'s log</string>
     <string name="empty_log">Nothing logged today.</string>
     <string name="no_types_title">Add your first pouch</string>
-    <string name="no_types_body">Create a pouch with its brand and nicotine strength. Tap + when you put one in and Remove when you take it out; otherwise it counts as removed after the pouch time from Settings. Long-press + to log at an earlier time.</string>
+    <string name="no_types_body">Create a pouch with its brand and nicotine strength. Tap + when you put one in and Remove when you take it out; otherwise it counts as removed after %1$d min (change this in Settings). Long-press + to log at an earlier time.</string>
     <string name="log_one">Log one</string>
     <plurals name="fits_today">
         <item quantity="one">%d more fits today</item>

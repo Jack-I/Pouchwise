@@ -103,7 +103,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                 SoftCard(containerColor = MaterialTheme.colorScheme.primaryContainer) {
                     Text(stringResource(R.string.no_types_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
-                    Text(stringResource(R.string.no_types_body), style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.no_types_body, settings.pk.absorptionMinutes), style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(14.dp))
                     Button(onClick = { addDialog = true }) {
                         Icon(Icons.Filled.Add, contentDescription = null)

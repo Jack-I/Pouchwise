@@ -16,15 +16,15 @@ data class DayStat(
     val withinLimit: Boolean get() = used <= limit + 1e-9
 }
 
-/** Face for a day: from sunglasses for a pouch-free day down to nausea for far over the limit. */
+/** Face for a day: three steps within the limit, three beyond it, sunglasses for a pouch-free day. */
 enum class GardenLevel(val emoji: String, val label: String) {
     EMPTY("", ""),
     CLEAN("😎", "0"),
-    GREAT("😁", "≤25%"),
-    GOOD("😊", "≤50%"),
-    OK("🙂", "≤75%"),
+    GOOD("😊", "≤33%"),
+    OK("🙂", "≤66%"),
     AT_LIMIT("😐", "≤100%"),
-    OVER("😬", "≤150%"),
+    OVER("😬", "≤125%"),
+    SAD("😞", "≤150%"),
     FAR_OVER("🤢", ">150%");
 
     companion object {
@@ -33,11 +33,11 @@ enum class GardenLevel(val emoji: String, val label: String) {
             if (stat.count == 0) return CLEAN
             val r = stat.ratio
             return when {
-                r <= 0.25 -> GREAT
-                r <= 0.5 -> GOOD
-                r <= 0.75 -> OK
-                r <= 1.0 -> AT_LIMIT
-                r <= 1.5 -> OVER
+                r <= 1.0 / 3 + 1e-9 -> GOOD
+                r <= 2.0 / 3 + 1e-9 -> OK
+                r <= 1.0 + 1e-9 -> AT_LIMIT
+                r <= 1.25 + 1e-9 -> OVER
+                r <= 1.5 + 1e-9 -> SAD
                 else -> FAR_OVER
             }
         }
