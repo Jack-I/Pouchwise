@@ -80,11 +80,14 @@ fun BrandPicker(
 fun resolveBrand(selected: String, custom: String): String =
     if (selected != OTHER_BRAND) selected else custom.trim()
 
+/** Above this labelled strength the dialog shows the tolerance warning. */
+const val STRONG_POUCH_MG = 12.0
+
 @Composable
 fun PouchTypeDialog(
     initial: PouchType?,
     onDismiss: () -> Unit,
-    onSave: (brand: String, variant: String, strengthMg: Double, colorIndex: Int) -> Unit,
+    onSave: (brand: String, variant: String, strengthMg: Double, colorIndex: Int, fastRelease: Boolean) -> Unit,
 ) {
     val initialKnown = initial?.brand?.takeIf { Brands.isKnown(it) }?.let { Brands.find(it)!!.name }
     var brandSel by rememberSaveable { mutableStateOf(initialKnown ?: OTHER_BRAND) }
@@ -103,6 +106,7 @@ fun PouchTypeDialog(
     }
     var strength by rememberSaveable { mutableStateOf(initial?.let { fmtInput(it.strengthMg) } ?: "") }
     var color by rememberSaveable { mutableIntStateOf(initial?.colorIndex ?: 0) }
+    var fast by rememberSaveable { mutableStateOf(initial?.fastRelease ?: false) }
     val mg = parseDecimal(strength)
     val brand = resolveBrand(brandSel, custom)
     val valid = brand.isNotBlank() && mg != null && mg > 0 && mg < 200
@@ -138,7 +142,27 @@ fun PouchTypeDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Spacer(Modifier.height(16.dp))
+                if (mg != null && mg > STRONG_POUCH_MG) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        stringResource(R.string.strong_warning),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = fast, onCheckedChange = { fast = it })
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.fast_release), style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            stringResource(R.string.fast_release_hint),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.pouch_color), style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(8.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -149,7 +173,7 @@ fun PouchTypeDialog(
             }
         },
         confirmButton = {
-            TextButton(enabled = valid, onClick = { onSave(brand, variant.trim(), mg ?: 0.0, color) }) {
+            TextButton(enabled = valid, onClick = { onSave(brand, variant.trim(), mg ?: 0.0, color, fast) }) {
                 Text(stringResource(R.string.save))
             }
         },

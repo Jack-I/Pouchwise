@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -73,7 +74,11 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val absorbedToday = todaysAsc.sumOf { PouchTiming.absorbedMg(it, settings, clock) }
     val limit = Limits.limitForDayRounded(settings, today)
     val overIds = remember(todaysAsc, settings, limit) { Limits.overLimitEntryIds(todaysAsc, settings, limit) }
-    val lastEntry = entries.lastOrNull()
+    val pouchInNow = activeEntries.isNotEmpty()
+    // "Last pouch" counts from the moment it came out (or its automatic removal), not from when it went in.
+    val lastOutMs = entries.lastOrNull()?.let { e ->
+        minOf(e.endTimestamp ?: (e.timestamp + PouchTiming.autoMs(settings)), clock)
+    }
 
     var timePickFor by remember { mutableStateOf<PouchType?>(null) }
     var editEntry by remember { mutableStateOf<LogEntry?>(null) }
@@ -88,7 +93,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         item {
             TodayCard(
                 settings = settings, count = count, mg = mg, absorbedMg = absorbedToday, limit = limit,
-                lastEntryMs = lastEntry?.timestamp, nowMs = now,
+                lastOutMs = lastOutMs, pouchInNow = pouchInNow, nowMs = clock,
             )
         }
 
@@ -204,7 +209,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         PouchTypeDialog(
             initial = null,
             onDismiss = { addDialog = false },
-            onSave = { brand, variant, strength, color -> vm.addType(brand, variant, strength, color); addDialog = false },
+            onSave = { brand, variant, strength, color, fast -> vm.addType(brand, variant, strength, color, fast); addDialog = false },
         )
     }
 }
@@ -224,7 +229,16 @@ private fun mmss(ms: Long): String {
 }
 
 @Composable
-private fun TodayCard(settings: Settings, count: Int, mg: Double, absorbedMg: Double, limit: Int, lastEntryMs: Long?, nowMs: Long) {
+private fun TodayCard(
+    settings: Settings,
+    count: Int,
+    mg: Double,
+    absorbedMg: Double,
+    limit: Int,
+    lastOutMs: Long?,
+    pouchInNow: Boolean,
+    nowMs: Long,
+) {
     val mode = settings.limitMode
     val used = Limits.usage(mode, count, mg)
     val over = used > limit + 1e-9
@@ -262,7 +276,7 @@ private fun TodayCard(settings: Settings, count: Int, mg: Double, absorbedMg: Do
             if (over) {
                 Icon(Icons.Filled.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
             } else {
-                Text("🫙", style = MaterialTheme.typography.titleMedium)
+                Icon(Icons.Outlined.CalendarToday, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
             }
             Spacer(Modifier.width(6.dp))
             Text(stringResource(R.string.today), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -296,8 +310,11 @@ private fun TodayCard(settings: Settings, count: Int, mg: Double, absorbedMg: Do
         }
         Spacer(Modifier.height(10.dp))
         Text(
-            text = if (lastEntryMs != null) stringResource(R.string.last_pouch_ago, durationText(nowMs - lastEntryMs))
-                   else stringResource(R.string.no_pouches_today),
+            text = when {
+                pouchInNow -> stringResource(R.string.pouch_in_now)
+                lastOutMs != null -> stringResource(R.string.last_pouch_ago, durationText(nowMs - lastOutMs))
+                else -> stringResource(R.string.no_pouches_today)
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

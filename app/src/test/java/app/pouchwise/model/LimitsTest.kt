@@ -41,6 +41,26 @@ class LimitsTest {
     }
 
     @Test
+    fun switchingTheUnitKeepsThePlan() {
+        val count = Settings(
+            limitMode = LimitMode.COUNT, dailyLimitCount = 10,
+            taperEnabled = true, taperStartDay = 100, taperStartValue = 10.0, taperTargetDay = 160, taperTargetValue = 4.0,
+        )
+        val mg = Limits.convertMode(count, LimitMode.MG, 8.0)
+        assertEquals(LimitMode.MG, mg.limitMode)
+        assertTrue(mg.taperEnabled)
+        assertEquals(80.0, mg.dailyLimitMg, 1e-9)
+        assertEquals(80.0, mg.taperStartValue, 1e-9)
+        assertEquals(32.0, mg.taperTargetValue, 1e-9)
+
+        val back = Limits.convertMode(mg, LimitMode.COUNT, 8.0)
+        assertEquals(10, back.dailyLimitCount)
+        assertEquals(10.0, back.taperStartValue, 1e-9)
+        assertEquals(4.0, back.taperTargetValue, 1e-9)
+        assertEquals(count, Limits.convertMode(count, LimitMode.COUNT, 8.0)) // same mode: untouched
+    }
+
+    @Test
     fun entriesBeyondTheLimitAreMarked() {
         val entries = (1..5).map { LogEntry(id = it.toLong(), pouchTypeId = 1, timestamp = it * 1000L, strengthMg = 8.0) }
 

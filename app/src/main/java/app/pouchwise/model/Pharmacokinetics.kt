@@ -105,9 +105,17 @@ object Pharmacokinetics {
 
     /**
      * When, assuming no further doses, each substance drops below its threshold for good.
-     * Null means it is already below the threshold and stays there.
+     * Null means it is already below the threshold and stays there. The defaults are the absolute
+     * "cleared" amounts; pass a share of the current level to get e.g. the "90 % gone" moment.
      */
-    fun clearance(nowMs: Long, doses: List<Dose>, p: PkParams, stepMs: Long = 5 * 60_000L): Clearance {
+    fun clearance(
+        nowMs: Long,
+        doses: List<Dose>,
+        p: PkParams,
+        nicotineThreshold: Double = NICOTINE_CLEARED_MG,
+        cotinineThreshold: Double = COTININE_CLEARED_MG,
+        stepMs: Long = 5 * 60_000L,
+    ): Clearance {
         var lastNicAbove: Long? = null
         var lastCotAbove: Long? = null
         var t = nowMs
@@ -115,9 +123,9 @@ object Pharmacokinetics {
         val settle = nowMs + 2 * HOUR_MS.toLong()
         while (t <= end) {
             val l = levelsAt(t, doses, p)
-            if (l.nicotineMg >= NICOTINE_CLEARED_MG) lastNicAbove = t
-            if (l.cotinineMg >= COTININE_CLEARED_MG) lastCotAbove = t
-            if (t > settle && l.nicotineMg < NICOTINE_CLEARED_MG && l.cotinineMg < COTININE_CLEARED_MG) break
+            if (l.nicotineMg >= nicotineThreshold) lastNicAbove = t
+            if (l.cotinineMg >= cotinineThreshold) lastCotAbove = t
+            if (t > settle && l.nicotineMg < nicotineThreshold && l.cotinineMg < cotinineThreshold) break
             t += stepMs
         }
         return Clearance(lastNicAbove?.plus(stepMs), lastCotAbove?.plus(stepMs))

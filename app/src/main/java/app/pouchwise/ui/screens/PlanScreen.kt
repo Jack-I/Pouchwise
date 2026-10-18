@@ -27,6 +27,9 @@ import kotlin.math.roundToInt
 fun PlanScreen(vm: AppViewModel) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
+    val types by vm.types.collectAsStateWithLifecycle()
+    // Typical strength for converting between pouches and mg: the average of the visible pouches.
+    val typicalStrength = types.orEmpty().filter { !it.archived }.map { it.strengthMg }.average().let { if (it.isNaN()) 8.0 else it }
     val today = DayKeys.epochDay(now, settings.dayStartHour)
     val mode = settings.limitMode
     val unit = if (mode == LimitMode.COUNT) stringResource(R.string.unit_pouches) else stringResource(R.string.unit_mg)
@@ -87,15 +90,21 @@ fun PlanScreen(vm: AppViewModel) {
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 SegmentedButton(
                     selected = mode == LimitMode.COUNT,
-                    onClick = { vm.updateSettings { it.copy(limitMode = LimitMode.COUNT, taperEnabled = false) } },
+                    onClick = { vm.updateSettings { Limits.convertMode(it, LimitMode.COUNT, typicalStrength) } },
                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                 ) { Text(stringResource(R.string.mode_count)) }
                 SegmentedButton(
                     selected = mode == LimitMode.MG,
-                    onClick = { vm.updateSettings { it.copy(limitMode = LimitMode.MG, taperEnabled = false) } },
+                    onClick = { vm.updateSettings { Limits.convertMode(it, LimitMode.MG, typicalStrength) } },
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                 ) { Text(stringResource(R.string.mode_mg)) }
             }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                stringResource(R.string.mode_switch_hint, Fmt.mg(typicalStrength)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         // fixed limit

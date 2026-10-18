@@ -41,7 +41,8 @@
     <string name="over_limit_by_mg">%1$s мг сверх лимита</string>
     <string name="used_of_limit_count">%1$d из %2$d паучей · %3$s мг никотина</string>
     <string name="used_of_limit_mg">%1$s из %2$s мг · паучей: %3$d</string>
-    <string name="last_pouch_ago">Последний пауч %1$s назад</string>
+    <string name="last_pouch_ago">Последний пауч вынут %1$s назад</string>
+    <string name="pouch_in_now">Пауч сейчас под губой</string>
     <string name="no_pouches_today">Сегодня ещё ни одного</string>
     <string name="your_pouches">Ваши паучи</string>
     <string name="edit_pouches">Редактировать паучи</string>
@@ -74,6 +75,9 @@
     <string name="brand_info_other">Бренды вне исследования считаются по среднему: около %1$d%% за первые 20 минут.</string>
     <string name="brand_speed_short">%1$d%% за 20 мин</string>
     <string name="pouch_strength">Крепость, мг на пауч</string>
+    <string name="strong_warning">Вы просрали свою толерантность. Переключитесь на более слабые паучи.</string>
+    <string name="fast_release">Быстрая отдача</string>
+    <string name="fast_release_hint">Для мини, сухих слимов и сильно щиплющих линеек: при досрочном снятии пауч считается быстрым, как ZYN.</string>
     <string name="pouch_color">Цвет</string>
     <string name="absorbed_today">≈ %1$s мг усвоено за сегодня</string>
     <string name="absorbed_short">≈ %1$s мг усвоено</string>
@@ -91,8 +95,11 @@
     <string name="nicotine">Никотин</string>
     <string name="cotinine">Котинин</string>
     <string name="approx_ng_ml">≈ %1$s нг/мл</string>
-    <string name="clears_in">%1$s выйдет через %2$s (к %3$s)</string>
+    <string name="gone_90_in">90%% выйдет через %1$s (к %2$s)</string>
+    <string name="below_threshold_in">меньше %1$s мг через %2$s (к %3$s)</string>
     <string name="already_clear">%1$s уже вышел</string>
+    <string name="axis_nicotine">Никотин, мг</string>
+    <string name="axis_cotinine">Котинин, мг</string>
     <string name="range_24h">24 ч</string>
     <string name="range_48h">48 ч</string>
     <string name="range_7d">7 д</string>
@@ -139,6 +146,7 @@
     <string name="limit_mode">Считать лимит в</string>
     <string name="mode_count">Паучах</string>
     <string name="mode_mg">мг никотина</string>
+    <string name="mode_switch_hint">При переключении лимит и план пересчитываются через ваш типичный пауч (%1$s мг).</string>
     <string name="daily_limit">Дневной лимит</string>
     <string name="limit_today">Лимит сегодня</string>
     <string name="taper_title">Снижать постепенно</string>

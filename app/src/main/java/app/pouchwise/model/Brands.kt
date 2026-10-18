@@ -23,11 +23,17 @@ object Brands {
 
     val averageK: Double = known.map { it.kPerMin }.average()
 
+    /** Rate used for a pouch marked "fast release": ZYN-like, applied when the brand's own rate is lower. */
+    const val FAST_K = 0.10
+
     fun find(brand: String): BrandInfo? = known.firstOrNull { it.name.equals(brand.trim(), ignoreCase = true) }
 
     fun isKnown(brand: String): Boolean = find(brand) != null
 
     fun kFor(brand: String): Double = find(brand)?.kPerMin ?: averageK
+
+    fun effectiveK(brand: String, fastRelease: Boolean): Double =
+        if (fastRelease) maxOf(kFor(brand), FAST_K) else kFor(brand)
 
     /** Share of the 60-minute release that is out after 20 minutes, in percent — a feel for the speed. */
     fun percentBy20Min(kPerMin: Double): Int =

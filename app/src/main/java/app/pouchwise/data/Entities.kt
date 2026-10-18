@@ -20,8 +20,10 @@ data class PouchType(
     val releaseSpeed: Int = 1,
     /** Brand as picked from the catalogue or typed by the user; empty for rows created before 0.4. */
     val brand: String = "",
-    /** First-order nicotine release constant, per minute (see [Brands]). */
+    /** First-order nicotine release constant, per minute (see [Brands]); already includes [fastRelease]. */
     val releaseK: Double = Brands.averageK,
+    /** User marked this line as fast-releasing (mini, dry-slim, strong tingle). */
+    val fastRelease: Boolean = false,
 )
 
 /**

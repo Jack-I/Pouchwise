@@ -36,6 +36,30 @@ object Limits {
             LimitMode.MG -> if (strengthMg <= 0) 0 else ((limit - mgSoFar + 1e-9) / strengthMg).toInt().coerceAtLeast(0)
         }
 
+    /**
+     * Switches the limit unit, converting the fixed limit and the taper values with a typical pouch
+     * strength so that a plan survives the switch instead of being reset.
+     */
+    fun convertMode(s: Settings, newMode: LimitMode, typicalStrengthMg: Double): Settings {
+        if (newMode == s.limitMode) return s
+        val k = typicalStrengthMg.coerceAtLeast(0.5)
+        return if (newMode == LimitMode.MG) {
+            s.copy(
+                limitMode = LimitMode.MG,
+                dailyLimitMg = (s.dailyLimitCount * k).roundToInt().toDouble(),
+                taperStartValue = (s.taperStartValue * k).roundToInt().toDouble(),
+                taperTargetValue = (s.taperTargetValue * k).roundToInt().toDouble(),
+            )
+        } else {
+            s.copy(
+                limitMode = LimitMode.COUNT,
+                dailyLimitCount = (s.dailyLimitMg / k).roundToInt().coerceAtLeast(1),
+                taperStartValue = (s.taperStartValue / k).roundToInt().toDouble(),
+                taperTargetValue = (s.taperTargetValue / k).roundToInt().toDouble(),
+            )
+        }
+    }
+
     /** Ids of the entries of one day (in chronological order) that lie beyond the limit. */
     fun overLimitEntryIds(dayEntriesAsc: List<LogEntry>, s: Settings, limit: Int): Set<Long> {
         val over = HashSet<Long>()

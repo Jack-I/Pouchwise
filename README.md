@@ -14,10 +14,10 @@ No account, no server, no analytics. Everything lives in a local SQLite database
 | Screen | What it does |
 |---|---|
 | **Track** | Today card: pouches or mg left, progress bar, the day's face. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** puts the pouch "in": a card with a timer and a **Remove** button appears; if you never tap Remove, the pouch counts as removed after the pouch time (30 min by default). Today's log shows each pouch with its time in, and you can adjust the time or delete an entry. |
-| **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL) and when each clears. A chart with a solid line for the past and a dashed line for the forecast if you stop now; 24 h / 48 h / 7 d ranges. |
+| **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL), when 90 % of each is gone and when it drops below the detection-level threshold. A chart with a solid line for the past and a dashed line for the forecast if you stop now; 24 h / 48 h / 7 d ranges. |
 | **History** | Five weeks of day tiles: pouches and mg per day, coloured in seven steps by how the day went against the limit. Streak within the limit, days over the limit, weekly average, totals. Daily bars against the limit line, projected a week ahead. |
 | **Plan** | Limit counted in pouches or in mg of nicotine. Either a fixed daily limit or a taper: start value → target value by a date, with today's limit interpolated linearly. |
-| **Settings** | Manage pouches: brand from a catalogue (or any other), optional flavour, strength in mg, colour; hide and restore. Hour at which a new day starts. Body weight and pouch time. Theme. Export to CSV or JSON through the share sheet. |
+| **Settings** | Manage pouches: brand from a catalogue (or any other), optional flavour, strength in mg, a "fast release" tick for mini / dry-slim lines, colour; hide and restore. Hour at which a new day starts. Body weight and pouch time. Theme. Export to CSV or JSON through the share sheet. |
 
 On first launch the app asks for your usual pouch, how many you use per day, and where you want to be
 in two months, and turns that into a plan. Everything can be changed later.
@@ -113,7 +113,9 @@ brands measured by in-vitro dissolution in artificial saliva
 Two things from that study shaped the design: every product released nicotine front-loaded
 (first-order), and "dry" versus "wet" did not predict speed — the wet pouches (Loop, Volt) were the
 slowest, while the dry ZYN was the fastest. A pouch taken out at half time has given up ~72 % of its
-dose with the average k, ~82 % for ZYN, ~58 % for Loop.
+dose with the average k, ~82 % for ZYN, ~58 % for Loop. Lines within a brand can differ (mini,
+dry-slim, extra-strong); the "fast release" tick on a pouch raises its k to 0.10 /min (ZYN-like) when
+the brand's own value is lower. Pouches above 12 mg get a blunt tolerance warning in the dialog.
 
 From there it is a one-compartment model: nicotine is eliminated with a 2 h half-life, 75 % of it
 becomes cotinine (mass-adjusted), and cotinine is eliminated with a 16 h half-life. The cascade is

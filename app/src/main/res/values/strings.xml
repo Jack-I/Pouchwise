@@ -40,7 +40,8 @@
     <string name="over_limit_by_mg">%1$s mg over the limit</string>
     <string name="used_of_limit_count">%1$d of %2$d pouches · %3$s mg nicotine</string>
     <string name="used_of_limit_mg">%1$s of %2$s mg · %3$d pouches</string>
-    <string name="last_pouch_ago">Last pouch %1$s ago</string>
+    <string name="last_pouch_ago">Last pouch out %1$s ago</string>
+    <string name="pouch_in_now">A pouch is in right now</string>
     <string name="no_pouches_today">No pouches yet today</string>
     <string name="your_pouches">Your pouches</string>
     <string name="edit_pouches">Edit pouches</string>
@@ -72,6 +73,9 @@
     <string name="brand_info_other">Brands outside the study use the average of the measured ones: about %1$d%% in the first 20 minutes.</string>
     <string name="brand_speed_short">%1$d%% in 20 min</string>
     <string name="pouch_strength">Strength, mg per pouch</string>
+    <string name="strong_warning">You\'ve blown your tolerance. Switch to weaker pouches.</string>
+    <string name="fast_release">Fast release</string>
+    <string name="fast_release_hint">For mini, dry-slim or strongly tingling lines: the pouch then counts as fast (ZYN-like) when taken out early.</string>
     <string name="pouch_color">Colour</string>
     <string name="absorbed_today">≈ %1$s mg absorbed so far today</string>
     <string name="absorbed_short">≈ %1$s mg absorbed</string>
@@ -90,8 +94,11 @@
     <string name="nicotine">Nicotine</string>
     <string name="cotinine">Cotinine</string>
     <string name="approx_ng_ml">≈ %1$s ng/mL</string>
-    <string name="clears_in">%1$s clears in %2$s (by %3$s)</string>
+    <string name="gone_90_in">90%% gone in %1$s (by %2$s)</string>
+    <string name="below_threshold_in">below %1$s mg in %2$s (by %3$s)</string>
     <string name="already_clear">%1$s has cleared</string>
+    <string name="axis_nicotine">Nicotine, mg</string>
+    <string name="axis_cotinine">Cotinine, mg</string>
     <string name="range_24h">24 h</string>
     <string name="range_48h">48 h</string>
     <string name="range_7d">7 d</string>
@@ -139,6 +146,7 @@
     <string name="limit_mode">Count the limit in</string>
     <string name="mode_count">Pouches</string>
     <string name="mode_mg">mg nicotine</string>
+    <string name="mode_switch_hint">Switching converts the limit and the plan using your typical pouch (%1$s mg).</string>
     <string name="daily_limit">Daily limit</string>
     <string name="limit_today">Limit today</string>
     <string name="taper_title">Reduce gradually</string>

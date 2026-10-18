@@ -51,24 +51,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), System.currentTimeMillis())
 
-    fun addType(brand: String, variant: String, strengthMg: Double, colorIndex: Int) = viewModelScope.launch {
+    fun addType(brand: String, variant: String, strengthMg: Double, colorIndex: Int, fastRelease: Boolean) = viewModelScope.launch {
         val order = dao.maxSortOrder() + 1
         dao.insertType(
             PouchType(
                 name = Brands.displayName(brand, variant), strengthMg = strengthMg, colorIndex = colorIndex,
-                sortOrder = order, brand = brand.trim(), releaseK = Brands.kFor(brand),
+                sortOrder = order, brand = brand.trim(), releaseK = Brands.effectiveK(brand, fastRelease),
+                fastRelease = fastRelease,
             ),
         )
     }
 
-    fun updateType(type: PouchType, brand: String, variant: String, strengthMg: Double, colorIndex: Int) = viewModelScope.launch {
-        dao.updateType(
-            type.copy(
-                name = Brands.displayName(brand, variant), strengthMg = strengthMg, colorIndex = colorIndex,
-                brand = brand.trim(), releaseK = Brands.kFor(brand),
-            ),
-        )
-    }
+    fun updateType(type: PouchType, brand: String, variant: String, strengthMg: Double, colorIndex: Int, fastRelease: Boolean) =
+        viewModelScope.launch {
+            dao.updateType(
+                type.copy(
+                    name = Brands.displayName(brand, variant), strengthMg = strengthMg, colorIndex = colorIndex,
+                    brand = brand.trim(), releaseK = Brands.effectiveK(brand, fastRelease), fastRelease = fastRelease,
+                ),
+            )
+        }
 
     /** Types with history are hidden instead of deleted so old entries keep their name. */
     fun removeType(type: PouchType) = viewModelScope.launch {

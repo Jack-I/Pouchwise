@@ -24,6 +24,14 @@ class BrandsTest {
     }
 
     @Test
+    fun fastReleaseRaisesSlowBrandsOnly() {
+        assertEquals(Brands.FAST_K, Brands.effectiveK("Velo", true), 1e-12)
+        assertEquals(Brands.FAST_K, Brands.effectiveK("Zeus", true), 1e-12)
+        assertEquals(0.103, Brands.effectiveK("ZYN", true), 1e-12)   // already faster than the flag
+        assertEquals(0.057, Brands.effectiveK("Velo", false), 1e-12)
+    }
+
+    @Test
     fun speedSummaryAndNames() {
         assertEquals(87, Brands.percentBy20Min(Brands.kFor("ZYN")))
         assertEquals(73, Brands.percentBy20Min(Brands.averageK))

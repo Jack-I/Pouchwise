@@ -81,6 +81,8 @@ fun BodyChart(
     nowMs: Long,
     nicotineColor: Color,
     cotinineColor: Color,
+    leftAxisTitle: String,
+    rightAxisTitle: String,
     modifier: Modifier = Modifier,
 ) {
     val measurer = rememberTextMeasurer()
@@ -92,17 +94,21 @@ fun BodyChart(
     val zone = remember { ZoneId.systemDefault() }
     val all = past + future
 
-    Canvas(modifier.fillMaxWidth().height(260.dp)) {
+    Canvas(modifier.fillMaxWidth().height(272.dp)) {
         if (all.size < 2) return@Canvas
         val padL = 44.dp.toPx()
         val padR = 48.dp.toPx()
-        val padT = 10.dp.toPx()
+        val padT = 24.dp.toPx()
         val padB = 26.dp.toPx()
         val w = size.width - padL - padR
         val h = size.height - padT - padB
         val t0 = all.first().first
         val t1 = all.last().first
         if (t1 <= t0) return@Canvas
+
+        // axis titles: nicotine on the left scale, cotinine on the right one
+        label(measurer, leftAxisTitle, 0f, 0f, nicLabelStyle, Align.START)
+        label(measurer, rightAxisTitle, size.width, 0f, cotLabelStyle, Align.END)
 
         val nMaxRaw = max(all.maxOf { it.second.nicotineMg }, 0.5)
         val cMaxRaw = max(all.maxOf { it.second.cotinineMg }, 2.0)

@@ -90,15 +90,15 @@ fun PouchTypesScreen(vm: AppViewModel, onBack: () -> Unit) {
         PouchTypeDialog(
             initial = null,
             onDismiss = { adding = false },
-            onSave = { brand, variant, mg, color -> vm.addType(brand, variant, mg, color); adding = false },
+            onSave = { brand, variant, mg, color, fast -> vm.addType(brand, variant, mg, color, fast); adding = false },
         )
     }
     editing?.let { t ->
         PouchTypeDialog(
             initial = t,
             onDismiss = { editing = null },
-            onSave = { brand, variant, mg, color ->
-                vm.updateType(t, brand, variant, mg, color)
+            onSave = { brand, variant, mg, color, fast ->
+                vm.updateType(t, brand, variant, mg, color, fast)
                 editing = null
             },
         )
