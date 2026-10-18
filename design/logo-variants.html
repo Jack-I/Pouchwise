@@ -34,23 +34,24 @@
   <defs>
     <!-- shared parts: open can and leaning lid, as on the reference picture -->
     <g id="can">
-      <ellipse cx="42" cy="58" rx="30" ry="10"/>
-      <path d="M12 58 V76 a30 10 0 0 0 60 0 V58"/>
+      <ellipse cx="40" cy="62" rx="31" ry="10.5"/>
+      <path d="M9 62 V80 a31 10.5 0 0 0 62 0 V62"/>
     </g>
-    <g id="lid" transform="rotate(-32 78 48)">
-      <ellipse cx="78" cy="48" rx="22" ry="7"/>
-      <path d="M56 48 v5 a22 7 0 0 0 44 0 v-5"/>
+    <!-- lid leaning against the right side of the can, resting on the rim -->
+    <g id="lid" transform="rotate(-40 84 46)">
+      <ellipse cx="84" cy="46" rx="21" ry="6.5"/>
+      <path d="M63 46 v4.5 a21 6.5 0 0 0 42 0 v-4.5"/>
     </g>
     <!-- narrow, long pouch standing in the can -->
-    <path id="pouch" d="M27.5 58 V26 a5.5 5.5 0 0 1 11 0 V58" transform="rotate(-10 33 58)"/>
+    <path id="pouch" d="M25.5 62 V20 a5 5 0 0 1 10 0 V62" transform="rotate(-8 30.5 62)"/>
 
     <!-- A: can + pouch + counting dots -->
     <symbol id="v-a" viewBox="0 0 108 108">
       <g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
         <use href="#pouch"/><use href="#can"/><use href="#lid"/>
-        <circle cx="32" cy="69" r="3" fill="currentColor" stroke="none"/>
-        <circle cx="42" cy="70" r="3" fill="currentColor" stroke="none"/>
-        <circle cx="52" cy="69" r="3" stroke-width="2.5"/>
+        <circle cx="30" cy="73" r="3" fill="currentColor" stroke="none"/>
+        <circle cx="40" cy="74" r="3" fill="currentColor" stroke="none"/>
+        <circle cx="50" cy="73" r="3" stroke-width="2.5"/>
       </g>
     </symbol>
 
@@ -58,8 +59,8 @@
     <symbol id="v-b" viewBox="0 0 108 108">
       <g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
         <use href="#pouch"/><use href="#can"/><use href="#lid"/>
-        <path d="M38 24 C40 13 48 8 57 10 C55 19 49 24 38 24 Z"/>
-        <path d="M41 22 L52 13" stroke-width="3.5"/>
+        <path d="M36 19 C38 9 46 4 55 6 C53 15 47 20 36 19 Z"/>
+        <path d="M39 17 L50 9" stroke-width="3.5"/>
       </g>
     </symbol>
 
@@ -67,7 +68,7 @@
     <symbol id="v-c" viewBox="0 0 108 108">
       <g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
         <use href="#pouch"/><use href="#can"/><use href="#lid"/>
-        <path d="M42 61 V74 M36 68.5 L42 74.5 L48 68.5"/>
+        <path d="M40 65 V78 M34 72.5 L40 78.5 L46 72.5"/>
       </g>
     </symbol>
 
