@@ -47,7 +47,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val active = remember(types) { types.filter { !it.archived } }
     val typesById = remember(types) { types.associateBy { it.id } }
 
-    // A one-second clock runs only while a pouch is in, for the countdown.
+    // A one-second clock runs only while a pouch is in, for the countdown and the running absorbed amount.
     val anyActive = entries.any { PouchTiming.isActive(it, settings, now) }
     var tick by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(anyActive) {
@@ -56,8 +56,9 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             delay(1_000)
         }
     }
-    val activeEntries = remember(entries, settings, tick) {
-        entries.filter { PouchTiming.isActive(it, settings, tick) }
+    val clock = if (anyActive) tick else now
+    val activeEntries = remember(entries, settings, clock) {
+        entries.filter { PouchTiming.isActive(it, settings, clock) }
     }
 
     val today = DayKeys.epochDay(now, settings.dayStartHour)
@@ -69,6 +70,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val todays = remember(todaysAsc) { todaysAsc.asReversed() }
     val count = todaysAsc.size
     val mg = todaysAsc.sumOf { it.strengthMg }
+    val absorbedToday = todaysAsc.sumOf { PouchTiming.absorbedMg(it, settings, clock) }
     val limit = Limits.limitForDayRounded(settings, today)
     val overIds = remember(todaysAsc, settings, limit) { Limits.overLimitEntryIds(todaysAsc, settings, limit) }
     val lastEntry = entries.lastOrNull()
@@ -84,7 +86,10 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            TodayCard(settings = settings, count = count, mg = mg, limit = limit, lastEntryMs = lastEntry?.timestamp, nowMs = now)
+            TodayCard(
+                settings = settings, count = count, mg = mg, absorbedMg = absorbedToday, limit = limit,
+                lastEntryMs = lastEntry?.timestamp, nowMs = now,
+            )
         }
 
         items(activeEntries, key = { "active-" + it.id }) { e ->
@@ -94,6 +99,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                 colorIndex = typesById[e.pouchTypeId]?.colorIndex ?: 0,
                 nowMs = tick,
                 autoMs = PouchTiming.autoMs(settings),
+                absorbedMg = PouchTiming.absorbedMg(e, settings, tick),
                 onRemove = { vm.finishPouch(e) },
             )
         }
@@ -139,12 +145,14 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             item { Text(stringResource(R.string.empty_log), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
             items(todays, key = { "entry-${it.id}" }) { e ->
+                val isActive = PouchTiming.isActive(e, settings, clock)
                 LogRow(
                     entry = e,
                     name = typesById[e.pouchTypeId]?.name ?: "?",
                     colorIndex = typesById[e.pouchTypeId]?.colorIndex ?: 0,
-                    durationLabel = if (PouchTiming.isActive(e, settings, tick)) stringResource(R.string.in_mouth)
+                    durationLabel = if (isActive) stringResource(R.string.in_mouth)
                                     else stringResource(R.string.duration_m, (PouchTiming.effectiveDurationMs(e, settings) / 60_000L).toInt()),
+                    absorbedLabel = stringResource(R.string.absorbed_short, Fmt.oneDecimal(PouchTiming.absorbedMg(e, settings, clock))),
                     over = e.id in overIds,
                     onEditTime = { editEntry = e },
                     onDelete = { deleteEntry = e },
@@ -196,7 +204,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         PouchTypeDialog(
             initial = null,
             onDismiss = { addDialog = false },
-            onSave = { name, strength, color, speed -> vm.addType(name, strength, color, speed); addDialog = false },
+            onSave = { brand, variant, strength, color -> vm.addType(brand, variant, strength, color); addDialog = false },
         )
     }
 }
@@ -216,7 +224,7 @@ private fun mmss(ms: Long): String {
 }
 
 @Composable
-private fun TodayCard(settings: Settings, count: Int, mg: Double, limit: Int, lastEntryMs: Long?, nowMs: Long) {
+private fun TodayCard(settings: Settings, count: Int, mg: Double, absorbedMg: Double, limit: Int, lastEntryMs: Long?, nowMs: Long) {
     val mode = settings.limitMode
     val used = Limits.usage(mode, count, mg)
     val over = used > limit + 1e-9
@@ -265,6 +273,11 @@ private fun TodayCard(settings: Settings, count: Int, mg: Double, limit: Int, la
                 Text(headline, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = headlineColor)
                 Spacer(Modifier.height(6.dp))
                 Text(detail, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(R.string.absorbed_today, Fmt.oneDecimal(absorbedMg)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             Spacer(Modifier.width(12.dp))
             BigEmoji(level.emoji.ifEmpty { "🌱" }, size = 60)
@@ -292,7 +305,15 @@ private fun TodayCard(settings: Settings, count: Int, mg: Double, limit: Int, la
 }
 
 @Composable
-private fun ActivePouchCard(entry: LogEntry, name: String, colorIndex: Int, nowMs: Long, autoMs: Long, onRemove: () -> Unit) {
+private fun ActivePouchCard(
+    entry: LogEntry,
+    name: String,
+    colorIndex: Int,
+    nowMs: Long,
+    autoMs: Long,
+    absorbedMg: Double,
+    onRemove: () -> Unit,
+) {
     val elapsed = (nowMs - entry.timestamp).coerceIn(0L, autoMs)
     val remaining = autoMs - elapsed
     SoftCard(containerColor = MaterialTheme.colorScheme.primaryContainer) {
@@ -309,7 +330,8 @@ private fun ActivePouchCard(entry: LogEntry, name: String, colorIndex: Int, nowM
                 }
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    stringResource(R.string.auto_remove_in, mmss(remaining)),
+                    stringResource(R.string.auto_remove_in, mmss(remaining)) + " · " +
+                        stringResource(R.string.absorbed_short, Fmt.oneDecimal(absorbedMg)),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -349,15 +371,6 @@ private fun PouchTypeRow(type: PouchType, fits: Int, onLog: () -> Unit, onLogAtT
                     Text(type.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.mg_value, Fmt.mg(type.strengthMg)), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    val speed = ReleaseSpeed.fromInt(type.releaseSpeed)
-                    if (speed != ReleaseSpeed.NORMAL) {
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            stringResource(if (speed == ReleaseSpeed.FAST) R.string.release_fast else R.string.release_slow).lowercase(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
                 }
                 Spacer(Modifier.height(2.dp))
                 Text(
@@ -387,6 +400,7 @@ private fun LogRow(
     name: String,
     colorIndex: Int,
     durationLabel: String,
+    absorbedLabel: String,
     over: Boolean,
     onEditTime: () -> Unit,
     onDelete: () -> Unit,
@@ -407,7 +421,7 @@ private fun LogRow(
         Column(Modifier.weight(1f)) {
             Text(name, style = MaterialTheme.typography.bodyLarge, color = accent)
             Text(
-                "${stringResource(R.string.mg_value, Fmt.mg(entry.strengthMg))} · $durationLabel",
+                "${stringResource(R.string.mg_value, Fmt.mg(entry.strengthMg))} · $durationLabel · $absorbedLabel",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

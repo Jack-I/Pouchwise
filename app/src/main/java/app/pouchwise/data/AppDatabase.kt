@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [PouchType::class, LogEntry::class], version = 3, exportSchema = false)
+@Database(entities = [PouchType::class, LogEntry::class], version = 4, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun dao(): PouchDao
 
@@ -27,9 +27,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** Per-brand release constants replace the slow / normal / fast choice. */
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE pouch_types ADD COLUMN brand TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE pouch_types ADD COLUMN releaseK REAL NOT NULL DEFAULT 0.0624")
+                db.execSQL("ALTER TABLE log_entries ADD COLUMN releaseK REAL NOT NULL DEFAULT 0.0624")
+                val remap = "CASE releaseSpeed WHEN 0 THEN 0.030 WHEN 2 THEN 0.095 ELSE 0.0624 END"
+                db.execSQL("UPDATE pouch_types SET releaseK = $remap")
+                db.execSQL("UPDATE log_entries SET releaseK = $remap")
+            }
+        }
+
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "pouchwise.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
                 .also { instance = it }
         }

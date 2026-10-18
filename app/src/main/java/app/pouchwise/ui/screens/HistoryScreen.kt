@@ -87,9 +87,14 @@ fun HistoryScreen(vm: AppViewModel) {
             Spacer(Modifier.height(10.dp))
             if (sel != null) {
                 val unit = if (sel.mode == LimitMode.COUNT) stringResource(R.string.unit_pouches) else stringResource(R.string.unit_mg)
+                val absorbed = entries
+                    .filter { DayKeys.epochDay(it.timestamp, settings.dayStartHour) == sel.epochDay }
+                    .sumOf { PouchTiming.absorbedMg(it, settings, now) }
                 Text(
                     "${Fmt.dateWithWeekday(sel.epochDay)} · ${sel.count} ${stringResource(R.string.unit_pouches)} · " +
-                        "${Fmt.mg(sel.mg)} ${stringResource(R.string.unit_mg)} · ${stringResource(R.string.limit_today).lowercase()}: ${sel.limit} $unit",
+                        "${Fmt.mg(sel.mg)} ${stringResource(R.string.unit_mg)} · " +
+                        "${stringResource(R.string.absorbed_short, Fmt.oneDecimal(absorbed))} · " +
+                        "${stringResource(R.string.limit_today).lowercase()}: ${sel.limit} $unit",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             } else {

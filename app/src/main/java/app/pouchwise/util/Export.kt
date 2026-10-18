@@ -7,7 +7,6 @@ import app.pouchwise.R
 import app.pouchwise.data.LogEntry
 import app.pouchwise.data.PouchType
 import app.pouchwise.model.PouchTiming
-import app.pouchwise.model.ReleaseSpeed
 import app.pouchwise.model.Settings
 import org.json.JSONArray
 import org.json.JSONObject
@@ -23,19 +22,22 @@ object Export {
     fun csv(entries: List<LogEntry>, types: List<PouchType>, settings: Settings): String {
         val byId = types.associateBy { it.id }
         val zone = ZoneId.systemDefault()
-        val sb = StringBuilder("id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,strength_mg,release_speed\n")
+        val now = System.currentTimeMillis()
+        val sb = StringBuilder("id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg\n")
         for (e in entries) {
             val iso = isoFormatter.format(Instant.ofEpochMilli(e.timestamp).atZone(zone))
-            val name = byId[e.pouchTypeId]?.name ?: ""
+            val type = byId[e.pouchTypeId]
             val durationMin = PouchTiming.effectiveDurationMs(e, settings) / 60_000.0
             sb.append(e.id).append(',')
                 .append(iso).append(',')
                 .append(e.timestamp).append(',')
                 .append(e.endTimestamp?.toString() ?: "").append(',')
                 .append(String.format(Locale.ROOT, "%.1f", durationMin)).append(',')
-                .append(quote(name)).append(',')
+                .append(quote(type?.name ?: "")).append(',')
+                .append(quote(type?.brand ?: "")).append(',')
                 .append(String.format(Locale.ROOT, "%.2f", e.strengthMg)).append(',')
-                .append(ReleaseSpeed.fromInt(e.releaseSpeed).name.lowercase()).append('\n')
+                .append(String.format(Locale.ROOT, "%.4f", e.releaseK)).append(',')
+                .append(String.format(Locale.ROOT, "%.3f", PouchTiming.absorbedMg(e, settings, now))).append('\n')
         }
         return sb.toString()
     }
@@ -48,7 +50,7 @@ object Export {
                 put(JSONObject().apply {
                     put("id", t.id); put("name", t.name); put("strengthMg", t.strengthMg)
                     put("colorIndex", t.colorIndex); put("archived", t.archived); put("createdAt", t.createdAt)
-                    put("releaseSpeed", ReleaseSpeed.fromInt(t.releaseSpeed).name.lowercase())
+                    put("brand", t.brand); put("releaseK", t.releaseK)
                 })
             }
         })
@@ -58,7 +60,7 @@ object Export {
                     put("id", e.id); put("pouchTypeId", e.pouchTypeId)
                     put("timestamp", e.timestamp); put("strengthMg", e.strengthMg)
                     put("endTimestamp", e.endTimestamp ?: JSONObject.NULL)
-                    put("releaseSpeed", ReleaseSpeed.fromInt(e.releaseSpeed).name.lowercase())
+                    put("releaseK", e.releaseK)
                 })
             }
         })

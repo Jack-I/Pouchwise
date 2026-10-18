@@ -64,14 +64,17 @@
     <string name="delete_entry_q">Delete this entry?</string>
 
     <!-- pouch types -->
-    <string name="pouch_name">Brand / name</string>
+    <string name="brand">Brand</string>
+    <string name="brand_other">Other</string>
+    <string name="brand_custom">Brand name</string>
+    <string name="variant">Flavour or line (optional)</string>
+    <string name="brand_info_known">%1$s releases about %2$d%% of its nicotine in the first 20 minutes (lab dissolution data).</string>
+    <string name="brand_info_other">Brands outside the study use the average of the measured ones: about %1$d%% in the first 20 minutes.</string>
+    <string name="brand_speed_short">%1$d%% in 20 min</string>
     <string name="pouch_strength">Strength, mg per pouch</string>
     <string name="pouch_color">Colour</string>
-    <string name="release_speed">Nicotine release</string>
-    <string name="release_slow">Slow</string>
-    <string name="release_normal">Normal</string>
-    <string name="release_fast">Fast</string>
-    <string name="release_hint">How quickly the pouch gives up its nicotine; it matters when you take a pouch out early. Lab dissolution data: ZYN and on! are fast, Velo and Dryft normal, wet pouches such as Loop and Volt slow.</string>
+    <string name="absorbed_today">≈ %1$s mg absorbed so far today</string>
+    <string name="absorbed_short">≈ %1$s mg absorbed</string>
     <string name="new_pouch">New pouch</string>
     <string name="edit_pouch">Edit pouch</string>
     <string name="archived">Hidden</string>

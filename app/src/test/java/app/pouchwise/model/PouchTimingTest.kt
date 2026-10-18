@@ -32,6 +32,24 @@ class PouchTimingTest {
     }
 
     @Test
+    fun absorbedGrowsWhileInAndFreezesAfterRemoval() {
+        val e = LogEntry(pouchTypeId = 1, timestamp = start, strengthMg = 10.0)
+        assertEquals(0.0, PouchTiming.absorbedMg(e, s, start - 1), 1e-12)
+        val at10 = PouchTiming.absorbedMg(e, s, start + 10 * min)
+        val at20 = PouchTiming.absorbedMg(e, s, start + 20 * min)
+        val at30 = PouchTiming.absorbedMg(e, s, start + 30 * min)
+        val at90 = PouchTiming.absorbedMg(e, s, start + 90 * min)
+        assertTrue(0.0 < at10 && at10 < at20 && at20 < at30)
+        assertEquals(3.0, at30, 1e-9)          // full pouch time: 30 % of 10 mg
+        assertEquals(at30, at90, 1e-12)        // nothing more after the pouch time
+
+        val removed = PouchTiming.finish(e, s, start + 15 * min)
+        val expected = 10.0 * s.pk.absorptionFraction * Pharmacokinetics.releaseFraction(15.0, 30.0, Brands.averageK)
+        assertEquals(expected, PouchTiming.absorbedMg(removed, s, start + 15 * min), 1e-9)
+        assertEquals(expected, PouchTiming.absorbedMg(removed, s, start + 5 * 60 * min), 1e-9)
+    }
+
+    @Test
     fun finishIsClampedBetweenOneMinuteAndPouchTime() {
         val e = LogEntry(pouchTypeId = 1, timestamp = start, strengthMg = 8.0)
         assertEquals(start + min, PouchTiming.finish(e, s, start + 5_000).endTimestamp)

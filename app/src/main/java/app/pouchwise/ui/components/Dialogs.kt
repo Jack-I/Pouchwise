@@ -4,8 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
@@ -22,35 +24,107 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.pouchwise.R
 import app.pouchwise.data.PouchType
-import app.pouchwise.model.ReleaseSpeed
+import app.pouchwise.model.Brands
 import app.pouchwise.ui.theme.PouchPalette
 import java.time.Instant
 import java.time.ZoneId
 
+/** Marker for "a brand that is not in the catalogue" in [BrandPicker]. */
+const val OTHER_BRAND = ""
+
 fun parseDecimal(text: String): Double? = text.trim().replace(',', '.').toDoubleOrNull()
+
+/**
+ * Brand chips from the catalogue plus "Other" with a free-text name, and a one-line note on how fast
+ * the chosen brand releases nicotine. [selected] is a catalogue name or [OTHER_BRAND].
+ */
+@Composable
+fun BrandPicker(
+    selected: String,
+    custom: String,
+    onSelect: (String) -> Unit,
+    onCustomChange: (String) -> Unit,
+) {
+    Column {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+            Brands.known.forEach { b ->
+                FilterChip(selected = selected == b.name, onClick = { onSelect(b.name) }, label = { Text(b.name) })
+            }
+            FilterChip(
+                selected = selected == OTHER_BRAND,
+                onClick = { onSelect(OTHER_BRAND) },
+                label = { Text(stringResource(R.string.brand_other)) },
+            )
+        }
+        if (selected == OTHER_BRAND) {
+            Spacer(Modifier.height(4.dp))
+            OutlinedTextField(
+                value = custom,
+                onValueChange = onCustomChange,
+                label = { Text(stringResource(R.string.brand_custom)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        val info = if (selected != OTHER_BRAND) {
+            stringResource(R.string.brand_info_known, selected, Brands.percentBy20Min(Brands.kFor(selected)))
+        } else {
+            stringResource(R.string.brand_info_other, Brands.percentBy20Min(Brands.averageK))
+        }
+        Text(info, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** The brand name a [BrandPicker] state resolves to, or blank when nothing usable is chosen. */
+fun resolveBrand(selected: String, custom: String): String =
+    if (selected != OTHER_BRAND) selected else custom.trim()
 
 @Composable
 fun PouchTypeDialog(
     initial: PouchType?,
     onDismiss: () -> Unit,
-    onSave: (name: String, strengthMg: Double, colorIndex: Int, speed: ReleaseSpeed) -> Unit,
+    onSave: (brand: String, variant: String, strengthMg: Double, colorIndex: Int) -> Unit,
 ) {
-    var name by rememberSaveable { mutableStateOf(initial?.name ?: "") }
+    val initialKnown = initial?.brand?.takeIf { Brands.isKnown(it) }?.let { Brands.find(it)!!.name }
+    var brandSel by rememberSaveable { mutableStateOf(initialKnown ?: OTHER_BRAND) }
+    var custom by rememberSaveable {
+        mutableStateOf(if (initial == null || initialKnown != null) "" else initial.brand.ifBlank { initial.name })
+    }
+    var variant by rememberSaveable {
+        mutableStateOf(
+            when {
+                initial == null -> ""
+                initialKnown != null -> initial.name.removePrefix(initialKnown).trim()
+                initial.brand.isNotBlank() -> initial.name.removePrefix(initial.brand).trim()
+                else -> ""
+            },
+        )
+    }
     var strength by rememberSaveable { mutableStateOf(initial?.let { fmtInput(it.strengthMg) } ?: "") }
     var color by rememberSaveable { mutableIntStateOf(initial?.colorIndex ?: 0) }
-    var speedIndex by rememberSaveable { mutableIntStateOf(initial?.releaseSpeed ?: ReleaseSpeed.NORMAL.ordinal) }
     val mg = parseDecimal(strength)
-    val valid = name.isNotBlank() && mg != null && mg > 0 && mg < 200
+    val brand = resolveBrand(brandSel, custom)
+    val valid = brand.isNotBlank() && mg != null && mg > 0 && mg < 200
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(if (initial == null) R.string.new_pouch else R.string.edit_pouch)) },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(stringResource(R.string.brand), style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(4.dp))
+                BrandPicker(
+                    selected = brandSel,
+                    custom = custom,
+                    onSelect = { brandSel = it },
+                    onCustomChange = { custom = it },
+                )
+                Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text(stringResource(R.string.pouch_name)) },
+                    value = variant,
+                    onValueChange = { variant = it },
+                    label = { Text(stringResource(R.string.variant)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -72,25 +146,10 @@ fun PouchTypeDialog(
                         ColorChoice(color = c, selected = i == color, onClick = { color = i })
                     }
                 }
-                Spacer(Modifier.height(16.dp))
-                Text(stringResource(R.string.release_speed), style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(8.dp))
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    val labels = listOf(R.string.release_slow, R.string.release_normal, R.string.release_fast)
-                    labels.forEachIndexed { i, res ->
-                        SegmentedButton(
-                            selected = speedIndex == i,
-                            onClick = { speedIndex = i },
-                            shape = SegmentedButtonDefaults.itemShape(index = i, count = labels.size),
-                        ) { Text(stringResource(res)) }
-                    }
-                }
-                Spacer(Modifier.height(6.dp))
-                Text(stringResource(R.string.release_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         confirmButton = {
-            TextButton(enabled = valid, onClick = { onSave(name.trim(), mg ?: 0.0, color, ReleaseSpeed.fromInt(speedIndex)) }) {
+            TextButton(enabled = valid, onClick = { onSave(brand, variant.trim(), mg ?: 0.0, color) }) {
                 Text(stringResource(R.string.save))
             }
         },

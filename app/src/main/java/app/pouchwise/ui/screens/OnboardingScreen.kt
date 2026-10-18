@@ -15,19 +15,24 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.pouchwise.AppViewModel
 import app.pouchwise.R
+import app.pouchwise.ui.components.BrandPicker
+import app.pouchwise.ui.components.OTHER_BRAND
 import app.pouchwise.ui.components.ScreenTitle
 import app.pouchwise.ui.components.SoftCard
 import app.pouchwise.ui.components.parseDecimal
+import app.pouchwise.ui.components.resolveBrand
 
 /** First-launch questionnaire: usual pouch and daily count now, and the target two months out. */
 @Composable
 fun OnboardingScreen(vm: AppViewModel) {
-    var brand by rememberSaveable { mutableStateOf("") }
+    var brandSel by rememberSaveable { mutableStateOf(OTHER_BRAND) }
+    var custom by rememberSaveable { mutableStateOf("") }
     var strengthNow by rememberSaveable { mutableStateOf("") }
     var perDayNow by rememberSaveable { mutableStateOf("") }
     var perDayTarget by rememberSaveable { mutableStateOf("") }
     var strengthTarget by rememberSaveable { mutableStateOf("") }
 
+    val brand = resolveBrand(brandSel, custom)
     val sNow = parseDecimal(strengthNow)
     val nNow = perDayNow.trim().toIntOrNull()
     val nTarget = perDayTarget.trim().toIntOrNull()
@@ -53,10 +58,13 @@ fun OnboardingScreen(vm: AppViewModel) {
             SoftCard {
                 Text(stringResource(R.string.onboarding_now), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = brand, onValueChange = { brand = it },
-                    label = { Text(stringResource(R.string.onboarding_brand)) },
-                    singleLine = true, modifier = Modifier.fillMaxWidth(),
+                Text(stringResource(R.string.onboarding_brand), style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(4.dp))
+                BrandPicker(
+                    selected = brandSel,
+                    custom = custom,
+                    onSelect = { brandSel = it },
+                    onCustomChange = { custom = it },
                 )
                 Spacer(Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -103,7 +111,7 @@ fun OnboardingScreen(vm: AppViewModel) {
                 enabled = valid,
                 onClick = {
                     vm.completeOnboarding(
-                        brand = brand.trim(),
+                        brand = brand,
                         strengthNow = sNow ?: 0.0,
                         perDayNow = nNow ?: 0,
                         perDayTarget = nTarget ?: 0,

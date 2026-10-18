@@ -66,14 +66,17 @@
     <string name="pick_time">Выберите время</string>
     <string name="delete_entry_q">Удалить эту запись?</string>
 
-    <string name="pouch_name">Бренд / название</string>
+    <string name="brand">Бренд</string>
+    <string name="brand_other">Другой</string>
+    <string name="brand_custom">Название бренда</string>
+    <string name="variant">Вкус или линейка (необязательно)</string>
+    <string name="brand_info_known">%1$s отдаёт около %2$d%% никотина за первые 20 минут (лабораторные данные).</string>
+    <string name="brand_info_other">Бренды вне исследования считаются по среднему: около %1$d%% за первые 20 минут.</string>
+    <string name="brand_speed_short">%1$d%% за 20 мин</string>
     <string name="pouch_strength">Крепость, мг на пауч</string>
     <string name="pouch_color">Цвет</string>
-    <string name="release_speed">Отдача никотина</string>
-    <string name="release_slow">Медленная</string>
-    <string name="release_normal">Обычная</string>
-    <string name="release_fast">Быстрая</string>
-    <string name="release_hint">Как быстро пауч отдаёт никотин; важно, когда вынимаете его раньше времени. По лабораторным данным: ZYN и on! быстрые, Velo и Dryft обычные, влажные вроде Loop и Volt медленные.</string>
+    <string name="absorbed_today">≈ %1$s мг усвоено за сегодня</string>
+    <string name="absorbed_short">≈ %1$s мг усвоено</string>
     <string name="new_pouch">Новый пауч</string>
     <string name="edit_pouch">Изменить пауч</string>
     <string name="archived">Скрытые</string>

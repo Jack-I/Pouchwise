@@ -8,10 +8,10 @@ import app.pouchwise.data.AppDatabase
 import app.pouchwise.data.LogEntry
 import app.pouchwise.data.PouchType
 import app.pouchwise.data.SettingsRepository
+import app.pouchwise.model.Brands
 import app.pouchwise.model.DayKeys
 import app.pouchwise.model.LimitMode
 import app.pouchwise.model.PouchTiming
-import app.pouchwise.model.ReleaseSpeed
 import app.pouchwise.model.Settings
 import app.pouchwise.util.Export
 import kotlinx.coroutines.delay
@@ -51,12 +51,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), System.currentTimeMillis())
 
-    fun addType(name: String, strengthMg: Double, colorIndex: Int, speed: ReleaseSpeed) = viewModelScope.launch {
+    fun addType(brand: String, variant: String, strengthMg: Double, colorIndex: Int) = viewModelScope.launch {
         val order = dao.maxSortOrder() + 1
-        dao.insertType(PouchType(name = name.trim(), strengthMg = strengthMg, colorIndex = colorIndex, sortOrder = order, releaseSpeed = speed.ordinal))
+        dao.insertType(
+            PouchType(
+                name = Brands.displayName(brand, variant), strengthMg = strengthMg, colorIndex = colorIndex,
+                sortOrder = order, brand = brand.trim(), releaseK = Brands.kFor(brand),
+            ),
+        )
     }
 
-    fun updateType(type: PouchType) = viewModelScope.launch { dao.updateType(type) }
+    fun updateType(type: PouchType, brand: String, variant: String, strengthMg: Double, colorIndex: Int) = viewModelScope.launch {
+        dao.updateType(
+            type.copy(
+                name = Brands.displayName(brand, variant), strengthMg = strengthMg, colorIndex = colorIndex,
+                brand = brand.trim(), releaseK = Brands.kFor(brand),
+            ),
+        )
+    }
 
     /** Types with history are hidden instead of deleted so old entries keep their name. */
     fun removeType(type: PouchType) = viewModelScope.launch {
@@ -68,7 +80,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Puts a pouch in: it stays "active" until removed or until the default pouch time passes. */
     fun logPouch(type: PouchType, atMs: Long = System.currentTimeMillis()) = viewModelScope.launch {
-        dao.insertEntry(LogEntry(pouchTypeId = type.id, timestamp = atMs, strengthMg = type.strengthMg, releaseSpeed = type.releaseSpeed))
+        dao.insertEntry(LogEntry(pouchTypeId = type.id, timestamp = atMs, strengthMg = type.strengthMg, releaseK = type.releaseK))
     }
 
     /** Takes the pouch out now; absorption stops here. */
@@ -93,7 +105,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun completeOnboarding(brand: String, strengthNow: Double, perDayNow: Int, perDayTarget: Int, strengthTarget: Double) =
         viewModelScope.launch {
             val order = dao.maxSortOrder() + 1
-            dao.insertType(PouchType(name = brand, strengthMg = strengthNow, colorIndex = 0, sortOrder = order))
+            dao.insertType(
+                PouchType(
+                    name = brand.trim(), strengthMg = strengthNow, colorIndex = 0, sortOrder = order,
+                    brand = brand.trim(), releaseK = Brands.kFor(brand),
+                ),
+            )
             settingsRepo.update { s ->
                 val today = DayKeys.epochDay(System.currentTimeMillis(), s.dayStartHour)
                 val targetDay = DayKeys.localDate(today).plusMonths(2).toEpochDay()

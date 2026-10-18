@@ -17,7 +17,7 @@ No account, no server, no analytics. Everything lives in a local SQLite database
 | **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL) and when each clears. A chart with a solid line for the past and a dashed line for the forecast if you stop now; 24 h / 48 h / 7 d ranges. |
 | **History** | Five weeks of day tiles: pouches and mg per day, coloured in seven steps by how the day went against the limit. Streak within the limit, days over the limit, weekly average, totals. Daily bars against the limit line, projected a week ahead. |
 | **Plan** | Limit counted in pouches or in mg of nicotine. Either a fixed daily limit or a taper: start value → target value by a date, with today's limit interpolated linearly. |
-| **Settings** | Manage pouch brands (name, strength in mg, colour, nicotine release speed; hide and restore). Hour at which a new day starts. Body weight and pouch time. Theme. Export to CSV or JSON through the share sheet. |
+| **Settings** | Manage pouches: brand from a catalogue (or any other), optional flavour, strength in mg, colour; hide and restore. Hour at which a new day starts. Body weight and pouch time. Theme. Export to CSV or JSON through the share sheet. |
 
 On first launch the app asks for your usual pouch, how many you use per day, and where you want to be
 in two months, and turns that into a plan. Everything can be changed later.
@@ -95,14 +95,25 @@ default, adjustable) delivers 30 % of the labelled nicotine. Removing the pouch 
 less, following first-order release from the pouch normalised to the full time:
 `(1 − e^(−k·t)) / (1 − e^(−k·T))`, with t the minutes in and T the full pouch time.
 
-The rate k is set per pouch brand as *Fast* (0.095 /min), *Normal* (0.060 /min, default) or
-*Slow* (0.030 /min). The numbers come from in-vitro dissolution of commercial pouches in artificial
-saliva ([Sci Rep 2025](https://www.nature.com/articles/s41598-025-34556-5), USP-4 flow-through, seven
-brands): ZYN ≈ 0.10, on! ≈ 0.08, Velo ≈ 0.06, Volt ≈ 0.06, Dryft ≈ 0.04, Loop ≈ 0.02 /min. Two
-things from that study shaped the design: every product released nicotine front-loaded (first-order),
-and "dry" versus "wet" did not predict speed — the wet pouches (Loop, Volt) were the slowest, while
-the dry ZYN was the fastest. With Normal, a pouch taken out at half time has given up ~71 % of its
-dose; Fast ~81 %, Slow ~61 %.
+The rate k comes with the brand you pick when creating a pouch. The catalogue holds the seven
+brands measured by in-vitro dissolution in artificial saliva
+([Sci Rep 2025](https://www.nature.com/articles/s41598-025-34556-5), USP-4 flow-through, 60 min):
+
+| Brand | k, 1/min | released in the first 20 min |
+|---|---|---|
+| ZYN | 0.103 | ~87 % |
+| on! | 0.080 | ~80 % |
+| Rogue | 0.078 | ~79 % |
+| Velo | 0.057 | ~69 % |
+| Volt | 0.056 | ~68 % |
+| Dryft | 0.042 | ~60 % |
+| Loop | 0.021 | ~48 % |
+| any other brand | 0.062 (average) | ~73 % |
+
+Two things from that study shaped the design: every product released nicotine front-loaded
+(first-order), and "dry" versus "wet" did not predict speed — the wet pouches (Loop, Volt) were the
+slowest, while the dry ZYN was the fastest. A pouch taken out at half time has given up ~72 % of its
+dose with the average k, ~82 % for ZYN, ~58 % for Loop.
 
 From there it is a one-compartment model: nicotine is eliminated with a 2 h half-life, 75 % of it
 becomes cotinine (mass-adjusted), and cotinine is eliminated with a 16 h half-life. The cascade is
@@ -112,18 +123,20 @@ solved in closed form, so any instant is evaluated directly.
 detection thresholds. ng/mL uses volumes of distribution of 2.6 L/kg (nicotine) and 0.9 L/kg
 (cotinine) with the body weight from Settings.
 
-The daily total and the limit always count the labelled mg of each pouch; only the body estimate
-depends on how long the pouch stayed in. Code: `model/Pharmacokinetics.kt`;
-tests: `app/src/test/.../PharmacokineticsTest.kt`.
+Two numbers live side by side. The daily total and the limit count the labelled mg of each pouch —
+what you put in, independent of how long it stayed. The *absorbed* estimate (labelled × 30 % ×
+released share for the time in) is shown next to it: on the Today card, per entry in the log, in the
+day detail on History, in the export, and it is what drives the Body chart.
+Code: `model/Pharmacokinetics.kt`, `model/Brands.kt`; tests: `app/src/test/.../model/`.
 
 ## Data
 
-- Database `pouchwise.db` (Room, schema v3). `pouch_types` and `log_entries`; an entry stores the
-  strength and release speed at log time, so editing a brand never rewrites history. `endTimestamp`
-  is when the pouch was removed (NULL = stayed in for the full pouch time).
+- Database `pouchwise.db` (Room, schema v4). `pouch_types` and `log_entries`; an entry stores the
+  strength and release constant at log time, so editing a pouch never rewrites history.
+  `endTimestamp` is when the pouch was removed (NULL = stayed in for the full pouch time).
 - Export from Settings → Data: CSV
-  (`id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,strength_mg,release_speed`) or JSON
-  (everything, settings included).
+  (`id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg`)
+  or JSON (everything, settings included).
 - Android Auto Backup is enabled, but the export is the backup to rely on.
 
 ## Project layout

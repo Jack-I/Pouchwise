@@ -16,24 +16,8 @@ data class PkParams(
     val cotinineYield: Double = 0.75,
 )
 
-/**
- * How quickly a pouch gives up its nicotine, as a first-order rate constant per minute.
- * Values follow in-vitro dissolution of commercial pouches in artificial saliva
- * (Sci Rep 2025, USP-4): ZYN / on! around 0.08–0.10, Velo / Dryft / Volt around 0.04–0.06,
- * wet pouches such as Loop around 0.02.
- */
-enum class ReleaseSpeed(val kPerMin: Double) {
-    SLOW(0.030),
-    NORMAL(0.060),
-    FAST(0.095);
-
-    companion object {
-        fun fromInt(i: Int): ReleaseSpeed = entries.getOrElse(i) { NORMAL }
-    }
-}
-
-/** One pouch: when it went in, its labelled strength, how long it stayed in and its release rate. */
-data class Dose(val timeMs: Long, val labelledMg: Double, val durationMs: Long, val kPerMin: Double = ReleaseSpeed.NORMAL.kPerMin)
+/** One pouch: when it went in, its labelled strength, how long it stayed in and its release rate (see [Brands]). */
+data class Dose(val timeMs: Long, val labelledMg: Double, val durationMs: Long, val kPerMin: Double = Brands.averageK)
 
 data class BodyLevels(val nicotineMg: Double, val cotinineMg: Double)
 
