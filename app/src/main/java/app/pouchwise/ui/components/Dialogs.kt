@@ -22,6 +22,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.pouchwise.R
 import app.pouchwise.data.PouchType
+import app.pouchwise.model.ReleaseSpeed
 import app.pouchwise.ui.theme.PouchPalette
 import java.time.Instant
 import java.time.ZoneId
@@ -32,11 +33,12 @@ fun parseDecimal(text: String): Double? = text.trim().replace(',', '.').toDouble
 fun PouchTypeDialog(
     initial: PouchType?,
     onDismiss: () -> Unit,
-    onSave: (name: String, strengthMg: Double, colorIndex: Int) -> Unit,
+    onSave: (name: String, strengthMg: Double, colorIndex: Int, speed: ReleaseSpeed) -> Unit,
 ) {
     var name by rememberSaveable { mutableStateOf(initial?.name ?: "") }
     var strength by rememberSaveable { mutableStateOf(initial?.let { fmtInput(it.strengthMg) } ?: "") }
     var color by rememberSaveable { mutableIntStateOf(initial?.colorIndex ?: 0) }
+    var speedIndex by rememberSaveable { mutableIntStateOf(initial?.releaseSpeed ?: ReleaseSpeed.NORMAL.ordinal) }
     val mg = parseDecimal(strength)
     val valid = name.isNotBlank() && mg != null && mg > 0 && mg < 200
 
@@ -70,10 +72,25 @@ fun PouchTypeDialog(
                         ColorChoice(color = c, selected = i == color, onClick = { color = i })
                     }
                 }
+                Spacer(Modifier.height(16.dp))
+                Text(stringResource(R.string.release_speed), style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(8.dp))
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    val labels = listOf(R.string.release_slow, R.string.release_normal, R.string.release_fast)
+                    labels.forEachIndexed { i, res ->
+                        SegmentedButton(
+                            selected = speedIndex == i,
+                            onClick = { speedIndex = i },
+                            shape = SegmentedButtonDefaults.itemShape(index = i, count = labels.size),
+                        ) { Text(stringResource(res)) }
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(stringResource(R.string.release_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         confirmButton = {
-            TextButton(enabled = valid, onClick = { onSave(name.trim(), mg ?: 0.0, color) }) {
+            TextButton(enabled = valid, onClick = { onSave(name.trim(), mg ?: 0.0, color, ReleaseSpeed.fromInt(speedIndex)) }) {
                 Text(stringResource(R.string.save))
             }
         },

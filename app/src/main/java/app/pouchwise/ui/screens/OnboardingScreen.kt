@@ -1,0 +1,121 @@
+package app.pouchwise.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import app.pouchwise.AppViewModel
+import app.pouchwise.R
+import app.pouchwise.ui.components.ScreenTitle
+import app.pouchwise.ui.components.SoftCard
+import app.pouchwise.ui.components.parseDecimal
+
+/** First-launch questionnaire: usual pouch and daily count now, and the target two months out. */
+@Composable
+fun OnboardingScreen(vm: AppViewModel) {
+    var brand by rememberSaveable { mutableStateOf("") }
+    var strengthNow by rememberSaveable { mutableStateOf("") }
+    var perDayNow by rememberSaveable { mutableStateOf("") }
+    var perDayTarget by rememberSaveable { mutableStateOf("") }
+    var strengthTarget by rememberSaveable { mutableStateOf("") }
+
+    val sNow = parseDecimal(strengthNow)
+    val nNow = perDayNow.trim().toIntOrNull()
+    val nTarget = perDayTarget.trim().toIntOrNull()
+    val sTarget = parseDecimal(strengthTarget.ifBlank { strengthNow })
+    val valid = brand.isNotBlank() &&
+        sNow != null && sNow > 0 && sNow < 200 &&
+        nNow != null && nNow > 0 && nNow < 200 &&
+        nTarget != null && nTarget >= 0 && nTarget < 200 &&
+        sTarget != null && sTarget > 0 && sTarget < 200
+
+    Scaffold { inner ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(inner)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(top = 24.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            ScreenTitle(stringResource(R.string.onboarding_title), stringResource(R.string.onboarding_intro))
+
+            SoftCard {
+                Text(stringResource(R.string.onboarding_now), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = brand, onValueChange = { brand = it },
+                    label = { Text(stringResource(R.string.onboarding_brand)) },
+                    singleLine = true, modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = strengthNow, onValueChange = { strengthNow = it },
+                        label = { Text(stringResource(R.string.onboarding_strength)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = perDayNow, onValueChange = { perDayNow = it },
+                        label = { Text(stringResource(R.string.onboarding_per_day)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+
+            SoftCard {
+                Text(stringResource(R.string.onboarding_target), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = strengthTarget, onValueChange = { strengthTarget = it },
+                        label = { Text(stringResource(R.string.onboarding_strength)) },
+                        placeholder = { Text(strengthNow) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = perDayTarget, onValueChange = { perDayTarget = it },
+                        label = { Text(stringResource(R.string.onboarding_per_day)) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+
+            Button(
+                enabled = valid,
+                onClick = {
+                    vm.completeOnboarding(
+                        brand = brand.trim(),
+                        strengthNow = sNow ?: 0.0,
+                        perDayNow = nNow ?: 0,
+                        perDayTarget = nTarget ?: 0,
+                        strengthTarget = sTarget ?: (sNow ?: 0.0),
+                    )
+                },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) { Text(stringResource(R.string.onboarding_start), style = MaterialTheme.typography.titleMedium) }
+
+            TextButton(onClick = { vm.skipOnboarding() }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Text(stringResource(R.string.onboarding_skip))
+            }
+        }
+    }
+}

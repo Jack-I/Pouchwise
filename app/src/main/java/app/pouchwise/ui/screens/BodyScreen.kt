@@ -25,7 +25,7 @@ import kotlin.math.roundToInt
 private val RANGES_MS = listOf(24L, 48L, 7L * 24).map { it * 3_600_000L }
 
 @Composable
-fun BodyScreen(vm: AppViewModel, onOpenSettings: () -> Unit) {
+fun BodyScreen(vm: AppViewModel) {
     val entries by vm.entries.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
@@ -127,9 +127,6 @@ fun BodyScreen(vm: AppViewModel, onOpenSettings: () -> Unit) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        TextButton(onClick = onOpenSettings, contentPadding = PaddingValues(0.dp)) {
-            Text(stringResource(R.string.adjust_in_settings))
-        }
     }
 }
 

@@ -67,6 +67,11 @@
     <string name="pouch_name">Brand / name</string>
     <string name="pouch_strength">Strength, mg per pouch</string>
     <string name="pouch_color">Colour</string>
+    <string name="release_speed">Nicotine release</string>
+    <string name="release_slow">Slow</string>
+    <string name="release_normal">Normal</string>
+    <string name="release_fast">Fast</string>
+    <string name="release_hint">How quickly the pouch gives up its nicotine; it matters when you take a pouch out early. Lab dissolution data: ZYN and on! are fast, Velo and Dryft normal, wet pouches such as Loop and Volt slow.</string>
     <string name="new_pouch">New pouch</string>
     <string name="edit_pouch">Edit pouch</string>
     <string name="archived">Hidden</string>
@@ -90,18 +95,30 @@
     <string name="legend_past">so far</string>
     <string name="legend_future">if you stop now</string>
     <string name="model_summary">t½ nicotine %1$s h · t½ cotinine %2$s h · %3$d%% absorbed over %4$d min</string>
-    <string name="adjust_in_settings">Adjust the model in Settings</string>
     <string name="no_data_yet">Log a pouch to see the curve.</string>
 
     <!-- history -->
     <string name="history_title">History</string>
     <string name="garden_title">Your days</string>
-    <string name="garden_subtitle">One tile per day. The face sours as the day nears the limit and goes past it.</string>
+    <string name="garden_subtitle">One tile per day: pouches on top, mg below. The colour shows how the day went against the limit.</string>
     <string name="stats_streak">Days within limit in a row</string>
+    <string name="stats_over_total">Days over the limit, total</string>
     <string name="stats_within_30">Days within limit, last 30</string>
     <string name="stats_avg7_count">Avg pouches / day, 7 days</string>
     <string name="stats_avg7_mg">Avg mg / day, 7 days</string>
     <string name="stats_total">Pouches logged in total</string>
+    <string name="stats_total_mg">mg logged in total</string>
+
+    <!-- onboarding -->
+    <string name="onboarding_title">Let\'s set your plan</string>
+    <string name="onboarding_intro">Two quick questions. Everything can be changed later in Plan and Settings.</string>
+    <string name="onboarding_now">Today</string>
+    <string name="onboarding_target">In two months</string>
+    <string name="onboarding_brand">Your usual pouch (brand)</string>
+    <string name="onboarding_per_day">Pouches per day</string>
+    <string name="onboarding_strength">Strength, mg</string>
+    <string name="onboarding_start">Start</string>
+    <string name="onboarding_skip">Skip for now</string>
     <string name="daily_usage">Daily usage</string>
     <string name="legend_usage">Usage</string>
     <string name="legend_limit">Daily limit</string>
@@ -139,14 +156,9 @@
     <string name="settings_model">Body model</string>
     <string name="weight">Body weight, kg</string>
     <string name="weight_hint">Only used to convert mg in the body into an approximate blood concentration.</string>
-    <string name="absorption">Share of labelled nicotine absorbed</string>
     <string name="absorption_minutes">Pouch time, min</string>
     <string name="pouch_time_hint">A pouch counts as in for this long unless you remove it earlier on the Track screen. A shorter time means less nicotine absorbed.</string>
-    <string name="nic_half_life">Nicotine half-life, h</string>
-    <string name="cot_half_life">Cotinine half-life, h</string>
-    <string name="cot_yield">Nicotine turning into cotinine</string>
-    <string name="reset_defaults">Reset to defaults</string>
-    <string name="model_hint">Defaults follow published averages: about 30%% of the labelled nicotine reaches the blood over ~30 min, nicotine half-life ≈ 2 h, cotinine ≈ 16 h, about 75%% of nicotine is metabolised to cotinine.</string>
+    <string name="model_hint">The body estimate assumes about 30%% of the labelled nicotine is absorbed over the full pouch time, a nicotine half-life of 2 h and a cotinine half-life of 16 h — published averages.</string>
     <string name="settings_appearance">Appearance</string>
     <string name="theme_system">System</string>
     <string name="theme_light">Light</string>

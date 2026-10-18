@@ -1,5 +1,6 @@
 package app.pouchwise.model
 
+import app.pouchwise.data.LogEntry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -10,7 +11,8 @@ import kotlin.math.ln
 class PharmacokineticsTest {
     private val p = PkParams()
     private val h = 3_600_000L
-    private val full = 30 * 60_000L
+    private val min = 60_000L
+    private val full = 30 * min
 
     @Test
     fun nothingBeforeFirstDose() {
@@ -24,7 +26,7 @@ class PharmacokineticsTest {
         val dose = Dose(0L, 10.0, full)
         var peak = 0.0
         for (m in 0..180) {
-            val l = Pharmacokinetics.levelsAt(m * 60_000L, listOf(dose), p)
+            val l = Pharmacokinetics.levelsAt(m * min, listOf(dose), p)
             if (l.nicotineMg > peak) peak = l.nicotineMg
         }
         assertTrue("peak $peak", peak > 0.5 && peak < 10.0 * p.absorptionFraction)
@@ -33,7 +35,7 @@ class PharmacokineticsTest {
     @Test
     fun nicotineHalvesEveryHalfLifeAfterAbsorption() {
         val dose = Dose(0L, 10.0, full)
-        val t0 = 60 * 60_000L
+        val t0 = 60 * min
         val n0 = Pharmacokinetics.levelsAt(t0, listOf(dose), p).nicotineMg
         val n1 = Pharmacokinetics.levelsAt(t0 + (p.nicotineHalfLifeHours * h).toLong(), listOf(dose), p).nicotineMg
         assertEquals(0.5, n1 / n0, 1e-6)
@@ -64,22 +66,46 @@ class PharmacokineticsTest {
     }
 
     @Test
-    fun shorterPouchTimeAbsorbsLessButMoreThanProportionally() {
-        assertEquals(0.0, Pharmacokinetics.releaseFraction(0.0), 1e-12)
-        assertEquals(1.0, Pharmacokinetics.releaseFraction(1.0), 1e-12)
-        assertEquals(0.731, Pharmacokinetics.releaseFraction(0.5), 1e-3)
+    fun releaseFractionFollowsFirstOrderKinetics() {
+        val k = ReleaseSpeed.NORMAL.kPerMin
+        assertEquals(0.0, Pharmacokinetics.releaseFraction(0.0, 30.0, k), 1e-12)
+        assertEquals(1.0, Pharmacokinetics.releaseFraction(30.0, 30.0, k), 1e-12)
+        assertEquals(1.0, Pharmacokinetics.releaseFraction(45.0, 30.0, k), 1e-12) // capped at the full time
+        // 15 of 30 minutes: slow < normal < fast, all above the linear 50 %
+        val slow = Pharmacokinetics.releaseFraction(15.0, 30.0, ReleaseSpeed.SLOW.kPerMin)
+        val normal = Pharmacokinetics.releaseFraction(15.0, 30.0, k)
+        val fast = Pharmacokinetics.releaseFraction(15.0, 30.0, ReleaseSpeed.FAST.kPerMin)
+        assertEquals(0.61, slow, 0.01)
+        assertEquals(0.71, normal, 0.01)
+        assertEquals(0.81, fast, 0.01)
+        assertTrue(slow < normal && normal < fast)
+        // k = 0 degrades to even release
+        assertEquals(0.5, Pharmacokinetics.releaseFraction(15.0, 30.0, 0.0), 1e-12)
+    }
 
+    @Test
+    fun earlyRemovalCountsOnlyWhatWasReleased() {
+        // Switch elimination off (huge half-lives) so the amount in the body equals the absorbed amount.
+        val noElimination = p.copy(nicotineHalfLifeHours = 1e9, cotinineHalfLifeHours = 2e9)
         val fullDose = Dose(0L, 10.0, full)
-        val halfDose = Dose(0L, 10.0, full / 2)
-        val t = 3 * h
-        val nFull = Pharmacokinetics.levelsAt(t, listOf(fullDose), p).nicotineMg
-        val nHalf = Pharmacokinetics.levelsAt(t, listOf(halfDose), p).nicotineMg
-        assertTrue("half $nHalf < full $nFull", nHalf < nFull)
-        assertTrue("half $nHalf > 50% of full $nFull", nHalf > 0.5 * nFull)
+        val halfDose = Dose(0L, 10.0, 15 * min)
+        val fullN = Pharmacokinetics.levelsAt(2 * h, listOf(fullDose), noElimination).nicotineMg
+        val halfN = Pharmacokinetics.levelsAt(2 * h, listOf(halfDose), noElimination).nicotineMg
+        assertEquals(10.0 * p.absorptionFraction, fullN, 1e-6)
+        assertEquals(10.0 * p.absorptionFraction * Pharmacokinetics.releaseFraction(15.0, 30.0, ReleaseSpeed.NORMAL.kPerMin), halfN, 1e-6)
+        assertEquals(2.13, halfN, 0.02)
 
-        // Longer than the default pouch time is capped at the default.
-        val longDose = Dose(0L, 10.0, 3 * full)
-        assertEquals(nFull, Pharmacokinetics.levelsAt(t, listOf(longDose), p).nicotineMg, 1e-12)
+        // Same thing through a logged pouch that was taken out after 15 minutes.
+        val s = Settings()
+        val entry = LogEntry(pouchTypeId = 1, timestamp = 0L, strengthMg = 10.0)
+        val removed = PouchTiming.finish(entry, s, 15 * min)
+        val viaEntry = Pharmacokinetics.levelsAt(2 * h, listOf(PouchTiming.toDose(removed, s)), noElimination).nicotineMg
+        assertEquals(halfN, viaEntry, 1e-9)
+
+        // A fast pouch taken out at the same time has given up more of its nicotine.
+        val fastEntry = PouchTiming.finish(entry.copy(releaseSpeed = ReleaseSpeed.FAST.ordinal), s, 15 * min)
+        val fastN = Pharmacokinetics.levelsAt(2 * h, listOf(PouchTiming.toDose(fastEntry, s)), noElimination).nicotineMg
+        assertTrue(fastN > viaEntry)
     }
 
     @Test

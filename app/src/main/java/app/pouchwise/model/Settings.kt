@@ -17,6 +17,9 @@ data class Settings(
     /** Hour (0-23) at which a new tracking day begins. */
     val dayStartHour: Int = 0,
     val bodyWeightKg: Double = 80.0,
+    /** Only [PkParams.absorptionMinutes] is user-editable; the rest are model constants. */
     val pk: PkParams = PkParams(),
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    /** True once the first-launch questionnaire was completed or skipped. */
+    val onboarded: Boolean = false,
 )

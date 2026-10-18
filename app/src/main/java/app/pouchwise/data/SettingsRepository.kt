@@ -2,6 +2,7 @@ package app.pouchwise.data
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
@@ -32,12 +33,9 @@ class SettingsRepository(private val context: Context) {
         val TAPER_TARGET_VALUE = doublePreferencesKey("taper_target_value")
         val DAY_START_HOUR = intPreferencesKey("day_start_hour")
         val WEIGHT = doublePreferencesKey("weight_kg")
-        val ABSORPTION = doublePreferencesKey("pk_absorption")
-        val ABSORPTION_MIN = intPreferencesKey("pk_absorption_min")
-        val NIC_HALF = doublePreferencesKey("pk_nic_half_life")
-        val COT_HALF = doublePreferencesKey("pk_cot_half_life")
-        val COT_YIELD = doublePreferencesKey("pk_cot_yield")
+        val POUCH_MINUTES = intPreferencesKey("pk_absorption_min")
         val THEME = stringPreferencesKey("theme")
+        val ONBOARDED = booleanPreferencesKey("onboarded")
     }
 
     val settings: Flow<Settings> = context.settingsStore.data.map { read(it) }
@@ -48,7 +46,6 @@ class SettingsRepository(private val context: Context) {
 
     private fun read(p: Preferences): Settings {
         val d = Settings()
-        val pk = PkParams()
         return Settings(
             limitMode = p[K.LIMIT_MODE]?.let { runCatching { LimitMode.valueOf(it) }.getOrNull() } ?: d.limitMode,
             dailyLimitCount = p[K.LIMIT_COUNT] ?: d.dailyLimitCount,
@@ -60,18 +57,13 @@ class SettingsRepository(private val context: Context) {
             taperTargetValue = p[K.TAPER_TARGET_VALUE] ?: d.taperTargetValue,
             dayStartHour = p[K.DAY_START_HOUR] ?: d.dayStartHour,
             bodyWeightKg = p[K.WEIGHT] ?: d.bodyWeightKg,
-            pk = PkParams(
-                absorptionFraction = p[K.ABSORPTION] ?: pk.absorptionFraction,
-                absorptionMinutes = p[K.ABSORPTION_MIN] ?: pk.absorptionMinutes,
-                nicotineHalfLifeHours = p[K.NIC_HALF] ?: pk.nicotineHalfLifeHours,
-                cotinineHalfLifeHours = p[K.COT_HALF] ?: pk.cotinineHalfLifeHours,
-                cotinineYield = p[K.COT_YIELD] ?: pk.cotinineYield,
-            ),
+            pk = PkParams(absorptionMinutes = p[K.POUCH_MINUTES] ?: PkParams().absorptionMinutes),
             themeMode = p[K.THEME]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: d.themeMode,
+            onboarded = p[K.ONBOARDED] ?: d.onboarded,
         )
     }
 
-    private fun write(p: androidx.datastore.preferences.core.MutablePreferences, s: Settings) {
+    private fun write(p: MutablePreferences, s: Settings) {
         p[K.LIMIT_MODE] = s.limitMode.name
         p[K.LIMIT_COUNT] = s.dailyLimitCount
         p[K.LIMIT_MG] = s.dailyLimitMg
@@ -82,11 +74,8 @@ class SettingsRepository(private val context: Context) {
         p[K.TAPER_TARGET_VALUE] = s.taperTargetValue
         p[K.DAY_START_HOUR] = s.dayStartHour
         p[K.WEIGHT] = s.bodyWeightKg
-        p[K.ABSORPTION] = s.pk.absorptionFraction
-        p[K.ABSORPTION_MIN] = s.pk.absorptionMinutes
-        p[K.NIC_HALF] = s.pk.nicotineHalfLifeHours
-        p[K.COT_HALF] = s.pk.cotinineHalfLifeHours
-        p[K.COT_YIELD] = s.pk.cotinineYield
+        p[K.POUCH_MINUTES] = s.pk.absorptionMinutes
         p[K.THEME] = s.themeMode.name
+        p[K.ONBOARDED] = s.onboarded
     }
 }

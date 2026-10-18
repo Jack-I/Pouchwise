@@ -196,7 +196,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         PouchTypeDialog(
             initial = null,
             onDismiss = { addDialog = false },
-            onSave = { name, strength, color -> vm.addType(name, strength, color); addDialog = false },
+            onSave = { name, strength, color, speed -> vm.addType(name, strength, color, speed); addDialog = false },
         )
     }
 }
@@ -349,6 +349,15 @@ private fun PouchTypeRow(type: PouchType, fits: Int, onLog: () -> Unit, onLogAtT
                     Text(type.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.mg_value, Fmt.mg(type.strengthMg)), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val speed = ReleaseSpeed.fromInt(type.releaseSpeed)
+                    if (speed != ReleaseSpeed.NORMAL) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            stringResource(if (speed == ReleaseSpeed.FAST) R.string.release_fast else R.string.release_slow).lowercase(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
                 Spacer(Modifier.height(2.dp))
                 Text(

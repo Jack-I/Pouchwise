@@ -14,12 +14,14 @@ data class PouchType(
     val sortOrder: Int = 0,
     val archived: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
+    /** Ordinal of [app.pouchwise.model.ReleaseSpeed]; how fast the pouch gives up its nicotine. */
+    val releaseSpeed: Int = 1,
 )
 
 /**
  * One pouch used. [timestamp] is when it went in; [endTimestamp] is when the user took it out,
- * or null when it was left in for the default pouch time. Strength is copied at log time so later
- * edits of the type do not rewrite history.
+ * or null when it was left in for the default pouch time. Strength and release speed are copied
+ * at log time so later edits of the type do not rewrite history.
  */
 @Entity(tableName = "log_entries", indices = [Index("timestamp"), Index("pouchTypeId")])
 data class LogEntry(
@@ -28,4 +30,5 @@ data class LogEntry(
     val timestamp: Long,
     val strengthMg: Double,
     val endTimestamp: Long? = null,
+    val releaseSpeed: Int = 1,
 )

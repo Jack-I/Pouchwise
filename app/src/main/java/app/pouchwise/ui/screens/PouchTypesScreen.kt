@@ -19,6 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
 import app.pouchwise.R
 import app.pouchwise.data.PouchType
+import app.pouchwise.model.ReleaseSpeed
 import app.pouchwise.ui.components.*
 import app.pouchwise.ui.theme.pouchColor
 import app.pouchwise.util.Fmt
@@ -89,14 +90,17 @@ fun PouchTypesScreen(vm: AppViewModel, onBack: () -> Unit) {
         PouchTypeDialog(
             initial = null,
             onDismiss = { adding = false },
-            onSave = { name, mg, color -> vm.addType(name, mg, color); adding = false },
+            onSave = { name, mg, color, speed -> vm.addType(name, mg, color, speed); adding = false },
         )
     }
     editing?.let { t ->
         PouchTypeDialog(
             initial = t,
             onDismiss = { editing = null },
-            onSave = { name, mg, color -> vm.updateType(t.copy(name = name, strengthMg = mg, colorIndex = color)); editing = null },
+            onSave = { name, mg, color, speed ->
+                vm.updateType(t.copy(name = name, strengthMg = mg, colorIndex = color, releaseSpeed = speed.ordinal))
+                editing = null
+            },
         )
     }
     removing?.let { t ->
@@ -124,7 +128,13 @@ private fun TypeRow(type: PouchType, trailing: @Composable RowScope.() -> Unit) 
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(type.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(stringResource(R.string.mg_value, Fmt.mg(type.strengthMg)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val speed = ReleaseSpeed.fromInt(type.releaseSpeed)
+                val speedText = when (speed) {
+                    ReleaseSpeed.NORMAL -> ""
+                    ReleaseSpeed.FAST -> " · " + stringResource(R.string.release_fast).lowercase()
+                    ReleaseSpeed.SLOW -> " · " + stringResource(R.string.release_slow).lowercase()
+                }
+                Text(stringResource(R.string.mg_value, Fmt.mg(type.strengthMg)) + speedText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             trailing()
         }

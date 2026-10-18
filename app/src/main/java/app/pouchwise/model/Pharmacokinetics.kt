@@ -16,8 +16,24 @@ data class PkParams(
     val cotinineYield: Double = 0.75,
 )
 
-/** One pouch: when it went in, its labelled strength and how long it stayed in. */
-data class Dose(val timeMs: Long, val labelledMg: Double, val durationMs: Long)
+/**
+ * How quickly a pouch gives up its nicotine, as a first-order rate constant per minute.
+ * Values follow in-vitro dissolution of commercial pouches in artificial saliva
+ * (Sci Rep 2025, USP-4): ZYN / on! around 0.08–0.10, Velo / Dryft / Volt around 0.04–0.06,
+ * wet pouches such as Loop around 0.02.
+ */
+enum class ReleaseSpeed(val kPerMin: Double) {
+    SLOW(0.030),
+    NORMAL(0.060),
+    FAST(0.095);
+
+    companion object {
+        fun fromInt(i: Int): ReleaseSpeed = entries.getOrElse(i) { NORMAL }
+    }
+}
+
+/** One pouch: when it went in, its labelled strength, how long it stayed in and its release rate. */
+data class Dose(val timeMs: Long, val labelledMg: Double, val durationMs: Long, val kPerMin: Double = ReleaseSpeed.NORMAL.kPerMin)
 
 data class BodyLevels(val nicotineMg: Double, val cotinineMg: Double)
 
@@ -26,7 +42,7 @@ data class Clearance(val nicotineClearMs: Long?, val cotinineClearMs: Long?)
 /**
  * One-compartment nicotine with first-order elimination feeding a cotinine compartment
  * (Bateman cascade). Each pouch is a constant-rate input over the time it stayed in; the total
- * absorbed amount grows with that time along a saturating curve ([releaseFraction]).
+ * absorbed amount follows first-order release from the pouch ([releaseFraction]).
  * Closed form, so any instant can be evaluated directly.
  */
 object Pharmacokinetics {
@@ -34,9 +50,6 @@ object Pharmacokinetics {
     private const val COTININE_MW = 176.22
     private const val HOUR_MS = 3_600_000.0
     private const val MIN_DURATION_MS = 60_000L
-
-    /** Shape of the release curve: with 2.0, half the pouch time yields ~73% of the full-time dose. */
-    const val RELEASE_SHAPE = 2.0
 
     /** Below these amounts the substance counts as "cleared" (roughly below usual detection in blood). */
     const val NICOTINE_CLEARED_MG = 0.1
@@ -50,10 +63,14 @@ object Pharmacokinetics {
     const val LOOKBACK_MS = 7L * 24 * 3_600_000L
     const val MAX_FORECAST_MS = 14L * 24 * 3_600_000L
 
-    /** Share of the full-time dose released after a pouch has been in for [fractionOfFullTime] of the full time. */
-    fun releaseFraction(fractionOfFullTime: Double): Double {
-        val x = fractionOfFullTime.coerceIn(0.0, 1.0)
-        return (1 - exp(-RELEASE_SHAPE * x)) / (1 - exp(-RELEASE_SHAPE))
+    /**
+     * Share of the full-time dose that a pouch has given up after [minutesIn] minutes, with the
+     * full pouch time [fullMinutes] counting as 100 %: first-order release normalised to the full time.
+     */
+    fun releaseFraction(minutesIn: Double, fullMinutes: Double, kPerMin: Double): Double {
+        val t = minutesIn.coerceIn(0.0, fullMinutes)
+        if (kPerMin <= 1e-9) return t / fullMinutes
+        return (1 - exp(-kPerMin * t)) / (1 - exp(-kPerMin * fullMinutes))
     }
 
     fun levelsAt(timeMs: Long, doses: List<Dose>, p: PkParams): BodyLevels {
@@ -61,6 +78,7 @@ object Pharmacokinetics {
         var kc = ln(2.0) / p.cotinineHalfLifeHours.coerceAtLeast(0.05)
         if (abs(kc - kn) < 1e-9) kc *= 1.0001
         val fullMs = max(p.absorptionMinutes, 1) * 60_000L
+        val fullMin = fullMs / 60_000.0
         val yieldMass = p.cotinineYield * COTININE_MW / NICOTINE_MW
 
         var n = 0.0
@@ -71,7 +89,7 @@ object Pharmacokinetics {
             if (ageMs > LOOKBACK_MS) continue
             val durMs = d.durationMs.coerceIn(MIN_DURATION_MS, fullMs)
             val tInf = durMs / HOUR_MS
-            val absorbed = d.labelledMg * p.absorptionFraction * releaseFraction(durMs.toDouble() / fullMs.toDouble())
+            val absorbed = d.labelledMg * p.absorptionFraction * releaseFraction(durMs / 60_000.0, fullMin, d.kPerMin)
             val tau = ageMs / HOUR_MS
             val rate = absorbed / tInf
             val a = yieldMass * rate

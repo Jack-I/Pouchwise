@@ -1,7 +1,7 @@
 # Pouchwise
 
 A small, offline Android app for tracking nicotine pouches: how many today, a daily limit that
-highlights overuse instead of nagging, a gradual-reduction plan, a day-by-day mood grid, and an
+highlights overuse instead of nagging, a gradual-reduction plan, a day-by-day grid, and an
 estimate of the nicotine and cotinine currently in your body with a forecast of when they clear.
 
 No account, no server, no analytics. Everything lives in a local SQLite database on the phone.
@@ -15,9 +15,12 @@ No account, no server, no analytics. Everything lives in a local SQLite database
 |---|---|
 | **Track** | Today card: pouches or mg left, progress bar, the day's face. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** puts the pouch "in": a card with a timer and a **Remove** button appears; if you never tap Remove, the pouch counts as removed after the pouch time (30 min by default). Today's log shows each pouch with its time in, and you can adjust the time or delete an entry. |
 | **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL) and when each clears. A chart with a solid line for the past and a dashed line for the forecast if you stop now; 24 h / 48 h / 7 d ranges. |
-| **History** | Five weeks of faces: one tile per day in seven steps, from 😎 for a pouch-free day to 🤢 for far over the limit. Streak of days within the limit, weekly average. Daily bars against the limit line, projected a week ahead. |
+| **History** | Five weeks of day tiles: pouches and mg per day, coloured in seven steps by how the day went against the limit. Streak within the limit, days over the limit, weekly average, totals. Daily bars against the limit line, projected a week ahead. |
 | **Plan** | Limit counted in pouches or in mg of nicotine. Either a fixed daily limit or a taper: start value → target value by a date, with today's limit interpolated linearly. |
-| **Settings** | Manage pouch brands (name, strength in mg, colour; hide and restore). Hour at which a new day starts. Body-model parameters. Theme. Export to CSV or JSON through the share sheet. |
+| **Settings** | Manage pouch brands (name, strength in mg, colour, nicotine release speed; hide and restore). Hour at which a new day starts. Body weight and pouch time. Theme. Export to CSV or JSON through the share sheet. |
+
+On first launch the app asks for your usual pouch, how many you use per day, and where you want to be
+in two months, and turns that into a plan. Everything can be changed later.
 
 Going over the limit never blocks logging. The day card turns red with "N pouches over the limit"
 and the extra entries are marked in the log — the data stays honest.
@@ -87,11 +90,19 @@ set JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=C:\__no_unix_sockets__
 
 ## Body model
 
-Each pouch is a constant-rate nicotine input for as long as it is in. A full pouch time
-(`absorptionMinutes`, 30 min by default) delivers `absorptionFraction` × labelled mg (30 %).
-Removing it earlier delivers less along a saturating curve, `(1 − e^(−2x)) / (1 − e^(−2))` where
-x is the share of the full time: half the time gives about 73 % of the dose, a quarter about 46 %.
-Time beyond the full pouch time does not count.
+Each pouch is a constant-rate nicotine input for as long as it is in. A full pouch time (30 min by
+default, adjustable) delivers 30 % of the labelled nicotine. Removing the pouch earlier delivers
+less, following first-order release from the pouch normalised to the full time:
+`(1 − e^(−k·t)) / (1 − e^(−k·T))`, with t the minutes in and T the full pouch time.
+
+The rate k is set per pouch brand as *Fast* (0.095 /min), *Normal* (0.060 /min, default) or
+*Slow* (0.030 /min). The numbers come from in-vitro dissolution of commercial pouches in artificial
+saliva ([Sci Rep 2025](https://www.nature.com/articles/s41598-025-34556-5), USP-4 flow-through, seven
+brands): ZYN ≈ 0.10, on! ≈ 0.08, Velo ≈ 0.06, Volt ≈ 0.06, Dryft ≈ 0.04, Loop ≈ 0.02 /min. Two
+things from that study shaped the design: every product released nicotine front-loaded (first-order),
+and "dry" versus "wet" did not predict speed — the wet pouches (Loop, Volt) were the slowest, while
+the dry ZYN was the fastest. With Normal, a pouch taken out at half time has given up ~71 % of its
+dose; Fast ~81 %, Slow ~61 %.
 
 From there it is a one-compartment model: nicotine is eliminated with a 2 h half-life, 75 % of it
 becomes cotinine (mass-adjusted), and cotinine is eliminated with a 16 h half-life. The cascade is
@@ -101,17 +112,18 @@ solved in closed form, so any instant is evaluated directly.
 detection thresholds. ng/mL uses volumes of distribution of 2.6 L/kg (nicotine) and 0.9 L/kg
 (cotinine) with the body weight from Settings.
 
-All parameters can be changed in Settings → Body model. Code: `model/Pharmacokinetics.kt`;
+The daily total and the limit always count the labelled mg of each pouch; only the body estimate
+depends on how long the pouch stayed in. Code: `model/Pharmacokinetics.kt`;
 tests: `app/src/test/.../PharmacokineticsTest.kt`.
 
 ## Data
 
-- Database `pouchwise.db` (Room). `pouch_types` and `log_entries`; an entry stores the strength at
-  log time, so editing a brand never rewrites history. `endTimestamp` is when the pouch was removed
-  (NULL = stayed in for the full pouch time).
+- Database `pouchwise.db` (Room, schema v3). `pouch_types` and `log_entries`; an entry stores the
+  strength and release speed at log time, so editing a brand never rewrites history. `endTimestamp`
+  is when the pouch was removed (NULL = stayed in for the full pouch time).
 - Export from Settings → Data: CSV
-  (`id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,strength_mg`) or JSON (everything,
-  settings included).
+  (`id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,strength_mg,release_speed`) or JSON
+  (everything, settings included).
 - Android Auto Backup is enabled, but the export is the backup to rely on.
 
 ## Project layout

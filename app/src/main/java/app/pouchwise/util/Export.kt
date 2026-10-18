@@ -7,6 +7,7 @@ import app.pouchwise.R
 import app.pouchwise.data.LogEntry
 import app.pouchwise.data.PouchType
 import app.pouchwise.model.PouchTiming
+import app.pouchwise.model.ReleaseSpeed
 import app.pouchwise.model.Settings
 import org.json.JSONArray
 import org.json.JSONObject
@@ -22,7 +23,7 @@ object Export {
     fun csv(entries: List<LogEntry>, types: List<PouchType>, settings: Settings): String {
         val byId = types.associateBy { it.id }
         val zone = ZoneId.systemDefault()
-        val sb = StringBuilder("id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,strength_mg\n")
+        val sb = StringBuilder("id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,strength_mg,release_speed\n")
         for (e in entries) {
             val iso = isoFormatter.format(Instant.ofEpochMilli(e.timestamp).atZone(zone))
             val name = byId[e.pouchTypeId]?.name ?: ""
@@ -33,7 +34,8 @@ object Export {
                 .append(e.endTimestamp?.toString() ?: "").append(',')
                 .append(String.format(Locale.ROOT, "%.1f", durationMin)).append(',')
                 .append(quote(name)).append(',')
-                .append(String.format(Locale.ROOT, "%.2f", e.strengthMg)).append('\n')
+                .append(String.format(Locale.ROOT, "%.2f", e.strengthMg)).append(',')
+                .append(ReleaseSpeed.fromInt(e.releaseSpeed).name.lowercase()).append('\n')
         }
         return sb.toString()
     }
@@ -46,6 +48,7 @@ object Export {
                 put(JSONObject().apply {
                     put("id", t.id); put("name", t.name); put("strengthMg", t.strengthMg)
                     put("colorIndex", t.colorIndex); put("archived", t.archived); put("createdAt", t.createdAt)
+                    put("releaseSpeed", ReleaseSpeed.fromInt(t.releaseSpeed).name.lowercase())
                 })
             }
         })
@@ -55,6 +58,7 @@ object Export {
                     put("id", e.id); put("pouchTypeId", e.pouchTypeId)
                     put("timestamp", e.timestamp); put("strengthMg", e.strengthMg)
                     put("endTimestamp", e.endTimestamp ?: JSONObject.NULL)
+                    put("releaseSpeed", ReleaseSpeed.fromInt(e.releaseSpeed).name.lowercase())
                 })
             }
         })

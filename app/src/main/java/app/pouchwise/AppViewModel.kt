@@ -8,7 +8,10 @@ import app.pouchwise.data.AppDatabase
 import app.pouchwise.data.LogEntry
 import app.pouchwise.data.PouchType
 import app.pouchwise.data.SettingsRepository
+import app.pouchwise.model.DayKeys
+import app.pouchwise.model.LimitMode
 import app.pouchwise.model.PouchTiming
+import app.pouchwise.model.ReleaseSpeed
 import app.pouchwise.model.Settings
 import app.pouchwise.util.Export
 import kotlinx.coroutines.delay
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val dao = AppDatabase.get(app).dao()
@@ -34,6 +38,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val settings: StateFlow<Settings> = settingsRepo.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Settings())
 
+    /** False until the stored settings have been read once (so defaults are not mistaken for real values). */
+    val settingsLoaded: StateFlow<Boolean> = settingsRepo.settings
+        .map { true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     /** Ticks every half minute so "ago" texts and the body curve stay current. */
     val now: StateFlow<Long> = flow {
         while (true) {
@@ -42,9 +51,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), System.currentTimeMillis())
 
-    fun addType(name: String, strengthMg: Double, colorIndex: Int) = viewModelScope.launch {
+    fun addType(name: String, strengthMg: Double, colorIndex: Int, speed: ReleaseSpeed) = viewModelScope.launch {
         val order = dao.maxSortOrder() + 1
-        dao.insertType(PouchType(name = name.trim(), strengthMg = strengthMg, colorIndex = colorIndex, sortOrder = order))
+        dao.insertType(PouchType(name = name.trim(), strengthMg = strengthMg, colorIndex = colorIndex, sortOrder = order, releaseSpeed = speed.ordinal))
     }
 
     fun updateType(type: PouchType) = viewModelScope.launch { dao.updateType(type) }
@@ -59,7 +68,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Puts a pouch in: it stays "active" until removed or until the default pouch time passes. */
     fun logPouch(type: PouchType, atMs: Long = System.currentTimeMillis()) = viewModelScope.launch {
-        dao.insertEntry(LogEntry(pouchTypeId = type.id, timestamp = atMs, strengthMg = type.strengthMg))
+        dao.insertEntry(LogEntry(pouchTypeId = type.id, timestamp = atMs, strengthMg = type.strengthMg, releaseSpeed = type.releaseSpeed))
     }
 
     /** Takes the pouch out now; absorption stops here. */
@@ -76,6 +85,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun updateSettings(transform: (Settings) -> Settings) = viewModelScope.launch { settingsRepo.update(transform) }
+
+    /**
+     * First-launch setup: creates the usual pouch and a two-month plan. The limit is counted in pouches
+     * when the strength stays the same, otherwise in mg so that a switch to weaker pouches is captured.
+     */
+    fun completeOnboarding(brand: String, strengthNow: Double, perDayNow: Int, perDayTarget: Int, strengthTarget: Double) =
+        viewModelScope.launch {
+            val order = dao.maxSortOrder() + 1
+            dao.insertType(PouchType(name = brand, strengthMg = strengthNow, colorIndex = 0, sortOrder = order))
+            settingsRepo.update { s ->
+                val today = DayKeys.epochDay(System.currentTimeMillis(), s.dayStartHour)
+                val targetDay = DayKeys.localDate(today).plusMonths(2).toEpochDay()
+                val sameStrength = abs(strengthNow - strengthTarget) < 1e-9
+                val startValue = if (sameStrength) perDayNow.toDouble() else perDayNow * strengthNow
+                val targetValue = if (sameStrength) perDayTarget.toDouble() else perDayTarget * strengthTarget
+                s.copy(
+                    limitMode = if (sameStrength) LimitMode.COUNT else LimitMode.MG,
+                    dailyLimitCount = if (sameStrength) perDayNow else s.dailyLimitCount,
+                    dailyLimitMg = if (sameStrength) s.dailyLimitMg else perDayNow * strengthNow,
+                    taperEnabled = targetValue < startValue - 1e-9,
+                    taperStartDay = today,
+                    taperStartValue = startValue,
+                    taperTargetDay = targetDay,
+                    taperTargetValue = targetValue,
+                    onboarded = true,
+                )
+            }
+        }
+
+    fun skipOnboarding() = updateSettings { it.copy(onboarded = true) }
 
     fun exportCsv(context: Context) {
         Export.shareCsv(context, entries.value, types.value.orEmpty(), settings.value)

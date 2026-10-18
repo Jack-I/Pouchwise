@@ -28,10 +28,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
 import app.pouchwise.R
 import app.pouchwise.ui.screens.BodyScreen
 import app.pouchwise.ui.screens.HistoryScreen
+import app.pouchwise.ui.screens.OnboardingScreen
 import app.pouchwise.ui.screens.PlanScreen
 import app.pouchwise.ui.screens.PouchTypesScreen
 import app.pouchwise.ui.screens.SettingsScreen
@@ -53,6 +55,19 @@ fun PouchwiseApp(vm: AppViewModel) {
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
     var screen by rememberSaveable { mutableIntStateOf(SCREEN_MAIN) }
     var pouchesOpenedFromSettings by rememberSaveable { mutableIntStateOf(0) }
+
+    val settings by vm.settings.collectAsStateWithLifecycle()
+    val settingsLoaded by vm.settingsLoaded.collectAsStateWithLifecycle()
+    val types by vm.types.collectAsStateWithLifecycle()
+    val loadedTypes = types
+    if (!settingsLoaded || loadedTypes == null) {
+        Box(Modifier.fillMaxSize())
+        return
+    }
+    if (!settings.onboarded && loadedTypes.isEmpty()) {
+        OnboardingScreen(vm)
+        return
+    }
 
     BackHandler(enabled = screen != SCREEN_MAIN) {
         screen = if (screen == SCREEN_POUCHES && pouchesOpenedFromSettings == 1) SCREEN_SETTINGS else SCREEN_MAIN
@@ -121,7 +136,7 @@ private fun MainScaffold(
         Box(Modifier.fillMaxSize().padding(inner)) {
             when (tabs[tabIndex]) {
                 Tab.TRACK -> TrackScreen(vm = vm, onEditPouches = onEditPouches)
-                Tab.BODY -> BodyScreen(vm = vm, onOpenSettings = onOpenSettings)
+                Tab.BODY -> BodyScreen(vm = vm)
                 Tab.HISTORY -> HistoryScreen(vm = vm)
                 Tab.PLAN -> PlanScreen(vm = vm)
             }

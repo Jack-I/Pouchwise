@@ -42,19 +42,23 @@ fun HistoryScreen(vm: AppViewModel) {
     val gridEnd = today + (7 - todayDow)
     val gridStart = gridEnd - WEEKS * 7 + 1
     val chartStart = today - 13
+    val firstDay = entries.firstOrNull()?.let { DayKeys.epochDay(it.timestamp, settings.dayStartHour) } ?: today
 
     val stats = remember(entries, settings, today) {
-        Stats.dailyStats(entries, settings, minOf(gridStart, chartStart, today - 29), today)
+        Stats.dailyStats(entries, settings, minOf(firstDay, gridStart, chartStart, today - 29), today)
     }
     val byDay = remember(stats) { stats.associateBy { it.epochDay } }
     val chartStats = remember(stats) { stats.filter { it.epochDay >= chartStart } }
     val futureLimits = remember(settings, today) { (1..7).map { (today + it) to Limits.limitForDayRounded(settings, today + it) } }
 
-    val last30 = stats.filter { it.epochDay in (today - 29)..(today - 1) && it.hasData }
+    val withData = stats.filter { it.hasData }
+    val overTotal = withData.count { !it.withinLimit }
+    val last30 = withData.filter { it.epochDay in (today - 29)..(today - 1) }
     val within30 = last30.count { it.withinLimit }
-    val last7 = stats.filter { it.epochDay in (today - 6)..today && it.hasData }
+    val last7 = withData.filter { it.epochDay in (today - 6)..today }
     val avg7 = if (last7.isEmpty()) 0.0 else last7.sumOf { it.used } / last7.size
     val streak = Stats.streak(stats)
+    val totalMg = entries.sumOf { it.strengthMg }
 
     var selectedDay by remember { mutableStateOf<Long?>(null) }
 
@@ -72,7 +76,7 @@ fun HistoryScreen(vm: AppViewModel) {
             Text(stringResource(R.string.garden_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text(stringResource(R.string.garden_subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(12.dp))
-            GardenGrid(
+            DayGrid(
                 gridStart = gridStart,
                 today = today,
                 byDay = byDay,
@@ -89,21 +93,28 @@ fun HistoryScreen(vm: AppViewModel) {
                     style = MaterialTheme.typography.bodyMedium,
                 )
             } else {
-                GardenLegend()
+                ColourLegend()
             }
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatTile(stringResource(R.string.stats_streak), streak.toString(), Modifier.weight(1f))
-            StatTile(stringResource(R.string.stats_within_30), "$within30 / ${last30.size}", Modifier.weight(1f))
+            StatTile(
+                stringResource(R.string.stats_over_total), overTotal.toString(), Modifier.weight(1f),
+                accent = if (overTotal > 0) MaterialTheme.colorScheme.error else null,
+            )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            StatTile(stringResource(R.string.stats_within_30), "$within30 / ${last30.size}", Modifier.weight(1f))
             StatTile(
                 if (settings.limitMode == LimitMode.COUNT) stringResource(R.string.stats_avg7_count) else stringResource(R.string.stats_avg7_mg),
                 Fmt.oneDecimal(avg7),
                 Modifier.weight(1f),
             )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatTile(stringResource(R.string.stats_total), entries.size.toString(), Modifier.weight(1f))
+            StatTile(stringResource(R.string.stats_total_mg), Fmt.mg(totalMg), Modifier.weight(1f))
         }
 
         SoftCard {
@@ -132,7 +143,7 @@ fun HistoryScreen(vm: AppViewModel) {
 }
 
 @Composable
-private fun GardenGrid(
+private fun DayGrid(
     gridStart: Long,
     today: Long,
     byDay: Map<Long, DayStat>,
@@ -169,6 +180,7 @@ private fun GardenGrid(
                     val level = GardenLevel.of(stat)
                     val isToday = day == today
                     val selected = day == selectedDay
+                    val showNumbers = stat != null && stat.hasData
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -186,7 +198,23 @@ private fun GardenGrid(
                             .then(if (day <= today) Modifier.clickable { onSelect(day) } else Modifier),
                         contentAlignment = Alignment.Center,
                     ) {
-                        if (level != GardenLevel.EMPTY) Text(level.emoji, fontSize = 20.sp)
+                        if (showNumbers) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    stat!!.count.toString(),
+                                    fontSize = 14.sp,
+                                    lineHeight = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    Fmt.mg(stat.mg),
+                                    fontSize = 10.sp,
+                                    lineHeight = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -195,15 +223,13 @@ private fun GardenGrid(
 }
 
 @Composable
-private fun GardenLegend() {
+private fun ColourLegend() {
     val dark = isSystemInDarkTheme()
     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         GardenLevel.entries.filter { it != GardenLevel.EMPTY }.forEach { lvl ->
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(20.dp).clip(RoundedCornerShape(5.dp)).background(gardenColor(lvl, dark)), contentAlignment = Alignment.Center) {
-                    Text(lvl.emoji, fontSize = 12.sp)
-                }
-                Spacer(Modifier.width(3.dp))
+                Box(Modifier.size(14.dp).clip(RoundedCornerShape(4.dp)).background(gardenColor(lvl, dark)))
+                Spacer(Modifier.width(4.dp))
                 Text(lvl.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

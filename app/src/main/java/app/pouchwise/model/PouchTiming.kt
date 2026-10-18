@@ -22,7 +22,8 @@ object PouchTiming {
         return (end - e.timestamp).coerceIn(MIN_DURATION_MS, auto)
     }
 
-    fun toDose(e: LogEntry, s: Settings): Dose = Dose(e.timestamp, e.strengthMg, effectiveDurationMs(e, s))
+    fun toDose(e: LogEntry, s: Settings): Dose =
+        Dose(e.timestamp, e.strengthMg, effectiveDurationMs(e, s), ReleaseSpeed.fromInt(e.releaseSpeed).kPerMin)
 
     /** Marks the pouch as taken out now. */
     fun finish(e: LogEntry, s: Settings, nowMs: Long): LogEntry =

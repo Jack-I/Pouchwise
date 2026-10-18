@@ -19,11 +19,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
 import app.pouchwise.R
-import app.pouchwise.model.PkParams
 import app.pouchwise.model.ThemeMode
 import app.pouchwise.ui.components.*
 import app.pouchwise.util.Fmt
-import kotlin.math.roundToInt
 
 @Composable
 fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> Unit) {
@@ -88,15 +86,6 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
                     hint = stringResource(R.string.weight_hint),
                 )
                 HorizontalDivider(Modifier.padding(vertical = 12.dp))
-
-                SliderRow(
-                    label = stringResource(R.string.absorption),
-                    valueText = "${(pk.absorptionFraction * 100).roundToInt()}%",
-                    value = pk.absorptionFraction.toFloat(),
-                    range = 0.10f..0.70f,
-                    steps = 11,
-                    onChange = { v -> vm.updateSettings { it.copy(pk = it.pk.copy(absorptionFraction = (v * 100).roundToInt() / 100.0)) } },
-                )
                 StepperRow(
                     label = stringResource(R.string.absorption_minutes),
                     valueText = pk.absorptionMinutes.toString(),
@@ -104,32 +93,8 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
                     onPlus = { vm.updateSettings { it.copy(pk = it.pk.copy(absorptionMinutes = (it.pk.absorptionMinutes + 5).coerceIn(5, 90))) } },
                     hint = stringResource(R.string.pouch_time_hint),
                 )
-                StepperRow(
-                    label = stringResource(R.string.nic_half_life),
-                    valueText = Fmt.oneDecimal(pk.nicotineHalfLifeHours),
-                    onMinus = { vm.updateSettings { it.copy(pk = it.pk.copy(nicotineHalfLifeHours = (it.pk.nicotineHalfLifeHours - 0.25).coerceIn(0.5, 6.0))) } },
-                    onPlus = { vm.updateSettings { it.copy(pk = it.pk.copy(nicotineHalfLifeHours = (it.pk.nicotineHalfLifeHours + 0.25).coerceIn(0.5, 6.0))) } },
-                )
-                StepperRow(
-                    label = stringResource(R.string.cot_half_life),
-                    valueText = Fmt.oneDecimal(pk.cotinineHalfLifeHours),
-                    onMinus = { vm.updateSettings { it.copy(pk = it.pk.copy(cotinineHalfLifeHours = (it.pk.cotinineHalfLifeHours - 1).coerceIn(6.0, 40.0))) } },
-                    onPlus = { vm.updateSettings { it.copy(pk = it.pk.copy(cotinineHalfLifeHours = (it.pk.cotinineHalfLifeHours + 1).coerceIn(6.0, 40.0))) } },
-                )
-                SliderRow(
-                    label = stringResource(R.string.cot_yield),
-                    valueText = "${(pk.cotinineYield * 100).roundToInt()}%",
-                    value = pk.cotinineYield.toFloat(),
-                    range = 0.50f..0.90f,
-                    steps = 7,
-                    onChange = { v -> vm.updateSettings { it.copy(pk = it.pk.copy(cotinineYield = (v * 100).roundToInt() / 100.0)) } },
-                )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.model_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.height(8.dp))
-                TextButton(onClick = { vm.updateSettings { it.copy(pk = PkParams()) } }, contentPadding = PaddingValues(0.dp)) {
-                    Text(stringResource(R.string.reset_defaults))
-                }
             }
 
             SectionTitle(stringResource(R.string.settings_appearance))
@@ -171,23 +136,5 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
                 Text(stringResource(R.string.version, version), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-    }
-}
-
-@Composable
-private fun SliderRow(
-    label: String,
-    valueText: String,
-    value: Float,
-    range: ClosedFloatingPointRange<Float>,
-    steps: Int,
-    onChange: (Float) -> Unit,
-) {
-    Column(Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-            Text(valueText, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        }
-        Slider(value = value, onValueChange = onChange, valueRange = range, steps = steps)
     }
 }
