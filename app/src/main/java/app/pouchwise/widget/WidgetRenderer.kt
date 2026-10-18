@@ -22,9 +22,8 @@ object WidgetRenderer {
     private const val RED_DISC = 0xFFB71C1C.toInt()
     private const val RED_RING = 0xFFFF8A80.toInt()
 
-    /** Share of the 108 dp foreground canvas the drawing occupies, and its rightward nudge (see design/make_icon.py). */
-    private const val ART_SHARE = 62f / 108f
-    private const val ART_SHIFT = 3f / 108f
+    /** Share of the 108 dp foreground canvas the drawing occupies (see design/make_icon.py). */
+    private const val ART_SHARE = 56f / 108f
 
     fun ring(context: Context, sizePx: Int, state: WidgetState): Bitmap {
         val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
@@ -54,7 +53,7 @@ object WidgetRenderer {
         if (logo != null) {
             val inner = sizePx - 2f * (inset + stroke / 2f)
             val full = inner * 0.74f / ART_SHARE
-            val left = cx - full / 2f - full * ART_SHIFT
+            val left = cx - full / 2f
             val top = cx - full / 2f
             logo.setBounds(left.toInt(), top.toInt(), (left + full).toInt(), (top + full).toInt())
             logo.draw(c)
@@ -85,14 +84,22 @@ object WidgetRenderer {
                 ),
             )
             setOnClickPendingIntent(R.id.widget_wide_root, openApp(context))
-            if (state.defaultTypeName != null) {
+            if (state.hasTypes) {
                 setViewVisibility(R.id.widget_wide_add, View.VISIBLE)
-                setContentDescription(R.id.widget_wide_add, context.getString(R.string.widget_add, state.defaultTypeName))
-                setOnClickPendingIntent(R.id.widget_wide_add, WidgetActionReceiver.logDefaultIntent(context))
+                setContentDescription(R.id.widget_wide_add, context.getString(R.string.widget_add))
+                setOnClickPendingIntent(R.id.widget_wide_add, quickLog(context))
             } else {
                 setViewVisibility(R.id.widget_wide_add, View.GONE)
             }
         }
+
+    /** The "+" opens a small chooser over the home screen (or logs straight away when there is one pouch). */
+    private fun quickLog(context: Context): PendingIntent =
+        PendingIntent.getActivity(
+            context, 1,
+            Intent(context, QuickLogActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
 
     private fun countText(context: Context, state: WidgetState): String = when (state.mode) {
         LimitMode.COUNT -> "${state.count} / ${state.limit}"

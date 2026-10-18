@@ -43,9 +43,14 @@
                 android:resource="@xml/widget_wide_info" />
         </receiver>
 
-        <receiver
-            android:name=".widget.WidgetActionReceiver"
-            android:exported="false" />
+        <activity
+            android:name=".widget.QuickLogActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Pouchwise.Quick" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

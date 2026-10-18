@@ -190,6 +190,7 @@
     <string name="widget_pouches_today">pouches today</string>
     <string name="widget_mg_today">today</string>
     <string name="widget_over">over the limit</string>
-    <string name="widget_add">Log %1$s</string>
+    <string name="widget_add">Log a pouch</string>
     <string name="widget_logged">%1$s logged</string>
+    <string name="quick_log_title">Which pouch?</string>
 </resources>

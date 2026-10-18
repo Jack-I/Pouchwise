@@ -2,8 +2,6 @@ package app.pouchwise.widget
 
 import android.content.Context
 import app.pouchwise.data.AppDatabase
-import app.pouchwise.data.PouchDao
-import app.pouchwise.data.PouchType
 import app.pouchwise.data.SettingsRepository
 import app.pouchwise.model.DayKeys
 import app.pouchwise.model.LimitMode
@@ -16,8 +14,8 @@ data class WidgetState(
     val count: Int,
     val mg: Double,
     val limit: Int,
-    /** Name of the pouch the "+" button logs, or null when there is nothing to log. */
-    val defaultTypeName: String?,
+    /** False while the user has not created any pouch yet, which hides the "+" button. */
+    val hasTypes: Boolean,
 ) {
     val used: Double get() = Limits.usage(mode, count, mg)
     val over: Boolean get() = used > limit + 1e-9
@@ -44,15 +42,7 @@ object WidgetData {
             count = entries.size,
             mg = entries.sumOf { it.strengthMg },
             limit = Limits.limitForDayRounded(settings, day),
-            defaultTypeName = defaultType(dao)?.name,
+            hasTypes = dao.activeTypes().isNotEmpty(),
         )
-    }
-
-    /** The pouch the widget's "+" logs: the one used last if still visible, otherwise the first in the list. */
-    suspend fun defaultType(dao: PouchDao): PouchType? {
-        val types = dao.activeTypes()
-        if (types.isEmpty()) return null
-        val latest = dao.latestEntry()
-        return types.firstOrNull { it.id == latest?.pouchTypeId } ?: types.first()
     }
 }

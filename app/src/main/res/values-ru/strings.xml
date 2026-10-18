@@ -188,6 +188,7 @@
     <string name="widget_pouches_today">паучей сегодня</string>
     <string name="widget_mg_today">сегодня</string>
     <string name="widget_over">сверх лимита</string>
-    <string name="widget_add">Записать %1$s</string>
+    <string name="widget_add">Записать пауч</string>
     <string name="widget_logged">%1$s записан</string>
+    <string name="quick_log_title">Какой пауч закидываем?</string>
 </resources>

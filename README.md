@@ -27,9 +27,9 @@ in two months, and turns that into a plan. Everything can be changed later.
 Long-press the home screen → Widgets → Pouchwise. Two sizes:
 
 - **1×1 ring** — the logo inside a ring that fills up towards today's limit and turns red once you
-  are over it. Tap to open the app.
-- **2×1 counter** — the same ring plus "4 / 10" (or mg), and a **+** that logs your usual pouch
-  (the one you used last) without opening the app.
+  are over it, with the app name underneath. Tap to open the app.
+- **2×1 counter** — the same ring plus "4 / 10" (or mg), and a **+** that pops up a chooser of your
+  pouches over the home screen and logs the one you tap (with a single pouch it logs straight away).
 
 Widgets refresh right after every change made in the app and once an hour on their own, so the day
 rolls over on time.

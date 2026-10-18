@@ -18,8 +18,8 @@ alpha = ImageOps.invert(gray).point(lambda v: 0 if v < 24 else v)  # ink -> opaq
 alpha = alpha.crop(alpha.getbbox())
 w, h = alpha.size
 
-ART = 62 / 108  # artwork box inside the 66 dp safe zone
-SHIFT_X = 3 / 108  # nudge right: the lid makes the drawing look left-heavy when the box is centred
+ART = 56 / 108  # artwork box inside the 66 dp safe zone, with air around it like in the widget
+SHIFT_X = 0.0  # centred on the drawing's bounding box, same as the widget ring
 DENSITIES = {"mdpi": 1, "hdpi": 1.5, "xhdpi": 2, "xxhdpi": 3, "xxxhdpi": 4}
 
 
