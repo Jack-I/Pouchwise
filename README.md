@@ -121,7 +121,7 @@ less, following first-order release from the pouch normalised to the full time:
 
 The rate k comes with the brand you pick when creating a pouch. The catalogue holds the seven
 brands measured by in-vitro dissolution in artificial saliva
-([Sci Rep 2025](https://www.nature.com/articles/s41598-025-34556-5), USP-4 flow-through, 60 min):
+(Platt et al., [Sci Rep 2026](https://www.nature.com/articles/s41598-025-34556-5), USP-4 flow-through, 60 min):
 
 | Brand | k, 1/min | released in the first 20 min |
 |---|---|---|

@@ -7,7 +7,7 @@ data class BrandInfo(val name: String, val kPerMin: Double)
 
 /**
  * First-order nicotine release constants per brand, from in-vitro dissolution of commercial pouches
- * in artificial saliva (Sci Rep 2025, USP-4 flow-through, 60 min). Brands that were not measured
+ * in artificial saliva (Platt et al., Sci Rep 2026, USP-4 flow-through, 60 min). Brands that were not measured
  * use the average of the measured ones.
  */
 object Brands {
