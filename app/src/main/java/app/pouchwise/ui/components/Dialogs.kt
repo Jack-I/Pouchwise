@@ -32,7 +32,11 @@ import java.time.ZoneId
 /** Marker for "a brand that is not in the catalogue" in [BrandPicker]. */
 const val OTHER_BRAND = ""
 
-fun parseDecimal(text: String): Double? = text.trim().replace(',', '.').toDoubleOrNull()
+/** A typed number, or null for anything else, including "NaN" and "Infinity", which Kotlin would otherwise accept. */
+fun parseDecimal(text: String): Double? = text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() }
+
+private fun String.removePrefixIgnoringCase(prefix: String): String =
+    if (startsWith(prefix, ignoreCase = true)) substring(prefix.length) else this
 
 /**
  * Brand chips from the catalogue plus "Other" with a free-text name, and a one-line note on how fast
@@ -98,8 +102,8 @@ fun PouchTypeDialog(
         mutableStateOf(
             when {
                 initial == null -> ""
-                initialKnown != null -> initial.name.removePrefix(initialKnown).trim()
-                initial.brand.isNotBlank() -> initial.name.removePrefix(initial.brand).trim()
+                initialKnown != null -> initial.name.removePrefixIgnoringCase(initial.brand.trim().ifEmpty { initialKnown }).trim()
+                initial.brand.isNotBlank() -> initial.name.removePrefixIgnoringCase(initial.brand.trim()).trim()
                 else -> ""
             },
         )

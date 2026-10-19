@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.pouchwise.model.BodyLevels
 import app.pouchwise.model.DayStat
+import app.pouchwise.model.LimitMode
 import app.pouchwise.util.Fmt
 import java.time.Instant
 import java.time.ZoneId
@@ -205,10 +206,13 @@ fun DailyBarChart(
     stats: List<DayStat>,
     futureLimits: List<Pair<Long, Int>>,
     todayDay: Long,
+    /** Today's unit. Bars use it for every day; the limit line is drawn only for days whose plan used it too. */
+    mode: LimitMode,
     barColor: Color,
     lineColor: Color,
     modifier: Modifier = Modifier,
 ) {
+    fun value(st: DayStat): Double = if (mode == LimitMode.COUNT) st.count.toDouble() else st.mg
     val measurer = rememberTextMeasurer()
     val labelStyle = TextStyle(fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     val gridColor = MaterialTheme.colorScheme.outlineVariant
@@ -226,8 +230,8 @@ fun DailyBarChart(
         val slot = w / days
         val barW = slot * 0.55f
 
-        val maxUsed = stats.maxOf { it.used }
-        val maxLimit = max(stats.maxOf { it.limit }, futureLimits.maxOfOrNull { it.second } ?: 0)
+        val maxUsed = stats.maxOf { value(it) }
+        val maxLimit = max(stats.filter { it.mode == mode }.maxOfOrNull { it.limit } ?: 0, futureLimits.maxOfOrNull { it.second } ?: 0)
         val rawMax = max(max(maxUsed, maxLimit.toDouble()), 1.0)
         val step = niceStep(rawMax)
         val yMax = ceil(rawMax * 1.1 / step) * step
@@ -244,8 +248,9 @@ fun DailyBarChart(
         }
 
         stats.forEachIndexed { i, st ->
-            if (st.used <= 0) return@forEachIndexed
-            val top = y(st.used)
+            if (value(st) <= 0) return@forEachIndexed
+            val top = y(value(st))
+            // Colour by the day's own verdict, made under the plan of that day.
             val color = if (st.withinLimit) barColor else overColor
             drawRoundRect(
                 color = color,
@@ -255,16 +260,24 @@ fun DailyBarChart(
             )
         }
 
-        // limit line across past and future days
+        // limit line across past and future days; gaps where a past day counted in the other unit
         val limitPath = Path()
         var idx = 0
+        var penDown = false
         stats.forEach { st ->
-            val px = xCenter(idx); val py = y(st.limit.toDouble())
-            if (idx == 0) limitPath.moveTo(px, py) else limitPath.lineTo(px, py)
+            if (st.mode == mode) {
+                val px = xCenter(idx); val py = y(st.limit.toDouble())
+                if (penDown) limitPath.lineTo(px, py) else limitPath.moveTo(px, py)
+                penDown = true
+            } else {
+                penDown = false
+            }
             idx++
         }
         futureLimits.forEach { (_, lim) ->
-            limitPath.lineTo(xCenter(idx), y(lim.toDouble()))
+            val px = xCenter(idx); val py = y(lim.toDouble())
+            if (penDown) limitPath.lineTo(px, py) else limitPath.moveTo(px, py)
+            penDown = true
             idx++
         }
         drawPath(limitPath, lineColor, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round))

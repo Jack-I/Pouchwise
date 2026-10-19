@@ -27,6 +27,30 @@ class DayKeysTest {
     }
 
     @Test
+    fun dayStartStaysOnTheWallClockWhenClocksChange() {
+        // 29 Mar 2026: clocks jump from 02:00 to 03:00 in Amsterdam; the day still starts at 04:00 local
+        val day = LocalDateTime.of(2026, 3, 29, 12, 0).toLocalDate().toEpochDay()
+        assertEquals(ms(2026, 3, 29, 4, 0), DayKeys.startOfDayMs(day, 4, zone))
+        assertEquals(day, DayKeys.epochDay(ms(2026, 3, 29, 4, 30), 4, zone))
+        assertEquals(day - 1, DayKeys.epochDay(ms(2026, 3, 29, 3, 30), 4, zone))
+        // 25 Oct 2026: clocks fall back from 03:00 to 02:00
+        val autumn = LocalDateTime.of(2026, 10, 25, 12, 0).toLocalDate().toEpochDay()
+        assertEquals(ms(2026, 10, 25, 4, 0), DayKeys.startOfDayMs(autumn, 4, zone))
+    }
+
+    @Test
+    fun aTimeStillAheadMeansTheDayBefore() {
+        val now = ms(2026, 10, 19, 0, 20)
+        val date = LocalDateTime.of(2026, 10, 19, 0, 0).toLocalDate()
+        assertEquals(ms(2026, 10, 18, 23, 50), DayKeys.pastTimeMs(date, 23, 50, now, zone))
+        assertEquals(ms(2026, 10, 19, 0, 10), DayKeys.pastTimeMs(date, 0, 10, now, zone))
+        // across the autumn clock change it is one calendar day back, not 24 hours
+        val afterChange = ms(2026, 10, 25, 10, 0)
+        val oct25 = LocalDateTime.of(2026, 10, 25, 0, 0).toLocalDate()
+        assertEquals(ms(2026, 10, 24, 23, 0), DayKeys.pastTimeMs(oct25, 23, 0, afterChange, zone))
+    }
+
+    @Test
     fun startOfDayRoundTrips() {
         val day = DayKeys.epochDay(ms(2026, 3, 29, 12, 0), 4, zone) // DST change day in EU
         val start = DayKeys.startOfDayMs(day, 4, zone)

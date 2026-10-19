@@ -40,8 +40,16 @@ class SettingsRepository(private val context: Context) {
 
     val settings: Flow<Settings> = context.settingsStore.data.map { read(it) }
 
-    suspend fun update(transform: (Settings) -> Settings) {
-        context.settingsStore.edit { prefs -> write(prefs, transform(read(prefs))) }
+    /** Applies [transform] atomically and returns the settings before and after it. */
+    suspend fun update(transform: (Settings) -> Settings): Pair<Settings, Settings> {
+        var before = Settings()
+        var after = Settings()
+        context.settingsStore.edit { prefs ->
+            before = read(prefs)
+            after = transform(before)
+            write(prefs, after)
+        }
+        return before to after
     }
 
     private fun read(p: Preferences): Settings {

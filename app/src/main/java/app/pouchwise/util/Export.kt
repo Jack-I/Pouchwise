@@ -6,7 +6,9 @@ import androidx.core.content.FileProvider
 import app.pouchwise.R
 import app.pouchwise.data.Backup
 import app.pouchwise.data.LogEntry
+import app.pouchwise.data.PlanVersion
 import app.pouchwise.data.PouchType
+import app.pouchwise.model.DayKeys
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.model.Settings
 import org.json.JSONArray
@@ -24,7 +26,7 @@ object Export {
         val byId = types.associateBy { it.id }
         val zone = ZoneId.systemDefault()
         val now = System.currentTimeMillis()
-        val sb = StringBuilder("id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg\n")
+        val sb = StringBuilder("id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg,pouch_min,day\n")
         for (e in entries) {
             val iso = isoFormatter.format(Instant.ofEpochMilli(e.timestamp).atZone(zone))
             val type = byId[e.pouchTypeId]
@@ -38,13 +40,21 @@ object Export {
                 .append(quote(type?.brand ?: "")).append(',')
                 .append(String.format(Locale.ROOT, "%.2f", e.strengthMg)).append(',')
                 .append(String.format(Locale.ROOT, "%.4f", e.releaseK)).append(',')
-                .append(String.format(Locale.ROOT, "%.3f", PouchTiming.absorbedMg(e, settings, now))).append('\n')
+                .append(String.format(Locale.ROOT, "%.3f", PouchTiming.absorbedMg(e, settings, now))).append(',')
+                .append(PouchTiming.pouchMinutes(e, settings)).append(',')
+                .append(DayKeys.localDate(DayKeys.of(e, settings.dayStartHour))).append('\n')
         }
         return sb.toString()
     }
 
     /** Everything needed to restore the app on another phone; read back by [Backup.parse]. */
-    fun json(entries: List<LogEntry>, types: List<PouchType>, settings: Settings, appVersion: String = ""): String {
+    fun json(
+        entries: List<LogEntry>,
+        types: List<PouchType>,
+        settings: Settings,
+        appVersion: String = "",
+        plans: List<PlanVersion> = emptyList(),
+    ): String {
         val root = JSONObject()
         root.put("app", "Pouchwise")
         root.put("format", Backup.FORMAT)
@@ -68,20 +78,32 @@ object Export {
                     put("endTimestamp", e.endTimestamp ?: JSONObject.NULL)
                     put("releaseK", e.releaseK)
                     put("pouchMinutes", e.pouchMinutes ?: JSONObject.NULL)
+                    put("day", e.day ?: JSONObject.NULL)
+                })
+            }
+        })
+        root.put("planHistory", JSONArray().apply {
+            plans.forEach { p ->
+                put(JSONObject().apply {
+                    put("fromDay", p.fromDay); put("limitMode", p.limitMode)
+                    put("dailyLimitCount", p.dailyLimitCount); put("dailyLimitMg", finite(p.dailyLimitMg))
+                    put("taperEnabled", p.taperEnabled)
+                    put("taperStartDay", p.taperStartDay); put("taperStartValue", finite(p.taperStartValue))
+                    put("taperTargetDay", p.taperTargetDay); put("taperTargetValue", finite(p.taperTargetValue))
                 })
             }
         })
         root.put("settings", JSONObject().apply {
             put("limitMode", settings.limitMode.name)
             put("dailyLimitCount", settings.dailyLimitCount)
-            put("dailyLimitMg", settings.dailyLimitMg)
+            put("dailyLimitMg", finite(settings.dailyLimitMg))
             put("taperEnabled", settings.taperEnabled)
             put("taperStartDay", settings.taperStartDay)
-            put("taperStartValue", settings.taperStartValue)
+            put("taperStartValue", finite(settings.taperStartValue))
             put("taperTargetDay", settings.taperTargetDay)
-            put("taperTargetValue", settings.taperTargetValue)
+            put("taperTargetValue", finite(settings.taperTargetValue))
             put("dayStartHour", settings.dayStartHour)
-            put("bodyWeightKg", settings.bodyWeightKg)
+            put("bodyWeightKg", finite(settings.bodyWeightKg))
             put("pk", JSONObject().apply {
                 put("absorptionFraction", settings.pk.absorptionFraction)
                 put("absorptionMinutes", settings.pk.absorptionMinutes)
@@ -97,10 +119,13 @@ object Export {
     fun shareCsv(context: Context, entries: List<LogEntry>, types: List<PouchType>, settings: Settings) =
         share(context, "pouchwise-${stamp()}.csv", "text/csv", csv(entries, types, settings))
 
-    fun shareJson(context: Context, entries: List<LogEntry>, types: List<PouchType>, settings: Settings) {
+    fun shareJson(context: Context, entries: List<LogEntry>, types: List<PouchType>, settings: Settings, plans: List<PlanVersion>) {
         val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty() }.getOrDefault("")
-        share(context, "pouchwise-${stamp()}.json", "application/json", json(entries, types, settings, version))
+        share(context, "pouchwise-${stamp()}.json", "application/json", json(entries, types, settings, version, plans))
     }
+
+    /** org.json refuses infinite numbers; settings saved by older versions could hold one. */
+    private fun finite(v: Double): Double = if (v.isFinite()) v else 0.0
 
     private fun share(context: Context, fileName: String, mime: String, content: String) {
         val dir = File(context.cacheDir, "exports").apply { mkdirs() }

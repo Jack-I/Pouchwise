@@ -28,8 +28,8 @@ data class PouchType(
 
 /**
  * One pouch used. [timestamp] is when it went in; [endTimestamp] is when the user took it out,
- * or null when it was left in for its full pouch time. Strength, release constant and pouch time are
- * copied at log time so later edits of the type or of the settings do not rewrite history.
+ * or null when it was left in for its full pouch time. Strength, release constant, pouch time and
+ * tracking day are copied at log time so later edits of the type or of the settings do not rewrite history.
  */
 @Entity(tableName = "log_entries", indices = [Index("timestamp"), Index("pouchTypeId")])
 data class LogEntry(
@@ -43,4 +43,23 @@ data class LogEntry(
     val releaseK: Double = Brands.averageK,
     /** Full pouch time in minutes when the pouch went in; null only for rows from before schema v6 until backfilled. */
     val pouchMinutes: Int? = null,
+    /**
+     * Tracking day (epoch day) the pouch counts toward, fixed with the day-start hour and time zone in force
+     * when it was logged; null only for rows from before schema v7 until backfilled.
+     */
+    val day: Long? = null,
+)
+
+/** The limit plan from [fromDay] on, until the next version; past days are judged by the version of their day. */
+@Entity(tableName = "plan_versions")
+data class PlanVersion(
+    @PrimaryKey val fromDay: Long,
+    val limitMode: String,
+    val dailyLimitCount: Int,
+    val dailyLimitMg: Double,
+    val taperEnabled: Boolean,
+    val taperStartDay: Long,
+    val taperStartValue: Double,
+    val taperTargetDay: Long,
+    val taperTargetValue: Double,
 )

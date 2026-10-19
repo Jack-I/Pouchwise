@@ -1,6 +1,7 @@
 package app.pouchwise.model
 
 import app.pouchwise.data.LogEntry
+import app.pouchwise.data.PlanVersion
 
 data class DayStat(
     val epochDay: Long,
@@ -45,24 +46,35 @@ enum class GardenLevel(val emoji: String, val label: String) {
 }
 
 object Stats {
-    /** Per-day aggregates for [fromDay]..[toDay] inclusive. */
-    fun dailyStats(entries: List<LogEntry>, s: Settings, fromDay: Long, toDay: Long): List<DayStat> {
+    /**
+     * Per-day aggregates for [fromDay]..[toDay] inclusive. Each entry counts toward the day it was logged
+     * into, and each day before [today] is judged by the plan recorded for it in [plans].
+     */
+    fun dailyStats(
+        entries: List<LogEntry>,
+        s: Settings,
+        fromDay: Long,
+        toDay: Long,
+        plans: List<PlanVersion> = emptyList(),
+        today: Long = toDay,
+    ): List<DayStat> {
         val counts = HashMap<Long, Int>()
         val mgs = HashMap<Long, Double>()
         var firstDay = Long.MAX_VALUE
         for (e in entries) {
-            val d = DayKeys.epochDay(e.timestamp, s.dayStartHour)
+            val d = DayKeys.of(e, s.dayStartHour)
             if (d < firstDay) firstDay = d
             counts[d] = (counts[d] ?: 0) + 1
             mgs[d] = (mgs[d] ?: 0.0) + e.strengthMg
         }
         return (fromDay..toDay).map { d ->
+            val plan = PlanHistory.settingsForDay(d, today, plans, s)
             DayStat(
                 epochDay = d,
                 count = counts[d] ?: 0,
                 mg = mgs[d] ?: 0.0,
-                limit = Limits.limitForDayRounded(s, d),
-                mode = s.limitMode,
+                limit = Limits.limitForDayRounded(plan, d),
+                mode = plan.limitMode,
                 hasData = d >= firstDay,
             )
         }

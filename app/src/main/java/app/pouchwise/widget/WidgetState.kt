@@ -26,6 +26,8 @@ data class WidgetState(
     val inSinceMs: Long? = null,
     /** When the next of the pouches that are in counts as removed by itself. */
     val nextAutoEndMs: Long? = null,
+    /** When the next tracking day starts; the widgets refresh then. */
+    val dayEndMs: Long? = null,
 ) {
     val used: Double get() = Limits.usage(mode, count, mg)
     val over: Boolean get() = used > limit + 1e-9
@@ -51,10 +53,8 @@ object WidgetData {
         val settings = SettingsRepository(context).settings.first()
         val now = System.currentTimeMillis()
         val day = DayKeys.epochDay(now, settings.dayStartHour)
-        val entries = dao.entriesBetween(
-            DayKeys.startOfDayMs(day, settings.dayStartHour),
-            DayKeys.endOfDayMs(day, settings.dayStartHour),
-        )
+        val dayEnd = DayKeys.endOfDayMs(day, settings.dayStartHour)
+        val entries = dao.entriesOfDay(day, DayKeys.startOfDayMs(day, settings.dayStartHour), dayEnd)
         val inNow = pouchesInNow(context, settings, now)
         val latest = inNow.lastOrNull()
         return WidgetState(
@@ -66,6 +66,7 @@ object WidgetData {
             inLabel = latest?.let { widgetLabel(it.second) },
             inSinceMs = latest?.first?.timestamp,
             nextAutoEndMs = inNow.minOfOrNull { it.first.timestamp + PouchTiming.autoMs(it.first, settings) },
+            dayEndMs = dayEnd,
         )
     }
 

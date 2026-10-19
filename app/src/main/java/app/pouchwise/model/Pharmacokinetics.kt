@@ -6,7 +6,7 @@ import kotlin.math.ln
 import kotlin.math.max
 
 data class PkParams(
-    /** Share of the labelled nicotine that reaches the bloodstream when a pouch stays in for the full time. */
+    /** Share of the labelled nicotine that reaches the bloodstream when a pouch stays in for 30 minutes. */
     val absorptionFraction: Double = 0.30,
     /** Pouch time for pouches put in from now on, minutes; each logged pouch keeps the value it was logged with. */
     val absorptionMinutes: Int = 30,
@@ -35,7 +35,7 @@ data class Clearance(val nicotineClearMs: Long?, val cotinineClearMs: Long?)
 /**
  * One-compartment nicotine with first-order elimination feeding a cotinine compartment
  * (Bateman cascade). Each pouch is a constant-rate input over the time it stayed in; the total
- * absorbed amount follows first-order release from the pouch ([releaseFraction]).
+ * absorbed amount follows first-order release from the pouch ([releasedShare]).
  * Closed form, so any instant can be evaluated directly.
  */
 object Pharmacokinetics {
@@ -56,14 +56,18 @@ object Pharmacokinetics {
     const val LOOKBACK_MS = 7L * 24 * 3_600_000L
     const val MAX_FORECAST_MS = 14L * 24 * 3_600_000L
 
+    /** [PkParams.absorptionFraction] is the absorbed share for a pouch kept in this long. */
+    const val REFERENCE_MINUTES = 30.0
+
     /**
-     * Share of the full-time dose that a pouch has given up after [minutesIn] minutes, with the
-     * full pouch time [fullMinutes] counting as 100 %: first-order release normalised to the full time.
+     * Nicotine a pouch has given up after [minutesIn] minutes, relative to one kept in for
+     * [REFERENCE_MINUTES]: first-order release, so a shorter time gives less and a longer one a bit more.
+     * It depends only on the minutes actually in, not on the pouch-time setting.
      */
-    fun releaseFraction(minutesIn: Double, fullMinutes: Double, kPerMin: Double): Double {
-        val t = minutesIn.coerceIn(0.0, fullMinutes)
-        if (kPerMin <= 1e-9) return t / fullMinutes
-        return (1 - exp(-kPerMin * t)) / (1 - exp(-kPerMin * fullMinutes))
+    fun releasedShare(minutesIn: Double, kPerMin: Double): Double {
+        val t = minutesIn.coerceAtLeast(0.0)
+        if (kPerMin <= 1e-9) return t / REFERENCE_MINUTES
+        return (1 - exp(-kPerMin * t)) / (1 - exp(-kPerMin * REFERENCE_MINUTES))
     }
 
     fun levelsAt(timeMs: Long, doses: List<Dose>, p: PkParams): BodyLevels {
@@ -79,10 +83,9 @@ object Pharmacokinetics {
             val ageMs = timeMs - d.timeMs
             if (ageMs > LOOKBACK_MS) continue
             val fullMs = max(d.fullMinutes ?: p.absorptionMinutes, 1) * 60_000L
-            val fullMin = fullMs / 60_000.0
             val durMs = d.durationMs.coerceIn(MIN_DURATION_MS, fullMs)
             val tInf = durMs / HOUR_MS
-            val absorbed = d.labelledMg * p.absorptionFraction * releaseFraction(durMs / 60_000.0, fullMin, d.kPerMin)
+            val absorbed = d.labelledMg * p.absorptionFraction * releasedShare(durMs / 60_000.0, d.kPerMin)
             val tau = ageMs / HOUR_MS
             val rate = absorbed / tInf
             val a = yieldMass * rate

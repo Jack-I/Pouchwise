@@ -37,12 +37,16 @@
         <item quantity="other">%d pouches over the limit</item>
     </plurals>
     <string name="over_limit_by_mg">%1$s mg over the limit</string>
-    <string name="used_of_limit_count">%1$d of %2$d pouches · %3$s mg nicotine</string>
+    <plurals name="used_of_limit_count">
+        <item quantity="one">%1$d of %2$d pouch · %3$s mg nicotine</item>
+        <item quantity="other">%1$d of %2$d pouches · %3$s mg nicotine</item>
+    </plurals>
     <plurals name="used_of_limit_mg">
         <item quantity="one">%1$s of %2$s mg · %3$d pouch</item>
         <item quantity="other">%1$s of %2$s mg · %3$d pouches</item>
     </plurals>
     <string name="last_pouch_ago">Last pouch out %1$s ago</string>
+    <string name="last_pouch_just_now">Last pouch out just now</string>
     <string name="no_pouches_today">No pouches yet today</string>
     <string name="your_pouches">Your pouches</string>
     <string name="edit_short">Edit</string>
@@ -170,7 +174,7 @@
     <string name="weight_hint">Only used to convert mg in the body into an approximate blood concentration.</string>
     <string name="absorption_minutes">Pouch time, minutes</string>
     <string name="pouch_time_hint">A pouch counts as in for this long unless you remove it earlier on the Track screen. A shorter time means less nicotine absorbed. Applies to pouches you put in from now on; logged ones keep their own time.</string>
-    <string name="model_hint">The body estimate assumes about 30%% of the labelled nicotine is absorbed over the full pouch time, a nicotine half-life of 2 h and a cotinine half-life of 16 h — published averages.</string>
+    <string name="model_hint" formatted="false">The body estimate assumes that about 30% of the labelled nicotine is absorbed when a pouch stays in for 30 minutes (less if shorter, a little more if longer), a nicotine half-life of 2 h and a cotinine half-life of 16 h. The 30% is a rough estimate from published studies, so take the levels as approximate.</string>
     <string name="settings_appearance">Appearance</string>
     <string name="theme_system">System</string>
     <string name="theme_light">Light</string>

@@ -9,11 +9,13 @@ import androidx.room.withTransaction
 import app.pouchwise.data.AppDatabase
 import app.pouchwise.data.Backup
 import app.pouchwise.data.LogEntry
+import app.pouchwise.data.PlanVersion
 import app.pouchwise.data.PouchType
 import app.pouchwise.data.SettingsRepository
 import app.pouchwise.model.Brands
 import app.pouchwise.model.DayKeys
 import app.pouchwise.model.LimitMode
+import app.pouchwise.model.PlanHistory
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.model.Settings
 import app.pouchwise.util.Export
@@ -40,9 +42,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     init {
-        // Rows logged before the pouch time was stored per entry take the current setting once and keep it.
+        // Rows from before 0.7.6 / 0.7.7 take the pouch time, day and plan in force now, once, and keep them.
         viewModelScope.launch {
-            dao.fillMissingPouchMinutes(PouchTiming.newPouchMinutes(settingsRepo.settings.first()))
+            val s = settingsRepo.settings.first()
+            dao.fillMissingPouchMinutes(PouchTiming.newPouchMinutes(s))
+            val withoutDay = dao.entriesWithoutDay()
+            if (withoutDay.isNotEmpty()) {
+                dao.updateEntries(withoutDay.map { it.copy(day = DayKeys.epochDay(it.timestamp, s.dayStartHour)) })
+            }
+            if (dao.planCount() == 0) dao.upsertPlan(PlanHistory.versionOf(s, fromDay = 0L))
         }
     }
 
@@ -52,6 +60,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val entries: StateFlow<List<LogEntry>> = dao.observeEntries()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Recorded plan versions, oldest first; past days are judged by these. */
+    val plans: StateFlow<List<PlanVersion>> = dao.observePlans()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val settings: StateFlow<Settings> = settingsRepo.settings
@@ -79,6 +91,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 fastRelease = fastRelease,
             ),
         )
+        refreshWidgets()
     }
 
     fun updateType(type: PouchType, brand: String, variant: String, strengthMg: Double, colorIndex: Int, fastRelease: Boolean) =
@@ -89,28 +102,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     brand = brand.trim(), releaseK = Brands.effectiveK(brand, fastRelease), fastRelease = fastRelease,
                 ),
             )
+            refreshWidgets()
         }
 
     /** Types with history are hidden instead of deleted so old entries keep their name. */
     fun removeType(type: PouchType) = viewModelScope.launch {
         if (dao.countEntriesForType(type.id) > 0) dao.updateType(type.copy(archived = true))
         else dao.deleteType(type.id)
+        refreshWidgets()
     }
 
-    fun restoreType(type: PouchType) = viewModelScope.launch { dao.updateType(type.copy(archived = false)) }
+    fun restoreType(type: PouchType) = viewModelScope.launch {
+        dao.updateType(type.copy(archived = false))
+        refreshWidgets()
+    }
 
-    /** Puts a pouch in: it stays "active" until removed or until the default pouch time passes. */
+    /** Puts a pouch in: it stays "active" until removed or until its pouch time passes. */
     fun logPouch(type: PouchType, atMs: Long = System.currentTimeMillis()) = viewModelScope.launch {
-        val minutes = PouchTiming.newPouchMinutes(settingsRepo.settings.first())
-        dao.insertEntry(
-            LogEntry(pouchTypeId = type.id, timestamp = atMs, strengthMg = type.strengthMg, releaseK = type.releaseK, pouchMinutes = minutes),
-        )
+        val s = settingsRepo.settings.first()
+        dao.insertEntry(PouchTiming.newEntry(type.id, type.strengthMg, type.releaseK, atMs, s))
         refreshWidgets()
     }
 
     /** Takes the pouch out now; absorption stops here. */
     fun finishPouch(entry: LogEntry) = viewModelScope.launch {
-        dao.updateEntry(PouchTiming.finish(entry, settings.value, System.currentTimeMillis()))
+        dao.updateEntry(PouchTiming.finish(entry, settingsRepo.settings.first(), System.currentTimeMillis()))
         refreshWidgets()
     }
 
@@ -119,16 +135,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshWidgets()
     }
 
-    /** Moves the whole pouch (start and end) to a new start time. */
+    /** Corrects when a pouch went in; a recorded removal time stays where it was. */
     fun moveEntry(entry: LogEntry, newTimestamp: Long) = viewModelScope.launch {
-        val delta = newTimestamp - entry.timestamp
-        dao.updateEntry(entry.copy(timestamp = newTimestamp, endTimestamp = entry.endTimestamp?.plus(delta)))
+        dao.updateEntry(PouchTiming.withNewStart(entry, newTimestamp, settingsRepo.settings.first()))
         refreshWidgets()
     }
 
     fun updateSettings(transform: (Settings) -> Settings) = viewModelScope.launch {
-        settingsRepo.update(transform)
+        val (before, after) = settingsRepo.update(transform)
+        recordPlan(before, after)
         refreshWidgets()
+    }
+
+    /** A plan change applies from today on; the plan so far stays on record for the days before. */
+    private suspend fun recordPlan(before: Settings, after: Settings) {
+        if (PlanHistory.samePlan(before, after)) return
+        if (dao.planCount() == 0) dao.upsertPlan(PlanHistory.versionOf(before, fromDay = 0L))
+        val today = DayKeys.epochDay(System.currentTimeMillis(), after.dayStartHour)
+        dao.upsertPlan(PlanHistory.versionOf(after, fromDay = today))
     }
 
     /**
@@ -144,7 +168,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     brand = brand.trim(), releaseK = Brands.kFor(brand),
                 ),
             )
-            settingsRepo.update { s ->
+            val (before, after) = settingsRepo.update { s ->
                 val today = DayKeys.epochDay(System.currentTimeMillis(), s.dayStartHour)
                 val targetDay = DayKeys.localDate(today).plusMonths(2).toEpochDay()
                 val sameStrength = abs(strengthNow - strengthTarget) < 1e-9
@@ -162,6 +186,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     onboarded = true,
                 )
             }
+            recordPlan(before, after)
+            refreshWidgets()
         }
 
     fun skipOnboarding() = updateSettings { it.copy(onboarded = true) }
@@ -171,21 +197,29 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun exportJson(context: Context) {
-        Export.shareJson(context, entries.value, types.value.orEmpty(), settings.value)
+        Export.shareJson(context, entries.value, types.value.orEmpty(), settings.value, plans.value)
     }
 
-    /** Replaces all pouches and entries with the file's in one transaction, then takes over its settings. */
+    /** Replaces pouches, entries and plan history with the file's in one transaction, then takes over its settings. */
     fun importBackup(contents: Backup.Contents) = viewModelScope.launch {
         val imported = contents.settingsOver(settingsRepo.settings.first()).copy(onboarded = true)
-        // Files from before 0.7.6 have no per-entry pouch time; their own setting is the best guess.
+        // Older files lack per-entry pouch time and day, or the plan history; their own settings are the best guess.
         val minutes = PouchTiming.newPouchMinutes(imported)
-        val entries = contents.entries.map { if (it.pouchMinutes == null) it.copy(pouchMinutes = minutes) else it }
+        val entries = contents.entries.map {
+            it.copy(
+                pouchMinutes = it.pouchMinutes ?: minutes,
+                day = it.day ?: DayKeys.epochDay(it.timestamp, imported.dayStartHour),
+            )
+        }
+        val plans = contents.plans.ifEmpty { listOf(PlanHistory.versionOf(imported, fromDay = 0L)) }
         val ok = runCatching {
             db.withTransaction {
                 dao.deleteAllEntries()
                 dao.deleteAllTypes()
+                dao.deleteAllPlans()
                 dao.insertTypes(contents.types)
                 dao.insertEntries(entries)
+                dao.insertPlans(plans)
             }
         }.isSuccess
         if (ok) {

@@ -44,7 +44,7 @@ class PouchTimingTest {
         assertEquals(at30, at90, 1e-12)        // nothing more after the pouch time
 
         val removed = PouchTiming.finish(e, s, start + 15 * min)
-        val expected = 10.0 * s.pk.absorptionFraction * Pharmacokinetics.releaseFraction(15.0, 30.0, Brands.averageK)
+        val expected = 10.0 * s.pk.absorptionFraction * Pharmacokinetics.releasedShare(15.0, Brands.averageK)
         assertEquals(expected, PouchTiming.absorbedMg(removed, s, start + 15 * min), 1e-9)
         assertEquals(expected, PouchTiming.absorbedMg(removed, s, start + 5 * 60 * min), 1e-9)
     }
@@ -69,6 +69,37 @@ class PouchTimingTest {
         }
         val takenOut = PouchTiming.finish(e, s, start + 25 * min)
         assertEquals(25 * min, PouchTiming.effectiveDurationMs(takenOut, shorter)) // not cut to the new 20 min
+    }
+
+    @Test
+    fun lastOutIsThePouchThatCameOutLastNotTheOneThatWentInLast() {
+        val a = LogEntry(id = 1, pouchTypeId = 1, timestamp = start, strengthMg = 8.0, pouchMinutes = 30)                // out by itself at +30
+        val b = LogEntry(id = 2, pouchTypeId = 1, timestamp = start + 5 * min, strengthMg = 8.0, endTimestamp = start + 6 * min, pouchMinutes = 30)
+        assertEquals(start + 30 * min, PouchTiming.lastOutMs(listOf(a, b), s, start + 50 * min))
+        // while A is still in, the last one out is B
+        assertEquals(start + 6 * min, PouchTiming.lastOutMs(listOf(a, b), s, start + 20 * min))
+        assertEquals(null, PouchTiming.lastOutMs(listOf(a), s, start + 10 * min))
+    }
+
+    @Test
+    fun movingTheStartKeepsARecordedRemoval() {
+        // + tapped at 10:12 for a pouch that went in at 10:00, taken out at 10:30
+        val e = LogEntry(pouchTypeId = 1, timestamp = start + 12 * min, strengthMg = 8.0, endTimestamp = start + 30 * min, pouchMinutes = 30)
+        val fixed = PouchTiming.withNewStart(e, start, s)
+        assertEquals(start + 30 * min, fixed.endTimestamp)
+        assertEquals(30 * min, PouchTiming.effectiveDurationMs(fixed, s))
+        // moved past its removal: the removal moves along and keeps the duration
+        val later = PouchTiming.withNewStart(e, start + 40 * min, s)
+        assertEquals(start + 58 * min, later.endTimestamp)
+        // a pouch still in keeps no end
+        assertEquals(null, PouchTiming.withNewStart(e.copy(endTimestamp = null), start, s).endTimestamp)
+    }
+
+    @Test
+    fun aNewEntryRecordsItsPouchTimeAndDay() {
+        val e = PouchTiming.newEntry(7, 6.0, 0.08, start, Settings(pk = PkParams(absorptionMinutes = 40), dayStartHour = 4))
+        assertEquals(40, e.pouchMinutes)
+        assertEquals(DayKeys.epochDay(start, 4), e.day)
     }
 
     @Test

@@ -15,8 +15,8 @@ No account, no server, no analytics. Everything lives in a local SQLite database
 |---|---|
 | **Track** | Today card: pouches or mg left, progress bar, the day's face. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** puts the pouch "in": a card with a timer and a **Remove** button appears; if you never tap Remove, the pouch counts as removed after the pouch time (30 min by default). Today's log shows each pouch with its time in, and you can adjust the time or delete an entry. |
 | **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL) and when 95 % of each will be gone. A chart with a solid line for the past and a dashed line for the forecast if you stop now; 24 h / 48 h / 7 d ranges. |
-| **History** | Five weeks of day tiles: pouches and mg per day, coloured in seven steps by how the day went against the limit. Streak within the limit, days over the limit, weekly average, totals. Daily bars against the limit line, projected a week ahead. |
-| **Plan** | Limit counted in pouches or in mg of nicotine. Either a fixed daily limit or a taper: start value → target value by a date, with today's limit interpolated linearly. |
+| **History** | Five weeks of day tiles: pouches and mg per day, coloured in seven steps by how the day went against the limit that applied on that day. Streak within the limit, days over the limit, the last 30 and 7 finished days, totals. Daily bars against the limit line, projected a week ahead. |
+| **Plan** | Limit counted in pouches or in mg of nicotine. Either a fixed daily limit or a taper: start value → target value by a date, with today's limit interpolated linearly. A change applies from today on; past days keep the plan they had. |
 | **Settings** | Manage pouches: brand from a catalogue (or any other), optional flavour, strength in mg, a "fast release" tick for mini / dry-slim lines, colour; hide and restore. Hour at which a new day starts. Body weight and pouch time. Theme and, on Android 13+, language. Export to CSV or JSON through the share sheet; import a JSON export to move everything to another phone. |
 
 On first launch the app asks for your usual pouch, how many you use per day, and where you want to be
@@ -33,9 +33,10 @@ Long-press the home screen → Widgets → Pouchwise. Two sizes:
   away). **✓** takes the pouch out; with two or more in, it asks which one. While a pouch is in, its
   brand and a running timer show under the count, and ✓ turns white; otherwise ✓ is greyed out.
 
-Widgets refresh right after every change made in the app, when a pouch reaches its pouch time (an
-ordinary alarm that needs no permission, so Android may deliver it a few minutes late), and once an
-hour on their own, so the day rolls over on time.
+Widgets refresh right after every change made in the app, whenever the app is opened, when a new
+tracking day starts and when a pouch reaches its pouch time. The last two use an ordinary alarm that
+needs no permission and lands within about ten minutes of the moment. They also refresh when the
+time zone or the system language changes, and once an hour on their own.
 
 Going over the limit never blocks logging. The day card turns red with "N pouches over the limit"
 and the extra entries are marked in the log — the data stays honest.
@@ -118,11 +119,17 @@ set JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=C:\__no_unix_sockets__
 
 ## Body model
 
-Each pouch is a constant-rate nicotine input for as long as it is in. A full pouch time (30 min by
-default, adjustable) delivers 30 % of the labelled nicotine. Removing the pouch earlier delivers
-less, following first-order release from the pouch normalised to the full time:
-`(1 − e^(−k·t)) / (1 − e^(−k·T))`, with t the minutes in and T the full pouch time. Every entry keeps
-the pouch time that was set when the pouch went in, so changing the setting affects new pouches only.
+Each pouch is a constant-rate nicotine input for as long as it is in. The model is anchored at one
+point: a pouch kept in for 30 minutes delivers 30 % of its labelled nicotine. Any other time in
+scales that by first-order release from the pouch, `(1 − e^(−k·t)) / (1 − e^(−k·30))`, with t the
+minutes actually in, so a shorter time gives less and a longer one a little more. The pouch-time
+setting only decides when a pouch counts as removed by itself; every entry keeps the value that was
+set when it went in, so changing the setting affects new pouches only.
+
+The 30 % is a rough estimate, not a measured constant. Studies of nicotine pouches report 24–52 % of
+the labelled nicotine leaving the pouch within 20 minutes
+([Mallock-Ohnesorg et al., Front Pharmacol 2024](https://doi.org/10.3389/fphar.2024.1392027)), and only
+part of what leaves reaches the blood. Treat the absolute levels on the Body screen as approximate.
 
 The rate k comes with the brand you pick when creating a pouch. The catalogue holds the seven
 brands measured by in-vitro dissolution in artificial saliva
@@ -141,8 +148,8 @@ brands measured by in-vitro dissolution in artificial saliva
 
 Two things from that study shaped the design: every product released nicotine front-loaded
 (first-order), and "dry" versus "wet" did not predict speed — the wet pouches (Loop, Volt) were the
-slowest, while the dry ZYN was the fastest. A pouch taken out at half time has given up ~72 % of its
-dose with the average k, ~82 % for ZYN, ~58 % for Loop. Lines within a brand can differ (mini,
+slowest, while the dry ZYN was the fastest. A pouch taken out after 15 minutes has given up ~72 % of
+its 30-minute dose with the average k, ~82 % for ZYN, ~58 % for Loop. Lines within a brand can differ (mini,
 dry-slim, extra-strong); the "fast release" tick on a pouch raises its k to 0.10 /min (ZYN-like) when
 the brand's own value is lower. Pouches above 12 mg get a blunt tolerance warning in the dialog.
 
@@ -157,24 +164,31 @@ not change these times; it only enters the ng/mL conversion, through volumes of 
 
 Two numbers live side by side. The daily total and the limit count the labelled mg of each pouch —
 what you put in, independent of how long it stayed. The *absorbed* estimate (labelled × 30 % ×
-released share for the time in) is shown next to it: on the Today card, per entry in the log, in the
-day detail on History, in the export, and it is what drives the Body chart.
+released share for the minutes in) is shown next to it: on the Today card, per entry in the log, in
+the day detail on History, in the export, and it is what drives the Body chart.
 Code: `model/Pharmacokinetics.kt`, `model/Brands.kt`; tests: `app/src/test/.../model/`.
 
 ## Data
 
-- Database `pouchwise.db` (Room, schema v6). `pouch_types` and `log_entries`; an entry stores the
-  strength, release constant and pouch time (`pouchMinutes`) at log time, so editing a pouch or the
-  settings never rewrites history. `endTimestamp` is when the pouch was removed (NULL = stayed in for
-  its full pouch time).
+The rule throughout: whatever shapes the past is recorded when it happens, and settings only shape the
+future.
+
+- Database `pouchwise.db` (Room, schema v7). `pouch_types` and `log_entries`; an entry stores the
+  strength, release constant, pouch time (`pouchMinutes`) and tracking day (`day`) at log time, so
+  editing a pouch, the pouch time, the day-start hour or travelling across time zones never moves or
+  rewrites old entries. `endTimestamp` is when the pouch was removed (NULL = stayed in for its full
+  pouch time). `plan_versions` keeps the limit plan from the day each change was made, and every past
+  day is judged by the version in force on that day.
 - Export from Settings → Data: CSV
-  (`id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg`)
-  or JSON (everything, settings included).
+  (`id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg,pouch_min,day`)
+  or JSON (everything: pouches, entries, plan history and settings).
 - Import from Settings → Data, or from the first-launch screen: a JSON export replaces all pouches,
   entries and settings on the phone after a confirmation that shows what is on the phone and what is
   in the file. It runs in one transaction, so a damaged or foreign file changes nothing. CSV is for
   spreadsheets and cannot be imported.
-- Android Auto Backup is enabled, but the export is the backup to rely on.
+- Cloud backup is off, so the log never leaves the phone through the app or Google's backup. On
+  Android 12 and newer a phone-to-phone transfer during setup still carries it over; otherwise use
+  export and import.
 
 ## Project layout
 

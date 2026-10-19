@@ -34,6 +34,7 @@ private const val WEEKS = 5
 @Composable
 fun HistoryScreen(vm: AppViewModel) {
     val entries by vm.entries.collectAsStateWithLifecycle()
+    val plans by vm.plans.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
 
@@ -42,21 +43,26 @@ fun HistoryScreen(vm: AppViewModel) {
     val gridEnd = today + (7 - todayDow)
     val gridStart = gridEnd - WEEKS * 7 + 1
     val chartStart = today - 13
-    val firstDay = entries.firstOrNull()?.let { DayKeys.epochDay(it.timestamp, settings.dayStartHour) } ?: today
+    val firstDay = remember(entries, settings.dayStartHour) {
+        entries.minOfOrNull { DayKeys.of(it, settings.dayStartHour) }
+    } ?: today
 
-    val stats = remember(entries, settings, today) {
-        Stats.dailyStats(entries, settings, minOf(firstDay, gridStart, chartStart, today - 29), today)
+    val stats = remember(entries, plans, settings, today) {
+        Stats.dailyStats(entries, settings, minOf(firstDay, gridStart, chartStart, today - 30), today, plans, today)
     }
     val byDay = remember(stats) { stats.associateBy { it.epochDay } }
     val chartStats = remember(stats) { stats.filter { it.epochDay >= chartStart } }
     val futureLimits = remember(settings, today) { (1..7).map { (today + it) to Limits.limitForDayRounded(settings, today + it) } }
 
+    // Finished days only: today is still running.
     val withData = stats.filter { it.hasData }
     val overTotal = withData.count { !it.withinLimit }
-    val last30 = withData.filter { it.epochDay in (today - 29)..(today - 1) }
+    val last30 = withData.filter { it.epochDay in (today - 30)..(today - 1) }
     val within30 = last30.count { it.withinLimit }
-    val last7 = withData.filter { it.epochDay in (today - 6)..today }
-    val avg7 = if (last7.isEmpty()) 0.0 else last7.sumOf { it.used } / last7.size
+    val last7 = withData.filter { it.epochDay in (today - 7)..(today - 1) }
+    // In today's unit from the raw counts, so a switch between pouches and mg does not mix units.
+    val avg7 = if (last7.isEmpty()) 0.0
+               else last7.sumOf { if (settings.limitMode == LimitMode.COUNT) it.count.toDouble() else it.mg } / last7.size
     val streak = Stats.streak(stats)
     val totalMg = entries.sumOf { it.strengthMg }
 
@@ -88,7 +94,7 @@ fun HistoryScreen(vm: AppViewModel) {
             if (sel != null) {
                 val unit = if (sel.mode == LimitMode.COUNT) stringResource(R.string.unit_pouches) else stringResource(R.string.unit_mg)
                 val absorbed = entries
-                    .filter { DayKeys.epochDay(it.timestamp, settings.dayStartHour) == sel.epochDay }
+                    .filter { DayKeys.of(it, settings.dayStartHour) == sel.epochDay }
                     .sumOf { PouchTiming.absorbedMg(it, settings, now) }
                 Text(
                     "${Fmt.dateWithWeekday(sel.epochDay)} · ${sel.count} ${stringResource(R.string.unit_pouches)} · " +
@@ -140,6 +146,7 @@ fun HistoryScreen(vm: AppViewModel) {
                 stats = chartStats,
                 futureLimits = futureLimits,
                 todayDay = today,
+                mode = settings.limitMode,
                 barColor = MaterialTheme.colorScheme.primary,
                 lineColor = MaterialTheme.colorScheme.onSurface,
             )

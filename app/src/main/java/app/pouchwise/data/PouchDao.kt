@@ -3,6 +3,7 @@ package app.pouchwise.data
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
@@ -57,6 +58,31 @@ interface PouchDao {
     /** Freezes the pouch time of entries that have none yet (rows from before schema v6, old imports). */
     @Query("UPDATE log_entries SET pouchMinutes = :minutes WHERE pouchMinutes IS NULL")
     suspend fun fillMissingPouchMinutes(minutes: Int)
+
+    @Query("SELECT * FROM log_entries WHERE day IS NULL")
+    suspend fun entriesWithoutDay(): List<LogEntry>
+
+    @Update
+    suspend fun updateEntries(entries: List<LogEntry>)
+
+    /** One tracking day; rows without a stored day fall back to the time range of that day. */
+    @Query("SELECT * FROM log_entries WHERE day = :day OR (day IS NULL AND timestamp >= :fromMs AND timestamp < :toMs) ORDER BY timestamp")
+    suspend fun entriesOfDay(day: Long, fromMs: Long, toMs: Long): List<LogEntry>
+
+    @Query("SELECT * FROM plan_versions ORDER BY fromDay")
+    fun observePlans(): Flow<List<PlanVersion>>
+
+    @Query("SELECT COUNT(*) FROM plan_versions")
+    suspend fun planCount(): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertPlan(plan: PlanVersion)
+
+    @Insert
+    suspend fun insertPlans(plans: List<PlanVersion>)
+
+    @Query("DELETE FROM plan_versions")
+    suspend fun deleteAllPlans()
 
     @Query("DELETE FROM pouch_types")
     suspend fun deleteAllTypes()

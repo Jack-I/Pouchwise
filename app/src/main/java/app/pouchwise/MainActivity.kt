@@ -19,8 +19,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        // Also runs after a language switch recreates the activity, so the widgets follow it.
-        lifecycleScope.launch { runCatching { WidgetUpdater.updateAll(applicationContext) } }
         setContent {
             val vm: AppViewModel = viewModel()
             val settings by vm.settings.collectAsStateWithLifecycle()
@@ -33,5 +31,11 @@ class MainActivity : ComponentActivity() {
                 PouchwiseApp(vm)
             }
         }
+    }
+
+    /** Every return to the app, including after a language switch recreates it, brings the widgets up to date. */
+    override fun onStart() {
+        super.onStart()
+        lifecycleScope.launch { runCatching { WidgetUpdater.updateAll(applicationContext) } }
     }
 }

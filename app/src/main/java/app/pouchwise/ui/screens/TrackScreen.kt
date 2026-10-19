@@ -48,7 +48,9 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val typesById = remember(types) { types.associateBy { it.id } }
 
     // A one-second clock runs only while a pouch is in, for the countdown and the running absorbed amount.
-    val anyActive = entries.any { PouchTiming.isActive(it, settings, now) }
+    // The wall clock is read on every recomposition so a pouch just logged shows at once, not at the next 30-s tick.
+    val wallNow = maxOf(now, System.currentTimeMillis())
+    val anyActive = entries.any { PouchTiming.isActive(it, settings, wallNow) }
     var tick by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(anyActive) {
         while (anyActive) {
@@ -56,16 +58,14 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             delay(1_000)
         }
     }
-    val clock = if (anyActive) tick else now
+    val clock = if (anyActive) maxOf(tick, wallNow) else wallNow
     val activeEntries = remember(entries, settings, clock) {
         entries.filter { PouchTiming.isActive(it, settings, clock) }
     }
 
     val today = DayKeys.epochDay(now, settings.dayStartHour)
-    val dayStart = DayKeys.startOfDayMs(today, settings.dayStartHour)
-    val dayEnd = DayKeys.endOfDayMs(today, settings.dayStartHour)
-    val todaysAsc = remember(entries, dayStart, dayEnd) {
-        entries.filter { it.timestamp >= dayStart && it.timestamp < dayEnd }
+    val todaysAsc = remember(entries, settings.dayStartHour, today) {
+        entries.filter { DayKeys.of(it, settings.dayStartHour) == today }
     }
     val todays = remember(todaysAsc) { todaysAsc.asReversed() }
     val count = todaysAsc.size
@@ -74,10 +74,8 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val limit = Limits.limitForDayRounded(settings, today)
     val overIds = remember(todaysAsc, settings, limit) { Limits.overLimitEntryIds(todaysAsc, settings, limit) }
     val pouchInNow = activeEntries.isNotEmpty()
-    // "Last pouch" counts from the moment it came out (or its automatic removal), not from when it went in.
-    val lastOutMs = entries.lastOrNull()?.let { e ->
-        minOf(e.endTimestamp ?: (e.timestamp + PouchTiming.autoMs(e, settings)), clock)
-    }
+    // "Last pouch" counts from the moment the most recent one came out, by hand or by its own time.
+    val lastOutMs = PouchTiming.lastOutMs(entries, settings, clock)
 
     var timePickFor by remember { mutableStateOf<PouchType?>(null) }
     var editEntry by remember { mutableStateOf<LogEntry?>(null) }
@@ -173,9 +171,10 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             initialMs = now,
             onDismiss = { timePickFor = null },
             onConfirm = { h, m ->
-                val at = timeTodayAt(h, m, now)
+                val nowMs = System.currentTimeMillis()
+                val todayDate = Instant.ofEpochMilli(nowMs).atZone(ZoneId.systemDefault()).toLocalDate()
                 timePickFor = null
-                vm.logPouch(type, at)
+                vm.logPouch(type, DayKeys.pastTimeMs(todayDate, h, m, nowMs))
             },
         )
     }
@@ -186,10 +185,9 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             initialMs = e.timestamp,
             onDismiss = { editEntry = null },
             onConfirm = { h, m ->
-                val zone = ZoneId.systemDefault()
-                val date = Instant.ofEpochMilli(e.timestamp).atZone(zone).toLocalDate()
-                val at = date.atTime(h, m).atZone(zone).toInstant().toEpochMilli()
-                vm.moveEntry(e, at)
+                // Same date as before, unless that time is still ahead: then the evening before was meant.
+                val date = Instant.ofEpochMilli(e.timestamp).atZone(ZoneId.systemDefault()).toLocalDate()
+                vm.moveEntry(e, DayKeys.pastTimeMs(date, h, m, System.currentTimeMillis()))
                 editEntry = null
             },
         )
@@ -213,15 +211,6 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             onSave = { brand, variant, strength, color, fast -> vm.addType(brand, variant, strength, color, fast); addDialog = false },
         )
     }
-}
-
-/** Today's date at [hour]:[minute]; if that is in the future, assume yesterday was meant. */
-private fun timeTodayAt(hour: Int, minute: Int, nowMs: Long): Long {
-    val zone = ZoneId.systemDefault()
-    val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
-    var at = today.atTime(hour, minute).atZone(zone).toInstant().toEpochMilli()
-    if (at > nowMs + 60_000L) at -= 24L * 3_600_000L
-    return at
 }
 
 @Composable
@@ -260,7 +249,7 @@ private fun TodayCard(
         }
     }
     val detail = when (mode) {
-        LimitMode.COUNT -> stringResource(R.string.used_of_limit_count, count, limit, Fmt.mg(mg))
+        LimitMode.COUNT -> pluralStringResource(R.plurals.used_of_limit_count, limit, count, limit, Fmt.mg(mg))
         LimitMode.MG -> pluralStringResource(R.plurals.used_of_limit_mg, count, Fmt.mg(mg), limit.toString(), count)
     }
     val container = if (over) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant
@@ -297,8 +286,11 @@ private fun TodayCard(
         if (!pouchInNow) {
             Spacer(Modifier.height(6.dp))
             Text(
-                text = if (lastOutMs != null) stringResource(R.string.last_pouch_ago, durationText(nowMs - lastOutMs))
-                       else stringResource(R.string.no_pouches_today),
+                text = when {
+                    lastOutMs == null -> stringResource(R.string.no_pouches_today)
+                    nowMs - lastOutMs < 60_000L -> stringResource(R.string.last_pouch_just_now)
+                    else -> stringResource(R.string.last_pouch_ago, durationText(nowMs - lastOutMs))
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

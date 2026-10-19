@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +43,7 @@ import app.pouchwise.data.PouchType
 import app.pouchwise.data.SettingsRepository
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.model.Settings
+import app.pouchwise.model.ThemeMode
 import app.pouchwise.ui.components.ColorDot
 import app.pouchwise.ui.theme.PouchwiseTheme
 import app.pouchwise.ui.theme.pouchColor
@@ -63,8 +65,17 @@ class QuickLogActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val removing = intent?.action == ACTION_REMOVE
+        val settingsFlow = SettingsRepository(applicationContext).settings
         setContent {
-            PouchwiseTheme(darkTheme = isSystemInDarkTheme()) {
+            // Follow the app's own theme setting, like the app does.
+            val settings by settingsFlow.collectAsState(initial = null)
+            val mode = settings?.themeMode ?: return@setContent
+            val dark = when (mode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+            PouchwiseTheme(darkTheme = dark) {
                 if (removing) RemoveChooser() else LogChooser()
             }
         }
@@ -183,19 +194,20 @@ class QuickLogActivity : ComponentActivity() {
 object QuickLog {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    /** A second tap on "+" within this time is taken as a double tap, not as a second pouch. */
+    private const val DOUBLE_TAP_MS = 500L
+    @Volatile private var lastLogAt = 0L
+
     fun log(context: Context, type: PouchType) {
         val app = context.applicationContext
+        val now = System.currentTimeMillis()
+        synchronized(this) {
+            if (now - lastLogAt < DOUBLE_TAP_MS) return
+            lastLogAt = now
+        }
         scope.launch {
             val settings = SettingsRepository(app).settings.first()
-            AppDatabase.get(app).dao().insertEntry(
-                LogEntry(
-                    pouchTypeId = type.id,
-                    timestamp = System.currentTimeMillis(),
-                    strengthMg = type.strengthMg,
-                    releaseK = type.releaseK,
-                    pouchMinutes = PouchTiming.newPouchMinutes(settings),
-                ),
-            )
+            AppDatabase.get(app).dao().insertEntry(PouchTiming.newEntry(type.id, type.strengthMg, type.releaseK, now, settings))
             toast(app, app.getString(R.string.widget_logged, type.name))
             runCatching { WidgetUpdater.updateAll(app) }
         }

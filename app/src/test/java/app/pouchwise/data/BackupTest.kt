@@ -1,7 +1,9 @@
 package app.pouchwise.data
 
+import app.pouchwise.model.Brands
 import app.pouchwise.model.LimitMode
 import app.pouchwise.model.PkParams
+import app.pouchwise.model.PlanHistory
 import app.pouchwise.model.Settings
 import app.pouchwise.model.ThemeMode
 import app.pouchwise.util.Export
@@ -36,11 +38,30 @@ class BackupTest {
 
     @Test
     fun exportReadsBackUnchanged() {
-        val contents = Backup.parse(Export.json(entries, types, settings, appVersion = "0.7.5"))
+        val plans = listOf(
+            PlanHistory.versionOf(settings.copy(dailyLimitMg = 60.0), fromDay = 0L),
+            PlanHistory.versionOf(settings, fromDay = 20_350L),
+        )
+        val withDays = entries.map { it.copy(day = 20_376L) }
+        val contents = Backup.parse(Export.json(withDays, types, settings, appVersion = "0.8.0", plans = plans))
         assertEquals(types, contents.types)
-        assertEquals(entries, contents.entries)
+        assertEquals(withDays, contents.entries)
+        assertEquals(plans, contents.plans)
         assertEquals(settings, contents.settingsOver(Settings()))
         assertNotNull(contents.exportedAt)
+    }
+
+    @Test
+    fun brokenNumbersAreRefusedOrIgnored() {
+        // org.json turns the string "NaN" into a number; a strength like that must not get in
+        assertRefused("""{"types":[{"id":1,"name":"A","strengthMg":"NaN"}],"entries":[]}""")
+        assertRefused("""{"types":[],"entries":[{"id":1,"pouchTypeId":1,"timestamp":1000,"strengthMg":0}]}""")
+        assertRefused("""{"types":[],"entries":[{"id":1,"pouchTypeId":1,"timestamp":5000,"strengthMg":6,"endTimestamp":1000}]}""")
+        // a zero release speed falls back to the brand's own instead of breaking the pouch screen
+        val ok = Backup.parse("""{"types":[{"id":1,"name":"ZYN","strengthMg":6,"brand":"ZYN","releaseK":0}],"entries":[]}""")
+        assertEquals(Brands.kFor("ZYN"), ok.types.single().releaseK, 1e-12)
+        val weird = Backup.parse("""{"types":[],"entries":[],"settings":{"dailyLimitMg":"Infinity"}}""")
+        assertEquals(60.0, weird.settingsOver(Settings()).dailyLimitMg, 1e-12)
     }
 
     @Test

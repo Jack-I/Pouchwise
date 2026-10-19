@@ -38,7 +38,12 @@
         <item quantity="other">%d пауча сверх лимита</item>
     </plurals>
     <string name="over_limit_by_mg">%1$s мг сверх лимита</string>
-    <string name="used_of_limit_count">%1$d из %2$d паучей · %3$s мг никотина</string>
+    <plurals name="used_of_limit_count">
+        <item quantity="one">%1$d из %2$d пауча · %3$s мг никотина</item>
+        <item quantity="few">%1$d из %2$d паучей · %3$s мг никотина</item>
+        <item quantity="many">%1$d из %2$d паучей · %3$s мг никотина</item>
+        <item quantity="other">%1$d из %2$d пауча · %3$s мг никотина</item>
+    </plurals>
     <plurals name="used_of_limit_mg">
         <item quantity="one">%1$s из %2$s мг · %3$d пауч</item>
         <item quantity="few">%1$s из %2$s мг · %3$d пауча</item>
@@ -46,6 +51,7 @@
         <item quantity="other">%1$s из %2$s мг · %3$d пауча</item>
     </plurals>
     <string name="last_pouch_ago">Последний пауч вынут %1$s назад</string>
+    <string name="last_pouch_just_now">Последний пауч вынут только что</string>
     <string name="no_pouches_today">Сегодня ещё ни одного</string>
     <string name="your_pouches">Ваши паучи</string>
     <string name="edit_short">Изменить</string>
@@ -171,7 +177,7 @@
     <string name="weight_hint">Нужен только для пересчёта мг в организме в примерную концентрацию в крови.</string>
     <string name="absorption_minutes">Время пауча под губой, минут</string>
     <string name="pouch_time_hint">Столько пауч считается «под губой», если не убрать его раньше на экране учёта. Чем меньше время, тем меньше усвоилось никотина. Действует для новых паучей, у уже записанных остаётся своё время.</string>
-    <string name="model_hint">Оценка исходит из того, что за полное время пауча усваивается около 30%% заявленного никотина, период полувыведения никотина 2 ч, котинина 16 ч — средние значения из публикаций.</string>
+    <string name="model_hint" formatted="false">Оценка исходит из того, что за 30 минут под губой усваивается около 30% заявленного никотина (меньше, если короче, и чуть больше, если дольше), период полувыведения никотина 2 ч, котинина 16 ч. 30% — грубая оценка по опубликованным исследованиям, поэтому уровни приблизительные.</string>
     <string name="settings_appearance">Оформление</string>
     <string name="theme_system">Как в системе</string>
     <string name="theme_light">Светлая</string>

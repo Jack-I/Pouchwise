@@ -18,6 +18,17 @@ object PouchTiming {
     /** Pouch time for a pouch put in now. */
     fun newPouchMinutes(s: Settings): Int = s.pk.absorptionMinutes.coerceAtLeast(1)
 
+    /** A pouch going in at [atMs], with everything that shapes its past fixed now. */
+    fun newEntry(pouchTypeId: Long, strengthMg: Double, releaseK: Double, atMs: Long, s: Settings): LogEntry =
+        LogEntry(
+            pouchTypeId = pouchTypeId,
+            timestamp = atMs,
+            strengthMg = strengthMg,
+            releaseK = releaseK,
+            pouchMinutes = newPouchMinutes(s),
+            day = DayKeys.epochDay(atMs, s.dayStartHour),
+        )
+
     /** This pouch's full time; rows from before it was stored fall back to the current setting. */
     fun pouchMinutes(e: LogEntry, s: Settings): Int = (e.pouchMinutes ?: s.pk.absorptionMinutes).coerceAtLeast(1)
 
@@ -39,17 +50,34 @@ object PouchTiming {
 
     /**
      * Nicotine absorbed from this pouch by [nowMs]: labelled strength × absorbed share × released
-     * share for the time it has been in so far (capped at its planned time).
+     * share for the minutes it has been in so far (capped at its planned time).
      */
     fun absorbedMg(e: LogEntry, s: Settings, nowMs: Long): Double {
         val planned = effectiveDurationMs(e, s)
         val soFar = min(planned, max(nowMs - e.timestamp, 0L))
         if (soFar <= 0L) return 0.0
-        val fullMin = pouchMinutes(e, s).toDouble()
-        return e.strengthMg * s.pk.absorptionFraction * Pharmacokinetics.releaseFraction(soFar / 60_000.0, fullMin, e.releaseK)
+        return e.strengthMg * s.pk.absorptionFraction * Pharmacokinetics.releasedShare(soFar / 60_000.0, e.releaseK)
     }
 
     /** Marks the pouch as taken out now. */
     fun finish(e: LogEntry, s: Settings, nowMs: Long): LogEntry =
         e.copy(endTimestamp = nowMs.coerceIn(e.timestamp + MIN_DURATION_MS, e.timestamp + autoMs(e, s)))
+
+    /** When the most recent pouch came out, by hand or by its own time; null while nothing has come out. */
+    fun lastOutMs(entries: List<LogEntry>, s: Settings, nowMs: Long): Long? =
+        entries.asSequence()
+            .filter { it.timestamp <= nowMs && !isActive(it, s, nowMs) }
+            .map { min(it.timestamp + effectiveDurationMs(it, s), nowMs) }
+            .maxOrNull()
+
+    /**
+     * The entry with its start moved to [newStartMs]. A recorded removal stays where it was, so fixing a
+     * late tap on + does not shorten the pouch; it moves along only if it would otherwise come before the
+     * new start. The tracking day follows the new start under the current rules.
+     */
+    fun withNewStart(e: LogEntry, newStartMs: Long, s: Settings): LogEntry {
+        val end = e.endTimestamp?.let { if (it >= newStartMs + MIN_DURATION_MS) it else it + (newStartMs - e.timestamp) }
+            ?.coerceIn(newStartMs + MIN_DURATION_MS, newStartMs + autoMs(e, s))
+        return e.copy(timestamp = newStartMs, endTimestamp = end, day = DayKeys.epochDay(newStartMs, s.dayStartHour))
+    }
 }

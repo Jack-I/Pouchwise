@@ -66,21 +66,36 @@ class PharmacokineticsTest {
     }
 
     @Test
-    fun releaseFractionFollowsFirstOrderKinetics() {
+    fun releasedShareFollowsFirstOrderKineticsFromTheThirtyMinuteReference() {
         val k = Brands.averageK
-        assertEquals(0.0, Pharmacokinetics.releaseFraction(0.0, 30.0, k), 1e-12)
-        assertEquals(1.0, Pharmacokinetics.releaseFraction(30.0, 30.0, k), 1e-12)
-        assertEquals(1.0, Pharmacokinetics.releaseFraction(45.0, 30.0, k), 1e-12) // capped at the full time
-        // 15 of 30 minutes: Loop < average < ZYN, all above the linear 50 %
-        val loop = Pharmacokinetics.releaseFraction(15.0, 30.0, Brands.kFor("Loop"))
-        val average = Pharmacokinetics.releaseFraction(15.0, 30.0, k)
-        val zyn = Pharmacokinetics.releaseFraction(15.0, 30.0, Brands.kFor("ZYN"))
+        assertEquals(0.0, Pharmacokinetics.releasedShare(0.0, k), 1e-12)
+        assertEquals(1.0, Pharmacokinetics.releasedShare(30.0, k), 1e-12)
+        // longer than the reference gives a little more, shorter gives less
+        assertEquals(1.084, Pharmacokinetics.releasedShare(40.0, k), 0.001)
+        assertEquals(0.842, Pharmacokinetics.releasedShare(20.0, k), 0.001)
+        // 15 minutes: Loop < average < ZYN, all above the linear 50 %
+        val loop = Pharmacokinetics.releasedShare(15.0, Brands.kFor("Loop"))
+        val average = Pharmacokinetics.releasedShare(15.0, k)
+        val zyn = Pharmacokinetics.releasedShare(15.0, Brands.kFor("ZYN"))
         assertEquals(0.58, loop, 0.01)
         assertEquals(0.72, average, 0.01)
         assertEquals(0.82, zyn, 0.01)
         assertTrue(loop < average && average < zyn)
         // k = 0 degrades to even release
-        assertEquals(0.5, Pharmacokinetics.releaseFraction(15.0, 30.0, 0.0), 1e-12)
+        assertEquals(0.5, Pharmacokinetics.releasedShare(15.0, 0.0), 1e-12)
+    }
+
+    @Test
+    fun aShorterPouchTimeGivesLessNicotineAndTheSameMinutesGiveTheSame() {
+        val noElimination = p.copy(nicotineHalfLifeHours = 1e9, cotinineHalfLifeHours = 2e9)
+        fun absorbed(dose: Dose) = Pharmacokinetics.levelsAt(3 * h, listOf(dose), noElimination).nicotineMg
+        val full20 = absorbed(Dose(0L, 10.0, 20 * min, fullMinutes = 20))
+        val full30 = absorbed(Dose(0L, 10.0, 30 * min, fullMinutes = 30))
+        val full40 = absorbed(Dose(0L, 10.0, 40 * min, fullMinutes = 40))
+        assertTrue(full20 < full30 && full30 < full40)
+        assertEquals(10.0 * p.absorptionFraction, full30, 1e-6)
+        // 15 minutes in are 15 minutes in, whatever the pouch time
+        assertEquals(absorbed(Dose(0L, 10.0, 15 * min, fullMinutes = 20)), absorbed(Dose(0L, 10.0, 15 * min, fullMinutes = 40)), 1e-9)
     }
 
     @Test
@@ -92,7 +107,7 @@ class PharmacokineticsTest {
         val fullN = Pharmacokinetics.levelsAt(2 * h, listOf(fullDose), noElimination).nicotineMg
         val halfN = Pharmacokinetics.levelsAt(2 * h, listOf(halfDose), noElimination).nicotineMg
         assertEquals(10.0 * p.absorptionFraction, fullN, 1e-6)
-        assertEquals(10.0 * p.absorptionFraction * Pharmacokinetics.releaseFraction(15.0, 30.0, Brands.averageK), halfN, 1e-6)
+        assertEquals(10.0 * p.absorptionFraction * Pharmacokinetics.releasedShare(15.0, Brands.averageK), halfN, 1e-6)
         assertEquals(2.15, halfN, 0.02)
 
         // Same thing through a logged pouch that was taken out after 15 minutes.

@@ -7,8 +7,11 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.Typeface
 import android.os.SystemClock
+import android.util.TypedValue
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
@@ -66,10 +69,45 @@ object WidgetRenderer {
         return bmp
     }
 
-    fun ringViews(context: Context, state: WidgetState): RemoteViews =
+    /**
+     * The 1×1 widget as one picture: the ring with the app name under it, drawn at the widget's own size.
+     * A TextView there was clipped by launcher fonts drawing beyond their declared metrics; here the label
+     * gets room measured from its actual ink and shrinks to fit the width if it has to.
+     */
+    fun ringWithLabel(context: Context, widthPx: Int, heightPx: Int, state: WidgetState): Bitmap {
+        val dm = context.resources.displayMetrics
+        val bmp = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val label = context.getString(R.string.app_name)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
+            color = Color.WHITE
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.DEFAULT
+            textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 14f, dm)
+            setShadowLayer(2f * dm.density, 0f, dm.density, 0x59000000)
+        }
+        val maxTextWidth = widthPx * 0.96f
+        val textWidth = paint.measureText(label)
+        if (textWidth > maxTextWidth) paint.textSize *= maxTextWidth / textWidth
+
+        val ink = Rect().also { paint.getTextBounds(label, 0, label.length, it) }
+        val fm = paint.fontMetrics
+        val above = maxOf(-fm.top, -ink.top.toFloat())
+        val below = maxOf(fm.bottom, ink.bottom.toFloat()) // also holds the 1 dp-low shadow of a word without descenders
+        val pad = 2f * dm.density
+        val baseline = heightPx - dm.density - below
+        val textTop = baseline - above
+
+        val ringSize = minOf(widthPx - 2 * pad, textTop - 2 * pad).toInt().coerceAtLeast(1)
+        c.drawBitmap(ring(context, ringSize, state), (widthPx - ringSize) / 2f, pad, null)
+        c.drawText(label, widthPx / 2f, baseline, paint)
+        return bmp
+    }
+
+    fun ringViews(context: Context, state: WidgetState, widthPx: Int, heightPx: Int): RemoteViews =
         RemoteViews(context.packageName, R.layout.widget_ring).apply {
-            setImageViewBitmap(R.id.widget_ring_image, ring(context, 256, state))
-            setContentDescription(R.id.widget_ring_image, countText(context, state))
+            setImageViewBitmap(R.id.widget_ring_image, ringWithLabel(context, widthPx, heightPx, state))
+            setContentDescription(R.id.widget_ring_image, context.getString(R.string.app_name) + ": " + countText(context, state))
             setOnClickPendingIntent(R.id.widget_ring_root, openApp(context))
         }
 
