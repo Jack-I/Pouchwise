@@ -44,9 +44,10 @@ The UI is in English and Russian, following the system language.
 
 ## Install
 
-Pouchwise is distributed as an APK; it is not on Google Play.
+Pouchwise needs Android 8.0 or newer. It is distributed as an APK; it is not on Google Play.
 
-1. Download the latest `Pouchwise-x.y.z-release.apk` from the Releases page, or build it yourself (below).
+1. Download the latest `Pouchwise-x.y.z-release.apk` from the
+   [Releases page](https://github.com/Jack-I/Pouchwise/releases/latest), or build it yourself (below).
 2. Copy the file to the phone (USB, cloud drive, messenger).
 3. Open it from the Files app. Android asks to allow installs from that app once, then installs.
    Play Protect may warn about an unknown developer — choose *Install anyway*. The app requests no
@@ -54,6 +55,14 @@ Pouchwise is distributed as an APK; it is not on Google Play.
 
 Updates install over the previous version and keep your data as long as the APK is signed with the
 same key.
+
+Release APKs are signed with the certificate below. To check a download, run
+`apksigner verify --print-certs Pouchwise-x.y.z-release.apk` (Android SDK build-tools) and compare
+the SHA-256 digest:
+
+```
+2b595b4b0f6ba05d546a4d8911fe0d2fa57e1d5580783b6904e15fff3b766b9a
+```
 
 ## Build
 
