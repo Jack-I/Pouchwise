@@ -85,9 +85,11 @@ Point Gradle at the SDK with `local.properties` next to `settings.gradle.kts`:
 sdk.dir=/path/to/Android/Sdk
 ```
 
-### Signing
+### Signing the APK
 
-Without a keystore, `assembleRelease` signs with the debug key, which is fine for one phone. For a
+This is the cryptographic signature of the APK file that Android checks on install and update; it has
+nothing to do with accounts, and the app has no login. Without a keystore, `assembleRelease` signs
+with the debug key, which is fine for one phone. For a
 permanent key, create one and describe it in `keystore.properties` (both are git-ignored):
 
 ```bash
