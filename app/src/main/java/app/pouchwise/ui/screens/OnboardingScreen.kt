@@ -20,6 +20,7 @@ import app.pouchwise.ui.components.OTHER_BRAND
 import app.pouchwise.ui.components.ScreenTitle
 import app.pouchwise.ui.components.SoftCard
 import app.pouchwise.ui.components.parseDecimal
+import app.pouchwise.ui.components.rememberImportFlow
 import app.pouchwise.ui.components.resolveBrand
 
 /** First-launch questionnaire: usual pouch and daily count now, and the target two months out. */
@@ -31,6 +32,7 @@ fun OnboardingScreen(vm: AppViewModel) {
     var perDayNow by rememberSaveable { mutableStateOf("") }
     var perDayTarget by rememberSaveable { mutableStateOf("") }
     var strengthTarget by rememberSaveable { mutableStateOf("") }
+    val startImport = rememberImportFlow(vm)
 
     val brand = resolveBrand(brandSel, custom)
     val sNow = parseDecimal(strengthNow)
@@ -120,6 +122,10 @@ fun OnboardingScreen(vm: AppViewModel) {
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) { Text(stringResource(R.string.onboarding_start), style = MaterialTheme.typography.titleMedium) }
+
+            OutlinedButton(onClick = startImport, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                Text(stringResource(R.string.onboarding_restore))
+            }
 
             TextButton(onClick = { vm.skipOnboarding() }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                 Text(stringResource(R.string.onboarding_skip))

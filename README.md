@@ -17,7 +17,7 @@ No account, no server, no analytics. Everything lives in a local SQLite database
 | **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL) and when 95 % of each will be gone. A chart with a solid line for the past and a dashed line for the forecast if you stop now; 24 h / 48 h / 7 d ranges. |
 | **History** | Five weeks of day tiles: pouches and mg per day, coloured in seven steps by how the day went against the limit. Streak within the limit, days over the limit, weekly average, totals. Daily bars against the limit line, projected a week ahead. |
 | **Plan** | Limit counted in pouches or in mg of nicotine. Either a fixed daily limit or a taper: start value → target value by a date, with today's limit interpolated linearly. |
-| **Settings** | Manage pouches: brand from a catalogue (or any other), optional flavour, strength in mg, a "fast release" tick for mini / dry-slim lines, colour; hide and restore. Hour at which a new day starts. Body weight and pouch time. Theme. Export to CSV or JSON through the share sheet. |
+| **Settings** | Manage pouches: brand from a catalogue (or any other), optional flavour, strength in mg, a "fast release" tick for mini / dry-slim lines, colour; hide and restore. Hour at which a new day starts. Body weight and pouch time. Theme and, on Android 13+, language. Export to CSV or JSON through the share sheet; import a JSON export to move everything to another phone. |
 
 On first launch the app asks for your usual pouch, how many you use per day, and where you want to be
 in two months, and turns that into a plan. Everything can be changed later.
@@ -40,24 +40,26 @@ hour on their own, so the day rolls over on time.
 Going over the limit never blocks logging. The day card turns red with "N pouches over the limit"
 and the extra entries are marked in the log — the data stays honest.
 
-The UI is in English and Russian, following the system language.
+The UI is in English and Russian and follows the phone's language; on Android 13 and newer you can
+pick the language in Settings instead.
 
 ## Install
 
 Pouchwise needs Android 8.0 or newer. It is distributed as an APK; it is not on Google Play.
 
-1. Download the latest `Pouchwise-x.y.z-release.apk` from the
-   [Releases page](https://github.com/Jack-I/Pouchwise/releases/latest), or build it yourself (below).
-2. Copy the file to the phone (USB, cloud drive, messenger).
-3. Open it from the Files app. Android asks to allow installs from that app once, then installs.
-   Play Protect may warn about an unknown developer — choose *Install anyway*. The app requests no
-   permissions at all.
+1. On the phone, open
+   [github.com/Jack-I/Pouchwise/releases/latest/download/Pouchwise.apk](https://github.com/Jack-I/Pouchwise/releases/latest/download/Pouchwise.apk):
+   the latest version downloads straight away. Older versions and release notes are on the
+   [Releases page](https://github.com/Jack-I/Pouchwise/releases). You can also build it yourself (below).
+2. Open the downloaded file. Android asks once to allow installs from your browser or Files app,
+   then installs. Play Protect may warn about an unknown developer — choose *Install anyway*. The app
+   requests no permissions at all.
 
 Updates install over the previous version and keep your data as long as the APK is signed with the
 same key.
 
 Release APKs are signed with the certificate below. To check a download, run
-`apksigner verify --print-certs Pouchwise-x.y.z-release.apk` (Android SDK build-tools) and compare
+`apksigner verify --print-certs Pouchwise.apk` (Android SDK build-tools) and compare
 the SHA-256 digest:
 
 ```
@@ -164,6 +166,10 @@ Code: `model/Pharmacokinetics.kt`, `model/Brands.kt`; tests: `app/src/test/.../m
 - Export from Settings → Data: CSV
   (`id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg`)
   or JSON (everything, settings included).
+- Import from Settings → Data, or from the first-launch screen: a JSON export replaces all pouches,
+  entries and settings on the phone after a confirmation that shows what is on the phone and what is
+  in the file. It runs in one transaction, so a damaged or foreign file changes nothing. CSV is for
+  spreadsheets and cannot be imported.
 - Android Auto Backup is enabled, but the export is the backup to rely on.
 
 ## Project layout

@@ -99,6 +99,9 @@ object WidgetRenderer {
 
             if (state.hasTypes) {
                 setViewVisibility(R.id.widget_wide_buttons, View.VISIBLE)
+                // Set here rather than in the layout so they follow the app's own language.
+                setContentDescription(R.id.widget_wide_add, context.getString(R.string.widget_add))
+                setContentDescription(R.id.widget_wide_remove, context.getString(R.string.widget_remove))
                 setOnClickPendingIntent(R.id.widget_wide_add, quickAction(context, QuickLogActivity.ACTION_LOG, 1))
                 val anyIn = since != null
                 setInt(R.id.widget_wide_remove, "setBackgroundResource", if (anyIn) R.drawable.widget_btn_bg else R.drawable.widget_btn_bg_off)

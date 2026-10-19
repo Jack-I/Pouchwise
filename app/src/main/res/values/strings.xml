@@ -129,6 +129,7 @@
     <string name="onboarding_strength">Strength, mg</string>
     <string name="onboarding_start">Start</string>
     <string name="onboarding_skip">Skip for now</string>
+    <string name="onboarding_restore">Restore from a backup file</string>
     <string name="daily_usage">Daily usage</string>
     <string name="legend_usage">Usage</string>
     <string name="legend_limit">Daily limit</string>
@@ -177,8 +178,34 @@
     <string name="settings_data">Data</string>
     <string name="export_csv">Export CSV</string>
     <string name="export_json">Export JSON</string>
-    <string name="export_hint">Everything stays on this phone. Export to back up or analyse your log.</string>
+    <string name="export_hint">Everything stays on this phone. Export to back up or analyse your log; import a JSON export to move it to another phone.</string>
     <string name="share_export">Share export</string>
+    <string name="import_json">Import JSON</string>
+    <string name="import_title">Replace your data with this file?</string>
+    <string name="import_title_empty">Restore from this file?</string>
+    <string name="import_on_phone">On this phone: %1$s.</string>
+    <string name="import_in_file">In the file: %1$s.</string>
+    <string name="import_in_file_dated">In the file: %1$s, exported %2$s.</string>
+    <string name="import_warning">Your current data will be lost. Export it first if you need it.</string>
+    <string name="import_replace">Replace</string>
+    <string name="import_restore">Restore</string>
+    <string name="import_done">Restored: %1$s, %2$s</string>
+    <string name="import_failed">Import failed, nothing was changed.</string>
+    <string name="import_cant">Can\'t import</string>
+    <string name="import_not_export">This isn\'t a Pouchwise export file.</string>
+    <string name="import_newer">This file is from a newer version of Pouchwise. Update the app first.</string>
+    <plurals name="count_pouches">
+        <item quantity="one">%d pouch</item>
+        <item quantity="other">%d pouches</item>
+    </plurals>
+    <plurals name="count_entries">
+        <item quantity="one">%d entry</item>
+        <item quantity="other">%d entries</item>
+    </plurals>
+    <string name="settings_language">Language</string>
+    <string name="language_system">System</string>
+    <string name="language_en" translatable="false">English</string>
+    <string name="language_ru" translatable="false">Русский</string>
     <string name="about">About</string>
     <string name="disclaimer">Pouchwise is a habit tracker, not a medical device. Body levels are rough estimates from a simple pharmacokinetic model.</string>
     <string name="version">Version %1$s</string>

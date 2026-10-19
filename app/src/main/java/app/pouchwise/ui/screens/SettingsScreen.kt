@@ -1,5 +1,9 @@
 package app.pouchwise.ui.screens
 
+import android.app.LocaleManager
+import android.os.Build
+import android.os.LocaleList
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -7,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,6 +32,7 @@ import app.pouchwise.util.Fmt
 fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> Unit) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val startImport = rememberImportFlow(vm)
     val pk = settings.pk
     val version = remember {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "" }.getOrDefault("")
@@ -111,6 +117,12 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
                 }
             }
 
+            // Per-app language is a system feature from Android 13; older phones keep the phone's language.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                SectionTitle(stringResource(R.string.settings_language))
+                SoftCard { LanguagePicker() }
+            }
+
             SectionTitle(stringResource(R.string.settings_data))
             SoftCard {
                 Text(stringResource(R.string.export_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -127,6 +139,12 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
                         Text(stringResource(R.string.export_json))
                     }
                 }
+                Spacer(Modifier.height(10.dp))
+                OutlinedButton(onClick = startImport, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.FileOpen, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.import_json))
+                }
             }
 
             SectionTitle(stringResource(R.string.about))
@@ -135,6 +153,32 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
                 Spacer(Modifier.height(6.dp))
                 Text(stringResource(R.string.version, version), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+        }
+    }
+}
+
+/** System default, English or Russian; the system stores the choice and recreates the screen in the new language. */
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@Composable
+private fun LanguagePicker() {
+    val context = LocalContext.current
+    val manager = remember { context.getSystemService(LocaleManager::class.java) }
+    var current by remember { mutableStateOf(manager?.applicationLocales?.takeUnless { it.isEmpty }?.get(0)?.language) }
+    val options = listOf(
+        null to stringResource(R.string.language_system),
+        "en" to stringResource(R.string.language_en),
+        "ru" to stringResource(R.string.language_ru),
+    )
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        options.forEachIndexed { i, (tag, label) ->
+            SegmentedButton(
+                selected = current == tag,
+                onClick = {
+                    current = tag
+                    manager?.applicationLocales = if (tag == null) LocaleList.getEmptyLocaleList() else LocaleList.forLanguageTags(tag)
+                },
+                shape = SegmentedButtonDefaults.itemShape(index = i, count = options.size),
+            ) { Text(label) }
         }
     }
 }

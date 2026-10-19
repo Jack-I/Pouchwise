@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
 import app.pouchwise.R
+import app.pouchwise.data.Backup
 import app.pouchwise.data.LogEntry
 import app.pouchwise.data.PouchType
 import app.pouchwise.model.PouchTiming
@@ -42,15 +43,20 @@ object Export {
         return sb.toString()
     }
 
-    fun json(entries: List<LogEntry>, types: List<PouchType>, settings: Settings): String {
+    /** Everything needed to restore the app on another phone; read back by [Backup.parse]. */
+    fun json(entries: List<LogEntry>, types: List<PouchType>, settings: Settings, appVersion: String = ""): String {
         val root = JSONObject()
+        root.put("app", "Pouchwise")
+        root.put("format", Backup.FORMAT)
+        if (appVersion.isNotEmpty()) root.put("appVersion", appVersion)
         root.put("exportedAt", isoFormatter.format(Instant.now().atZone(ZoneId.systemDefault())))
         root.put("types", JSONArray().apply {
             types.forEach { t ->
                 put(JSONObject().apply {
                     put("id", t.id); put("name", t.name); put("strengthMg", t.strengthMg)
-                    put("colorIndex", t.colorIndex); put("archived", t.archived); put("createdAt", t.createdAt)
-                    put("brand", t.brand); put("releaseK", t.releaseK)
+                    put("colorIndex", t.colorIndex); put("sortOrder", t.sortOrder); put("archived", t.archived)
+                    put("createdAt", t.createdAt); put("brand", t.brand); put("releaseK", t.releaseK)
+                    put("fastRelease", t.fastRelease)
                 })
             }
         })
@@ -82,6 +88,7 @@ object Export {
                 put("cotinineHalfLifeHours", settings.pk.cotinineHalfLifeHours)
                 put("cotinineYield", settings.pk.cotinineYield)
             })
+            put("themeMode", settings.themeMode.name)
         })
         return root.toString(2)
     }
@@ -89,8 +96,10 @@ object Export {
     fun shareCsv(context: Context, entries: List<LogEntry>, types: List<PouchType>, settings: Settings) =
         share(context, "pouchwise-${stamp()}.csv", "text/csv", csv(entries, types, settings))
 
-    fun shareJson(context: Context, entries: List<LogEntry>, types: List<PouchType>, settings: Settings) =
-        share(context, "pouchwise-${stamp()}.json", "application/json", json(entries, types, settings))
+    fun shareJson(context: Context, entries: List<LogEntry>, types: List<PouchType>, settings: Settings) {
+        val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty() }.getOrDefault("")
+        share(context, "pouchwise-${stamp()}.json", "application/json", json(entries, types, settings, version))
+    }
 
     private fun share(context: Context, fileName: String, mime: String, content: String) {
         val dir = File(context.cacheDir, "exports").apply { mkdirs() }

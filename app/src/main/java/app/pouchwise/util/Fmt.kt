@@ -2,6 +2,7 @@ package app.pouchwise.util
 
 import java.time.Instant
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -52,4 +53,10 @@ object Fmt {
         DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(Locale.getDefault()).format(LocalDate.ofEpochDay(epochDay))
 
     fun hourLabel(hour: Int): String = String.format(Locale.getDefault(), "%02d:00", hour)
+
+    /** "19 Oct 2026, 13:05" in the local zone from an ISO offset date-time, or null when it does not parse. */
+    fun isoDateTime(iso: String, zone: ZoneId = ZoneId.systemDefault()): String? = runCatching {
+        OffsetDateTime.parse(iso).atZoneSameInstant(zone)
+            .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT).withLocale(Locale.getDefault()))
+    }.getOrNull()
 }

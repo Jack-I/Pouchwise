@@ -2,9 +2,12 @@ package app.pouchwise
 
 import android.app.Application
 import android.content.Context
+import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.room.withTransaction
 import app.pouchwise.data.AppDatabase
+import app.pouchwise.data.Backup
 import app.pouchwise.data.LogEntry
 import app.pouchwise.data.PouchType
 import app.pouchwise.data.SettingsRepository
@@ -26,7 +29,8 @@ import kotlin.math.abs
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val appContext: Context = app
-    private val dao = AppDatabase.get(app).dao()
+    private val db = AppDatabase.get(app)
+    private val dao = db.dao()
     private val settingsRepo = SettingsRepository(app)
 
     /** Home-screen widgets mirror today's state; refresh them after anything that changes it. */
@@ -157,5 +161,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun exportJson(context: Context) {
         Export.shareJson(context, entries.value, types.value.orEmpty(), settings.value)
+    }
+
+    /** Replaces all pouches and entries with the file's in one transaction, then takes over its settings. */
+    fun importBackup(contents: Backup.Contents) = viewModelScope.launch {
+        val ok = runCatching {
+            db.withTransaction {
+                dao.deleteAllEntries()
+                dao.deleteAllTypes()
+                dao.insertTypes(contents.types)
+                dao.insertEntries(contents.entries)
+            }
+        }.isSuccess
+        if (ok) {
+            settingsRepo.update { contents.settingsOver(it).copy(onboarded = true) }
+            refreshWidgets()
+        }
+        val res = appContext.resources
+        val text = if (ok) {
+            res.getString(
+                R.string.import_done,
+                res.getQuantityString(R.plurals.count_pouches, contents.types.count { !it.archived }, contents.types.count { !it.archived }),
+                res.getQuantityString(R.plurals.count_entries, contents.entries.size, contents.entries.size),
+            )
+        } else {
+            res.getString(R.string.import_failed)
+        }
+        Toast.makeText(appContext, text, Toast.LENGTH_LONG).show()
     }
 }

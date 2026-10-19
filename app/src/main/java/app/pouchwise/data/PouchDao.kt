@@ -45,6 +45,18 @@ interface PouchDao {
     @Insert
     suspend fun insertEntry(entry: LogEntry): Long
 
+    @Insert
+    suspend fun insertTypes(types: List<PouchType>)
+
+    @Insert
+    suspend fun insertEntries(entries: List<LogEntry>)
+
+    @Query("DELETE FROM log_entries")
+    suspend fun deleteAllEntries()
+
+    @Query("DELETE FROM pouch_types")
+    suspend fun deleteAllTypes()
+
     @Update
     suspend fun updateEntry(entry: LogEntry)
 

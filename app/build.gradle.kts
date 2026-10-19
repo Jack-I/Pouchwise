@@ -22,8 +22,8 @@ android {
         applicationId = "app.pouchwise"
         minSdk = 26
         targetSdk = 35
-        versionCode = 13
-        versionName = "0.7.0"
+        versionCode = 14
+        versionName = "0.7.5"
     }
 
     signingConfigs {
@@ -52,6 +52,11 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    // Lists the app's languages for the per-app language setting (Android 13+); default locale in res/resources.properties.
+    androidResources {
+        generateLocaleConfig = true
     }
 }
 
@@ -88,4 +93,6 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
 
     testImplementation(libs.junit)
+    // Android's own org.json is a stub in local unit tests.
+    testImplementation(libs.org.json)
 }
