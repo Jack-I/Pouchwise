@@ -30,7 +30,8 @@ fun PlanScreen(vm: AppViewModel) {
     val types by vm.types.collectAsStateWithLifecycle()
     // Typical strength for converting between pouches and mg: the average of the visible pouches.
     val typicalStrength = types.orEmpty().filter { !it.archived }.map { it.strengthMg }.average().let { if (it.isNaN()) 8.0 else it }
-    val today = DayKeys.epochDay(now, settings.dayStartHour)
+    // The ticker lags up to 30 s behind midnight; the wall clock does not.
+    val today = DayKeys.epochDay(maxOf(now, System.currentTimeMillis()), settings.dayStartHour)
     val mode = settings.limitMode
     val unit = if (mode == LimitMode.COUNT) stringResource(R.string.unit_pouches) else stringResource(R.string.unit_mg)
     val limitToday = Limits.limitForDayRounded(settings, today)
@@ -46,7 +47,7 @@ fun PlanScreen(vm: AppViewModel) {
 
     fun setBase(v: Double) = vm.updateSettings { s ->
         val clamped = max(0.0, v)
-        if (s.limitMode == LimitMode.COUNT) s.copy(dailyLimitCount = clamped.roundToInt()) else s.copy(dailyLimitMg = clamped)
+        if (s.limitMode == LimitMode.COUNT) s.copy(dailyLimitCount = clamped.roundToInt()) else s.copy(dailyLimitMg = Math.round(clamped).toDouble())
     }
 
     Column(
@@ -72,11 +73,11 @@ fun PlanScreen(vm: AppViewModel) {
                     } else if (settings.taperEnabled) {
                         Text(stringResource(R.string.responsible_usage), style = MaterialTheme.typography.labelLarge, color = onSec)
                         Text("$limitToday", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold, color = onSec)
-                        Text("$unit ${stringResource(R.string.per_day)} · ${stringResource(R.string.target_reached)}", style = MaterialTheme.typography.bodyLarge, color = onSec)
+                        Text("${limitUnit(mode, limitToday)} ${stringResource(R.string.per_day)} · ${stringResource(R.string.target_reached)}", style = MaterialTheme.typography.bodyLarge, color = onSec)
                     } else {
                         Text(stringResource(R.string.daily_limit_caption), style = MaterialTheme.typography.labelLarge, color = onSec)
                         Text("$limitToday", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold, color = onSec)
-                        Text("$unit ${stringResource(R.string.per_day)}", style = MaterialTheme.typography.bodyLarge, color = onSec)
+                        Text("${limitUnit(mode, limitToday)} ${stringResource(R.string.per_day)}", style = MaterialTheme.typography.bodyLarge, color = onSec)
                     }
                 }
                 BigEmoji("🌱", size = 64)
@@ -112,13 +113,13 @@ fun PlanScreen(vm: AppViewModel) {
             if (settings.taperEnabled) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.limit_today), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                    Text("$limitToday $unit", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(limitAmount(mode, limitToday.toDouble()), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             } else {
                 val base = baseLimit(settings)
                 StepperRow(
                     label = stringResource(R.string.daily_limit),
-                    valueText = "${Fmt.mg(base)} $unit",
+                    valueText = limitAmount(mode, base),
                     onMinus = { setBase(base - stepValue) },
                     onPlus = { setBase(base + stepValue) },
                     onClickValue = { editLimit = true },
@@ -149,7 +150,7 @@ fun PlanScreen(vm: AppViewModel) {
                                         taperStartDay = today,
                                         taperStartValue = start,
                                         taperTargetDay = today + 60,
-                                        taperTargetValue = max(if (s.limitMode == LimitMode.COUNT) 1.0 else 5.0, (start / 2.0).let { if (s.limitMode == LimitMode.COUNT) it.roundToInt().toDouble() else it }),
+                                        taperTargetValue = max(if (s.limitMode == LimitMode.COUNT) 1.0 else 5.0, Math.round(start / 2.0).toDouble()),
                                     )
                                 } else s.copy(taperEnabled = true)
                             }
@@ -161,7 +162,7 @@ fun PlanScreen(vm: AppViewModel) {
                 Spacer(Modifier.height(12.dp))
                 StepperRow(
                     label = stringResource(R.string.start_value),
-                    valueText = "${Fmt.mg(settings.taperStartValue)} $unit",
+                    valueText = limitAmount(mode, settings.taperStartValue),
                     onMinus = { vm.updateSettings { it.copy(taperStartValue = max(0.0, it.taperStartValue - stepValue)) } },
                     onPlus = { vm.updateSettings { it.copy(taperStartValue = it.taperStartValue + stepValue) } },
                     onClickValue = { editStart = true },
@@ -170,7 +171,7 @@ fun PlanScreen(vm: AppViewModel) {
                 Spacer(Modifier.height(8.dp))
                 StepperRow(
                     label = stringResource(R.string.target_value),
-                    valueText = "${Fmt.mg(settings.taperTargetValue)} $unit",
+                    valueText = limitAmount(mode, settings.taperTargetValue),
                     onMinus = { vm.updateSettings { it.copy(taperTargetValue = max(0.0, it.taperTargetValue - stepValue)) } },
                     onPlus = { vm.updateSettings { it.copy(taperTargetValue = it.taperTargetValue + stepValue) } },
                     onClickValue = { editTarget = true },
@@ -183,8 +184,8 @@ fun PlanScreen(vm: AppViewModel) {
                     Text(
                         stringResource(
                             R.string.taper_summary,
-                            "$limitToday $unit",
-                            "${Fmt.mg(settings.taperTargetValue)} $unit",
+                            limitAmount(mode, limitToday.toDouble()),
+                            limitAmount(mode, settings.taperTargetValue),
                             Fmt.dateLong(settings.taperTargetDay),
                         ),
                         style = MaterialTheme.typography.bodyMedium,
@@ -198,7 +199,7 @@ fun PlanScreen(vm: AppViewModel) {
         NumberDialog(
             title = stringResource(R.string.daily_limit),
             initial = Fmt.mg(baseLimit(settings)),
-            decimal = mode == LimitMode.MG,
+            decimal = false,
             suffix = unit,
             onDismiss = { editLimit = false },
             onConfirm = { setBase(it); editLimit = false },
@@ -208,7 +209,7 @@ fun PlanScreen(vm: AppViewModel) {
         NumberDialog(
             title = stringResource(R.string.start_value),
             initial = Fmt.mg(settings.taperStartValue),
-            decimal = mode == LimitMode.MG,
+            decimal = false,
             suffix = unit,
             onDismiss = { editStart = false },
             onConfirm = { v -> vm.updateSettings { it.copy(taperStartValue = v) }; editStart = false },
@@ -218,7 +219,7 @@ fun PlanScreen(vm: AppViewModel) {
         NumberDialog(
             title = stringResource(R.string.target_value),
             initial = Fmt.mg(settings.taperTargetValue),
-            decimal = mode == LimitMode.MG,
+            decimal = false,
             suffix = unit,
             onDismiss = { editTarget = false },
             onConfirm = { v -> vm.updateSettings { it.copy(taperTargetValue = v) }; editTarget = false },

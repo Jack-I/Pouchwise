@@ -9,8 +9,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Pouchwise">
 
+        <!-- Compose redraws itself on rotation and folding; not recreating the activity keeps open dialogs open. -->
         <activity
             android:name=".MainActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
             android:exported="true"
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize">
@@ -22,7 +24,7 @@
 
         <receiver
             android:name=".widget.RingWidgetProvider"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/widget_ring_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -34,7 +36,7 @@
 
         <receiver
             android:name=".widget.WideWidgetProvider"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/widget_wide_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

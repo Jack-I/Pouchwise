@@ -104,9 +104,11 @@ fun PouchTypesScreen(vm: AppViewModel, onBack: () -> Unit) {
         )
     }
     removing?.let { t ->
+        // A pouch never logged is deleted outright rather than hidden, so the dialog must not promise a way back.
+        val logged by produceState(initialValue = true, t.id) { value = vm.typeHasEntries(t.id) }
         ConfirmDialog(
             title = stringResource(R.string.delete_type_q, "${t.name} ${Fmt.mg(t.strengthMg)} ${stringResource(R.string.unit_mg)}"),
-            text = stringResource(R.string.delete_type_body),
+            text = stringResource(if (logged) R.string.delete_type_body else R.string.delete_type_body_unused),
             confirmLabel = stringResource(R.string.delete),
             onDismiss = { removing = null },
             onConfirm = { vm.removeType(t); removing = null },

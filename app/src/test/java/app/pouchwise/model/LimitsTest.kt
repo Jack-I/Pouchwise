@@ -61,6 +61,21 @@ class LimitsTest {
     }
 
     @Test
+    fun switchingThereAndBackDoesNotDrift() {
+        val mg = Settings(limitMode = LimitMode.MG, dailyLimitMg = 15.0, taperEnabled = true, taperStartValue = 60.0, taperTargetValue = 30.0)
+        val count = Limits.convertMode(mg, LimitMode.COUNT, 6.5)
+        assertEquals(2, count.dailyLimitCount)
+        val back = Limits.convertMode(count, LimitMode.MG, 6.5)
+        assertEquals(15.0, back.dailyLimitMg, 1e-9)
+        assertEquals(60.0, back.taperStartValue, 1e-9)
+        assertEquals(30.0, back.taperTargetValue, 1e-9)
+        // A value changed in between is converted, not restored: 3 × 6.5 = 19.5 → 20 mg.
+        assertEquals(20.0, Limits.convertMode(count.copy(taperTargetValue = 3.0), LimitMode.MG, 6.5).taperTargetValue, 1e-9)
+        // A zero limit stays zero.
+        assertEquals(0, Limits.convertMode(mg.copy(dailyLimitMg = 0.0), LimitMode.COUNT, 6.5).dailyLimitCount)
+    }
+
+    @Test
     fun entriesBeyondTheLimitAreMarked() {
         val entries = (1..5).map { LogEntry(id = it.toLong(), pouchTypeId = 1, timestamp = it * 1000L, strengthMg = 8.0) }
 

@@ -11,6 +11,7 @@ import app.pouchwise.data.Backup
 import app.pouchwise.data.LogEntry
 import app.pouchwise.data.PlanVersion
 import app.pouchwise.data.PouchType
+import app.pouchwise.data.RunningDay
 import app.pouchwise.data.SettingsRepository
 import app.pouchwise.model.Brands
 import app.pouchwise.model.DayKeys
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.ZoneId
 import kotlin.math.abs
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
@@ -43,14 +45,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         // Rows from before 0.7.6 / 0.7.7 take the pouch time, day and plan in force now, once, and keep them.
+        // A failure here is retried on the next start rather than crashing this one.
         viewModelScope.launch {
-            val s = settingsRepo.settings.first()
-            dao.fillMissingPouchMinutes(PouchTiming.newPouchMinutes(s))
-            val withoutDay = dao.entriesWithoutDay()
-            if (withoutDay.isNotEmpty()) {
-                dao.updateEntries(withoutDay.map { it.copy(day = DayKeys.epochDay(it.timestamp, s.dayStartHour)) })
+            runCatching {
+                val s = settingsRepo.settings.first()
+                dao.fillMissingPouchMinutes(PouchTiming.newPouchMinutes(s))
+                db.withTransaction {
+                    for (e in dao.entriesWithoutDay()) dao.setDayIfMissing(e.id, DayKeys.epochDay(e.timestamp, s.dayStartHour))
+                }
+                if (dao.planCount() == 0) dao.upsertPlan(PlanHistory.versionOf(s, fromDay = 0L))
             }
-            if (dao.planCount() == 0) dao.upsertPlan(PlanHistory.versionOf(s, fromDay = 0L))
         }
     }
 
@@ -105,6 +109,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             refreshWidgets()
         }
 
+    suspend fun typeHasEntries(typeId: Long): Boolean = dao.countEntriesForType(typeId) > 0
+
     /** Types with history are hidden instead of deleted so old entries keep their name. */
     fun removeType(type: PouchType) = viewModelScope.launch {
         if (dao.countEntriesForType(type.id) > 0) dao.updateType(type.copy(archived = true))
@@ -143,6 +149,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun updateSettings(transform: (Settings) -> Settings) = viewModelScope.launch {
         val (before, after) = settingsRepo.update(transform)
+        if (before.dayStartHour != after.dayStartHour) {
+            val zone = ZoneId.systemDefault()
+            RunningDay.refile(appContext, before.dayStartHour, zone, after.dayStartHour, zone)
+        }
         recordPlan(before, after)
         refreshWidgets()
     }
@@ -172,12 +182,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val today = DayKeys.epochDay(System.currentTimeMillis(), s.dayStartHour)
                 val targetDay = DayKeys.localDate(today).plusMonths(2).toEpochDay()
                 val sameStrength = abs(strengthNow - strengthTarget) < 1e-9
-                val startValue = if (sameStrength) perDayNow.toDouble() else perDayNow * strengthNow
-                val targetValue = if (sameStrength) perDayTarget.toDouble() else perDayTarget * strengthTarget
+                // Limits are whole mg: 5 × 6.5 mg starts at 33, as the headline would show it anyway.
+                val startValue = if (sameStrength) perDayNow.toDouble() else Math.round(perDayNow * strengthNow).toDouble()
+                val targetValue = if (sameStrength) perDayTarget.toDouble() else Math.round(perDayTarget * strengthTarget).toDouble()
                 s.copy(
                     limitMode = if (sameStrength) LimitMode.COUNT else LimitMode.MG,
                     dailyLimitCount = if (sameStrength) perDayNow else s.dailyLimitCount,
-                    dailyLimitMg = if (sameStrength) s.dailyLimitMg else perDayNow * strengthNow,
+                    dailyLimitMg = if (sameStrength) s.dailyLimitMg else startValue,
                     taperEnabled = targetValue < startValue - 1e-9,
                     taperStartDay = today,
                     taperStartValue = startValue,
@@ -192,17 +203,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun skipOnboarding() = updateSettings { it.copy(onboarded = true) }
 
-    fun exportCsv(context: Context) {
-        Export.shareCsv(context, entries.value, types.value.orEmpty(), settings.value)
+    /** Read straight from the database: the screen-bound flows can be stale or empty on the Settings screen. */
+    fun exportCsv(context: Context) = viewModelScope.launch {
+        Export.shareCsv(context, dao.allEntries(), dao.allTypes(), settingsRepo.settings.first())
     }
 
-    fun exportJson(context: Context) {
-        Export.shareJson(context, entries.value, types.value.orEmpty(), settings.value, plans.value)
+    fun exportJson(context: Context) = viewModelScope.launch {
+        Export.shareJson(context, dao.allEntries(), dao.allTypes(), settingsRepo.settings.first(), dao.allPlans())
     }
 
     /** Replaces pouches, entries and plan history with the file's in one transaction, then takes over its settings. */
     fun importBackup(contents: Backup.Contents) = viewModelScope.launch {
-        val imported = contents.settingsOver(settingsRepo.settings.first()).copy(onboarded = true)
+        val imported = contents.settingsOver(settingsRepo.settings.first())
+            .copy(onboarded = true, taperStartAlt = null, taperTargetAlt = null)
         // Older files lack per-entry pouch time and day, or the plan history; their own settings are the best guess.
         val minutes = PouchTiming.newPouchMinutes(imported)
         val entries = contents.entries.map {

@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -38,7 +39,8 @@ fun HistoryScreen(vm: AppViewModel) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
 
-    val today = DayKeys.epochDay(now, settings.dayStartHour)
+    // The ticker lags up to 30 s behind midnight; the wall clock does not.
+    val today = DayKeys.epochDay(maxOf(now, System.currentTimeMillis()), settings.dayStartHour)
     val todayDow = LocalDate.ofEpochDay(today).dayOfWeek.value // 1 = Monday
     val gridEnd = today + (7 - todayDow)
     val gridStart = gridEnd - WEEKS * 7 + 1
@@ -92,15 +94,14 @@ fun HistoryScreen(vm: AppViewModel) {
             val sel = selectedDay?.let { byDay[it] }
             Spacer(Modifier.height(10.dp))
             if (sel != null) {
-                val unit = if (sel.mode == LimitMode.COUNT) stringResource(R.string.unit_pouches) else stringResource(R.string.unit_mg)
                 val absorbed = entries
                     .filter { DayKeys.of(it, settings.dayStartHour) == sel.epochDay }
                     .sumOf { PouchTiming.absorbedMg(it, settings, now) }
                 Text(
-                    "${Fmt.dateWithWeekday(sel.epochDay)} · ${sel.count} ${stringResource(R.string.unit_pouches)} · " +
+                    "${Fmt.dateWithWeekday(sel.epochDay)} · ${pluralStringResource(R.plurals.count_pouches, sel.count, sel.count)} · " +
                         "${Fmt.mg(sel.mg)} ${stringResource(R.string.unit_mg)} · " +
                         "${stringResource(R.string.absorbed_short, Fmt.oneDecimal(absorbed))} · " +
-                        "${stringResource(R.string.limit_today).lowercase()}: ${sel.limit} $unit",
+                        "${stringResource(R.string.limit_word)}: ${limitAmount(sel.mode, sel.limit.toDouble())}",
                     style = MaterialTheme.typography.bodyMedium,
                 )
             } else {

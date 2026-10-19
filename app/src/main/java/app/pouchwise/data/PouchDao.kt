@@ -62,8 +62,24 @@ interface PouchDao {
     @Query("SELECT * FROM log_entries WHERE day IS NULL")
     suspend fun entriesWithoutDay(): List<LogEntry>
 
-    @Update
-    suspend fun updateEntries(entries: List<LogEntry>)
+    /** Touches only the day, and only if none was stored meanwhile, so a parallel edit of the row survives. */
+    @Query("UPDATE log_entries SET day = :day WHERE id = :id AND day IS NULL")
+    suspend fun setDayIfMissing(id: Long, day: Long)
+
+    @Query("UPDATE log_entries SET day = :day WHERE id = :id")
+    suspend fun setDay(id: Long, day: Long)
+
+    @Query("SELECT * FROM log_entries WHERE day >= :day")
+    suspend fun entriesFromDay(day: Long): List<LogEntry>
+
+    @Query("SELECT * FROM log_entries ORDER BY timestamp")
+    suspend fun allEntries(): List<LogEntry>
+
+    @Query("SELECT * FROM pouch_types ORDER BY sortOrder, id")
+    suspend fun allTypes(): List<PouchType>
+
+    @Query("SELECT * FROM plan_versions ORDER BY fromDay")
+    suspend fun allPlans(): List<PlanVersion>
 
     /** One tracking day; rows without a stored day fall back to the time range of that day. */
     @Query("SELECT * FROM log_entries WHERE day = :day OR (day IS NULL AND timestamp >= :fromMs AND timestamp < :toMs) ORDER BY timestamp")

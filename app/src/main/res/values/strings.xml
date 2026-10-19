@@ -80,7 +80,7 @@
     <string name="pouch_strength">Strength, mg per pouch</string>
     <string name="strong_warning">You\'ve blown your tolerance. Switch to weaker pouches.</string>
     <string name="fast_release">Fast release</string>
-    <string name="fast_release_hint">For mini, dry-slim or strongly tingling lines: the pouch then counts as fast (ZYN-like) when taken out early.</string>
+    <string name="fast_release_hint">For mini, dry-slim or strongly tingling lines: such a pouch gives up its nicotine faster, like ZYN, so how long it stays in matters less.</string>
     <string name="pouch_color">Colour</string>
     <string name="absorbed_today">≈ %1$s mg absorbed so far today</string>
     <string name="absorbed_short">≈ %1$s mg absorbed</string>
@@ -90,6 +90,7 @@
     <string name="restore">Show again</string>
     <string name="delete_type_q">Remove %1$s?</string>
     <string name="delete_type_body">Its history stays in your log and charts. The pouch is hidden from the Track screen and can be restored later.</string>
+    <string name="delete_type_body_unused">Nothing has been logged with this pouch yet, so it is deleted for good.</string>
     <string name="manage_pouches">Manage pouches</string>
     <string name="no_types_yet">No pouches yet.</string>
 
@@ -99,8 +100,12 @@
     <string name="nicotine">Nicotine</string>
     <string name="cotinine">Cotinine</string>
     <string name="approx_ng_ml">≈ %1$s ng/mL</string>
-    <string name="gone_95_in">%1$s: 95%% gone in %2$s (by %3$s)</string>
-    <string name="already_clear">%1$s has cleared</string>
+    <string name="gone_95_short">95%% gone in %1$s</string>
+    <string name="gone_by">by %1$s</string>
+    <string name="cleared_short">Has cleared</string>
+    <string name="chart_now">Now</string>
+    <string name="chart_history_hint">← history</string>
+    <string name="chart_forecast_hint">forecast →</string>
     <string name="axis_nicotine">Nicotine, mg</string>
     <string name="axis_cotinine">Cotinine, mg</string>
     <string name="range_24h">24 h</string>
@@ -146,7 +151,7 @@
         <item quantity="one">%d day until your target date</item>
         <item quantity="other">%d days until your target date</item>
     </plurals>
-    <string name="target_reached">Target reached — keep it up</string>
+    <string name="target_reached">plan at its target</string>
     <string name="daily_limit_caption">DAILY LIMIT</string>
     <string name="limit_mode">Count the limit in</string>
     <string name="mode_count">Pouches</string>
@@ -154,6 +159,7 @@
     <string name="mode_switch_hint">Switching converts the limit and the plan using your typical pouch (%1$s mg).</string>
     <string name="daily_limit">Daily limit</string>
     <string name="limit_today">Limit today</string>
+    <string name="limit_word">limit</string>
     <string name="taper_title">Reduce gradually</string>
     <string name="taper_body">The limit goes down a little every day until the target date.</string>
     <string name="start_value">Start</string>
@@ -174,7 +180,7 @@
     <string name="weight_hint">Only used to convert mg in the body into an approximate blood concentration.</string>
     <string name="absorption_minutes">Pouch time, minutes</string>
     <string name="pouch_time_hint">A pouch counts as in for this long unless you remove it earlier on the Track screen. A shorter time means less nicotine absorbed. Applies to pouches you put in from now on; logged ones keep their own time.</string>
-    <string name="model_hint" formatted="false">The body estimate assumes that about 30% of the labelled nicotine is absorbed when a pouch stays in for 30 minutes (less if shorter, a little more if longer), a nicotine half-life of 2 h and a cotinine half-life of 16 h. The 30% is a rough estimate from published studies, so take the levels as approximate.</string>
+    <string name="model_hint" formatted="false">The body estimate assumes that about 30% of the labelled nicotine is absorbed when a pouch stays in for 30 minutes (less if shorter, more if longer), a nicotine half-life of 2 h and a cotinine half-life of 16 h. The 30% is the typical value in eight studies that measured blood nicotine after pouches; products differ, and most of these studies were funded by manufacturers, so take the levels as approximate.</string>
     <string name="settings_appearance">Appearance</string>
     <string name="theme_system">System</string>
     <string name="theme_light">Light</string>
@@ -201,6 +207,10 @@
     <plurals name="count_pouches">
         <item quantity="one">%d pouch</item>
         <item quantity="other">%d pouches</item>
+    </plurals>
+    <plurals name="pouches_word">
+        <item quantity="one">pouch</item>
+        <item quantity="other">pouches</item>
     </plurals>
     <plurals name="count_entries">
         <item quantity="one">%d entry</item>

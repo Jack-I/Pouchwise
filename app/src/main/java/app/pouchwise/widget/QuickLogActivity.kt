@@ -3,6 +3,7 @@ package app.pouchwise.widget
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.SystemClock
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -196,14 +197,16 @@ object QuickLog {
 
     /** A second tap on "+" within this time is taken as a double tap, not as a second pouch. */
     private const val DOUBLE_TAP_MS = 500L
-    @Volatile private var lastLogAt = 0L
+    /** On the uptime clock, which a change of the wall clock cannot move. */
+    private var lastLogAt = -DOUBLE_TAP_MS
 
     fun log(context: Context, type: PouchType) {
         val app = context.applicationContext
         val now = System.currentTimeMillis()
         synchronized(this) {
-            if (now - lastLogAt < DOUBLE_TAP_MS) return
-            lastLogAt = now
+            val tap = SystemClock.elapsedRealtime()
+            if (tap - lastLogAt < DOUBLE_TAP_MS) return
+            lastLogAt = tap
         }
         scope.launch {
             val settings = SettingsRepository(app).settings.first()

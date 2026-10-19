@@ -42,7 +42,7 @@ class BackupTest {
             PlanHistory.versionOf(settings.copy(dailyLimitMg = 60.0), fromDay = 0L),
             PlanHistory.versionOf(settings, fromDay = 20_350L),
         )
-        val withDays = entries.map { it.copy(day = 20_376L) }
+        val withDays = entries.map { it.copy(day = 20_370L) }
         val contents = Backup.parse(Export.json(withDays, types, settings, appVersion = "0.8.0", plans = plans))
         assertEquals(types, contents.types)
         assertEquals(withDays, contents.entries)
@@ -62,6 +62,16 @@ class BackupTest {
         assertEquals(Brands.kFor("ZYN"), ok.types.single().releaseK, 1e-12)
         val weird = Backup.parse("""{"types":[],"entries":[],"settings":{"dailyLimitMg":"Infinity"}}""")
         assertEquals(60.0, weird.settingsOver(Settings()).dailyLimitMg, 1e-12)
+    }
+
+    @Test
+    fun aDayFarFromItsTimeIsDropped() {
+        val json = """{"types":[],"entries":[
+            {"id":1,"pouchTypeId":1,"timestamp":1760000000000,"strengthMg":6,"day":999999999},
+            {"id":2,"pouchTypeId":1,"timestamp":1760000000000,"strengthMg":6,"day":20370}]}"""
+        val parsed = Backup.parse(json).entries
+        assertNull(parsed[0].day)
+        assertEquals(20_370L, parsed[1].day)
     }
 
     @Test

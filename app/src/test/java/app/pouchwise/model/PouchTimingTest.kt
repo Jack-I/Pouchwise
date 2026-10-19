@@ -5,6 +5,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 class PouchTimingTest {
     private val s = Settings() // default pouch time 30 min
@@ -93,6 +95,18 @@ class PouchTimingTest {
         assertEquals(start + 58 * min, later.endTimestamp)
         // a pouch still in keeps no end
         assertEquals(null, PouchTiming.withNewStart(e.copy(endTimestamp = null), start, s).endTimestamp)
+    }
+
+    @Test
+    fun movingTheStartKeepsTheDayUnlessItLandsInAnother() {
+        // Logged at 02:00 while days started at midnight; they start at 04:00 now.
+        val at = LocalDateTime.of(2026, 10, 19, 2, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val e = LogEntry(pouchTypeId = 1, timestamp = at, strengthMg = 8.0, pouchMinutes = 30, day = DayKeys.epochDay(at, 0))
+        val fourAm = Settings(dayStartHour = 4)
+        // five minutes earlier: still the day it was logged into, not yesterday under the new rule
+        assertEquals(e.day, PouchTiming.withNewStart(e, at - 5 * min, fourAm).day)
+        // to 05:00, past the 04:00 boundary: the day 05:00 belongs to
+        assertEquals(DayKeys.epochDay(at + 180 * min, 4), PouchTiming.withNewStart(e, at + 180 * min, fourAm).day)
     }
 
     @Test

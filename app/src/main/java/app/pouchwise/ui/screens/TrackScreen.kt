@@ -63,7 +63,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         entries.filter { PouchTiming.isActive(it, settings, clock) }
     }
 
-    val today = DayKeys.epochDay(now, settings.dayStartHour)
+    val today = DayKeys.epochDay(wallNow, settings.dayStartHour)
     val todaysAsc = remember(entries, settings.dayStartHour, today) {
         entries.filter { DayKeys.of(it, settings.dayStartHour) == today }
     }
@@ -185,9 +185,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             initialMs = e.timestamp,
             onDismiss = { editEntry = null },
             onConfirm = { h, m ->
-                // Same date as before, unless that time is still ahead: then the evening before was meant.
-                val date = Instant.ofEpochMilli(e.timestamp).atZone(ZoneId.systemDefault()).toLocalDate()
-                vm.moveEntry(e, DayKeys.pastTimeMs(date, h, m, System.currentTimeMillis()))
+                vm.moveEntry(e, DayKeys.nearestPastTimeMs(e.timestamp, h, m, System.currentTimeMillis()))
                 editEntry = null
             },
         )

@@ -14,6 +14,9 @@ data class Settings(
     val taperStartValue: Double = 10.0,
     val taperTargetDay: Long = 0L,
     val taperTargetValue: Double = 5.0,
+    /** The taper values in the other unit from before the last unit switch, so switching back restores them. */
+    val taperStartAlt: Double? = null,
+    val taperTargetAlt: Double? = null,
     /** Hour (0-23) at which a new tracking day begins. */
     val dayStartHour: Int = 0,
     val bodyWeightKg: Double = 80.0,
@@ -22,4 +25,6 @@ data class Settings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     /** True once the first-launch questionnaire was completed or skipped. */
     val onboarded: Boolean = false,
+    /** Time zone the running day was counted in; empty until first seen. */
+    val zoneId: String = "",
 )

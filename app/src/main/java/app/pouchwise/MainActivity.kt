@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import app.pouchwise.data.RunningDay
 import app.pouchwise.model.ThemeMode
 import app.pouchwise.ui.PouchwiseApp
 import app.pouchwise.ui.theme.PouchwiseTheme
@@ -33,9 +34,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Every return to the app, including after a language switch recreates it, brings the widgets up to date. */
+    /**
+     * Every return to the app, including after a language switch recreates it, catches up with a new time
+     * zone and brings the widgets up to date.
+     */
     override fun onStart() {
         super.onStart()
-        lifecycleScope.launch { runCatching { WidgetUpdater.updateAll(applicationContext) } }
+        lifecycleScope.launch {
+            runCatching { RunningDay.checkZone(applicationContext) }
+            runCatching { WidgetUpdater.updateAll(applicationContext) }
+        }
     }
 }

@@ -135,7 +135,8 @@ object WidgetRenderer {
                 setViewVisibility(R.id.widget_wide_timer, View.GONE)
             }
 
-            if (state.hasTypes) {
+            // With every pouch hidden, "+" opens the app; "✓" must stay while one is still in.
+            if (state.hasTypes || since != null) {
                 setViewVisibility(R.id.widget_wide_buttons, View.VISIBLE)
                 // Set here rather than in the layout so they follow the app's own language.
                 setContentDescription(R.id.widget_wide_add, context.getString(R.string.widget_add))

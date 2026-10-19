@@ -7,6 +7,7 @@ import app.pouchwise.model.Settings
 import app.pouchwise.model.ThemeMode
 import org.json.JSONException
 import org.json.JSONObject
+import kotlin.math.abs
 
 /** Reads a JSON export back. A file is accepted only when it parses completely; nothing is half-read. */
 object Backup {
@@ -14,6 +15,7 @@ object Backup {
     const val FORMAT = 1
 
     private const val MAX_STRENGTH_MG = 200.0
+    private const val DAY_MS = 86_400_000L
 
     class NotAnExport(message: String) : Exception(message)
     class NewerFormat(val format: Int) : Exception("format $format")
@@ -108,7 +110,8 @@ object Backup {
             endTimestamp = end,
             releaseK = o.finite("releaseK", Brands.averageK).takeIf { it > 0.0 && it <= 1.0 } ?: Brands.averageK,
             pouchMinutes = if (o.isNull("pouchMinutes")) null else o.getInt("pouchMinutes").coerceIn(1, PouchTiming.MAX_POUCH_MINUTES),
-            day = if (o.isNull("day")) null else o.getLong("day"),
+            // A day far from the timestamp is corrupt; null makes the import recompute it.
+            day = if (o.isNull("day")) null else o.getLong("day").takeIf { abs(it - Math.floorDiv(start, DAY_MS)) <= 2 },
         )
     }
 

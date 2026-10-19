@@ -6,6 +6,8 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.abs
+import kotlin.math.exp
 import kotlin.math.ln
 
 class PharmacokineticsTest {
@@ -44,42 +46,48 @@ class PharmacokineticsTest {
     @Test
     fun closedFormMatchesNumericalIntegration() {
         val dose = Dose(0L, 10.0, full)
-        val absorbed = 10.0 * p.absorptionFraction
+        // The pouch releases at a falling rate while it is in, scaled so that 30 minutes give the absorbed share.
+        val ka = Brands.averageK * Pharmacokinetics.IN_MOUTH_RELEASE_FACTOR * 60.0
+        val r0 = 10.0 * p.absorptionFraction * ka / (1 - exp(-ka * 0.5))
         val yieldMass = p.cotinineYield * 176.22 / 162.23
         val kc = ln(2.0) / p.cotinineHalfLifeHours
         val kn = ln(2.0) / p.nicotineHalfLifeHours
         val dt = 1.0 / 3600.0
+        val tOut = p.absorptionMinutes / 60.0
         var n = 0.0
         var c = 0.0
-        val tInf = p.absorptionMinutes / 60.0
         var time = 0.0
+        var nAt10Min = 0.0
         while (time < 10.0) {
-            val input = if (time < tInf) absorbed / tInf else 0.0
+            val input = if (time < tOut) r0 * exp(-ka * (time + dt / 2)) else 0.0
             val dn = input - kn * n
             val dc = yieldMass * kn * n - kc * c
             n += dn * dt; c += dc * dt; time += dt
+            if (abs(time - 10.0 / 60.0) < dt / 2) nAt10Min = n
         }
+        assertEquals(nAt10Min, Pharmacokinetics.levelsAt(10 * min, listOf(dose), p).nicotineMg, 1e-3)
         val l = Pharmacokinetics.levelsAt(10 * h, listOf(dose), p)
         assertEquals(n, l.nicotineMg, 1e-3)
         assertEquals(c, l.cotinineMg, 1e-3)
-        assertTrue(l.cotinineMg < yieldMass * absorbed)
+        assertTrue(l.cotinineMg < yieldMass * 10.0 * p.absorptionFraction)
     }
 
     @Test
-    fun releasedShareFollowsFirstOrderKineticsFromTheThirtyMinuteReference() {
+    fun releasedShareFollowsTheInMouthReleaseFromTheThirtyMinuteReference() {
         val k = Brands.averageK
         assertEquals(0.0, Pharmacokinetics.releasedShare(0.0, k), 1e-12)
         assertEquals(1.0, Pharmacokinetics.releasedShare(30.0, k), 1e-12)
-        // longer than the reference gives a little more, shorter gives less
-        assertEquals(1.084, Pharmacokinetics.releasedShare(40.0, k), 0.001)
-        assertEquals(0.842, Pharmacokinetics.releasedShare(20.0, k), 0.001)
+        // In the mouth release is slow enough that time matters: 15 min give little over half, 60 min ~1.6×.
+        assertEquals(0.558, Pharmacokinetics.releasedShare(15.0, k), 0.001)
+        assertEquals(0.717, Pharmacokinetics.releasedShare(20.0, k), 0.001)
+        assertEquals(1.242, Pharmacokinetics.releasedShare(40.0, k), 0.001)
+        assertEquals(1.626, Pharmacokinetics.releasedShare(60.0, k), 0.001)
         // 15 minutes: Loop < average < ZYN, all above the linear 50 %
         val loop = Pharmacokinetics.releasedShare(15.0, Brands.kFor("Loop"))
         val average = Pharmacokinetics.releasedShare(15.0, k)
         val zyn = Pharmacokinetics.releasedShare(15.0, Brands.kFor("ZYN"))
-        assertEquals(0.58, loop, 0.01)
-        assertEquals(0.72, average, 0.01)
-        assertEquals(0.82, zyn, 0.01)
+        assertEquals(0.520, loop, 0.005)
+        assertEquals(0.595, zyn, 0.005)
         assertTrue(loop < average && average < zyn)
         // k = 0 degrades to even release
         assertEquals(0.5, Pharmacokinetics.releasedShare(15.0, 0.0), 1e-12)
@@ -108,7 +116,7 @@ class PharmacokineticsTest {
         val halfN = Pharmacokinetics.levelsAt(2 * h, listOf(halfDose), noElimination).nicotineMg
         assertEquals(10.0 * p.absorptionFraction, fullN, 1e-6)
         assertEquals(10.0 * p.absorptionFraction * Pharmacokinetics.releasedShare(15.0, Brands.averageK), halfN, 1e-6)
-        assertEquals(2.15, halfN, 0.02)
+        assertEquals(1.67, halfN, 0.02)
 
         // Same thing through a logged pouch that was taken out after 15 minutes.
         val s = Settings()
@@ -161,6 +169,57 @@ class PharmacokineticsTest {
         val asLogged = Pharmacokinetics.levelsAt(2 * h, listOf(dose), p).nicotineMg
         val afterSettingChange = Pharmacokinetics.levelsAt(2 * h, listOf(dose), p.copy(absorptionMinutes = 60)).nicotineMg
         assertEquals(asLogged, afterSettingChange, 1e-12)
+    }
+
+    @Test
+    fun bodyAgreesWithTrackWhileThePouchIsIn() {
+        val noElimination = p.copy(nicotineHalfLifeHours = 1e9, cotinineHalfLifeHours = 2e9)
+        val s = Settings(pk = noElimination)
+        val entry = LogEntry(pouchTypeId = 1, timestamp = 0L, strengthMg = 6.0, releaseK = Brands.kFor("ZYN"), pouchMinutes = 30)
+        for (m in listOf(1L, 5L, 10L, 20L, 29L)) {
+            val body = Pharmacokinetics.levelsAt(m * min, listOf(PouchTiming.toDose(entry, s)), noElimination).nicotineMg
+            assertEquals(PouchTiming.absorbedMg(entry, s, m * min), body, 1e-6)
+        }
+    }
+
+    @Test
+    fun takingAPouchOutKeepsTheCurveSoFar() {
+        val s = Settings()
+        val entry = LogEntry(pouchTypeId = 1, timestamp = 0L, strengthMg = 8.0, pouchMinutes = 30)
+        val removed = PouchTiming.finish(entry, s, 12 * min)
+        for (m in 0L..12L) {
+            val stillIn = Pharmacokinetics.levelsAt(m * min, listOf(PouchTiming.toDose(entry, s)), p)
+            val out = Pharmacokinetics.levelsAt(m * min, listOf(PouchTiming.toDose(removed, s)), p)
+            assertEquals(stillIn.nicotineMg, out.nicotineMg, 1e-9)
+            assertEquals(stillIn.cotinineMg, out.cotinineMg, 1e-9)
+        }
+    }
+
+    @Test
+    fun mostlyGoneCountsFromThePeakStillAhead() {
+        // A pouch put in a minute ago after a long break: hardly anything in yet, but the curve is about to rise.
+        val now = 10 * h
+        val gone = Pharmacokinetics.mostlyGone(now, listOf(Dose(now - min, 6.0, full)), p)
+        assertTrue(gone.nicotineClearMs!! > now + 8 * h)
+        assertTrue(gone.cotinineClearMs!! > now + 2 * 24 * h)
+        // Nothing taken: both have cleared.
+        val none = Pharmacokinetics.mostlyGone(now, emptyList(), p)
+        assertNull(none.nicotineClearMs)
+        assertNull(none.cotinineClearMs)
+    }
+
+    @Test
+    fun mostlyGoneIsATwentiethOfTheLevelEvenWhenItIsLow() {
+        // A day of pouches that ended a day ago: nicotine is gone, cotinine is a few mg and falling.
+        val now = 48 * h
+        val doses = (0 until 8).map { Dose(now - 24 * h - (2 * it) * h - 30 * min, 8.0, full) }
+        val levels = Pharmacokinetics.levelsAt(now, doses, p)
+        assertTrue(levels.nicotineMg < Pharmacokinetics.NICOTINE_CLEARED_MG)
+        assertTrue(levels.cotinineMg > 1.0)
+        val gone = Pharmacokinetics.mostlyGone(now, doses, p)
+        assertNull(gone.nicotineClearMs)
+        // log2(20) ≈ 4.32 cotinine half-lives ≈ 69 h, not the earlier moment it drops below 0.5 mg.
+        assertEquals(69.1, (gone.cotinineClearMs!! - now) / h.toDouble(), 0.5)
     }
 
     @Test

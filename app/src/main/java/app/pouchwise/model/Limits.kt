@@ -38,26 +38,26 @@ object Limits {
 
     /**
      * Switches the limit unit, converting the fixed limit and the taper values with a typical pouch
-     * strength so that a plan survives the switch instead of being reset.
+     * strength so that a plan survives the switch instead of being reset. Values left alone since the last
+     * switch come back as they were, so switching there and back does not drift (15 mg → 2 pouches → 15 mg).
      */
     fun convertMode(s: Settings, newMode: LimitMode, typicalStrengthMg: Double): Settings {
         if (newMode == s.limitMode) return s
         val k = typicalStrengthMg.coerceAtLeast(0.5)
-        return if (newMode == LimitMode.MG) {
-            s.copy(
-                limitMode = LimitMode.MG,
-                dailyLimitMg = (s.dailyLimitCount * k).roundToInt().toDouble(),
-                taperStartValue = (s.taperStartValue * k).roundToInt().toDouble(),
-                taperTargetValue = (s.taperTargetValue * k).roundToInt().toDouble(),
-            )
-        } else {
-            s.copy(
-                limitMode = LimitMode.COUNT,
-                dailyLimitCount = (s.dailyLimitMg / k).roundToInt().coerceAtLeast(1),
-                taperStartValue = (s.taperStartValue / k).roundToInt().toDouble(),
-                taperTargetValue = (s.taperTargetValue / k).roundToInt().toDouble(),
-            )
-        }
+        val toMg = newMode == LimitMode.MG
+        fun toNew(v: Double) = Math.round(if (toMg) v * k else v / k).toDouble()
+        fun toOld(v: Double) = Math.round(if (toMg) v / k else v * k).toDouble()
+        // The earlier value in the new unit, if the current one is still exactly what converting it gave.
+        fun back(current: Double, earlier: Double?) = earlier?.takeIf { toOld(it) == current } ?: toNew(current)
+        val switched = s.copy(
+            limitMode = newMode,
+            taperStartValue = back(s.taperStartValue, s.taperStartAlt),
+            taperTargetValue = back(s.taperTargetValue, s.taperTargetAlt),
+            taperStartAlt = s.taperStartValue,
+            taperTargetAlt = s.taperTargetValue,
+        )
+        return if (toMg) switched.copy(dailyLimitMg = back(s.dailyLimitCount.toDouble(), s.dailyLimitMg))
+               else switched.copy(dailyLimitCount = back(s.dailyLimitMg, s.dailyLimitCount.toDouble()).toInt())
     }
 
     /** Ids of the entries of one day (in chronological order) that lie beyond the limit. */

@@ -36,6 +36,9 @@ class SettingsRepository(private val context: Context) {
         val POUCH_MINUTES = intPreferencesKey("pk_absorption_min")
         val THEME = stringPreferencesKey("theme")
         val ONBOARDED = booleanPreferencesKey("onboarded")
+        val TAPER_START_ALT = doublePreferencesKey("taper_start_alt")
+        val TAPER_TARGET_ALT = doublePreferencesKey("taper_target_alt")
+        val ZONE = stringPreferencesKey("zone_id")
     }
 
     val settings: Flow<Settings> = context.settingsStore.data.map { read(it) }
@@ -52,22 +55,27 @@ class SettingsRepository(private val context: Context) {
         return before to after
     }
 
+    /** Limits are whole pouches or whole mg; older versions could store 32.5. */
     private fun read(p: Preferences): Settings {
         val d = Settings()
+        fun whole(v: Double) = Math.round(v).toDouble()
         return Settings(
             limitMode = p[K.LIMIT_MODE]?.let { runCatching { LimitMode.valueOf(it) }.getOrNull() } ?: d.limitMode,
             dailyLimitCount = p[K.LIMIT_COUNT] ?: d.dailyLimitCount,
-            dailyLimitMg = p[K.LIMIT_MG] ?: d.dailyLimitMg,
+            dailyLimitMg = whole(p[K.LIMIT_MG] ?: d.dailyLimitMg),
             taperEnabled = p[K.TAPER_ENABLED] ?: d.taperEnabled,
             taperStartDay = p[K.TAPER_START_DAY] ?: d.taperStartDay,
-            taperStartValue = p[K.TAPER_START_VALUE] ?: d.taperStartValue,
+            taperStartValue = whole(p[K.TAPER_START_VALUE] ?: d.taperStartValue),
             taperTargetDay = p[K.TAPER_TARGET_DAY] ?: d.taperTargetDay,
-            taperTargetValue = p[K.TAPER_TARGET_VALUE] ?: d.taperTargetValue,
+            taperTargetValue = whole(p[K.TAPER_TARGET_VALUE] ?: d.taperTargetValue),
+            taperStartAlt = p[K.TAPER_START_ALT],
+            taperTargetAlt = p[K.TAPER_TARGET_ALT],
             dayStartHour = p[K.DAY_START_HOUR] ?: d.dayStartHour,
             bodyWeightKg = p[K.WEIGHT] ?: d.bodyWeightKg,
             pk = PkParams(absorptionMinutes = p[K.POUCH_MINUTES] ?: PkParams().absorptionMinutes),
             themeMode = p[K.THEME]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: d.themeMode,
             onboarded = p[K.ONBOARDED] ?: d.onboarded,
+            zoneId = p[K.ZONE] ?: d.zoneId,
         )
     }
 
@@ -85,5 +93,8 @@ class SettingsRepository(private val context: Context) {
         p[K.POUCH_MINUTES] = s.pk.absorptionMinutes
         p[K.THEME] = s.themeMode.name
         p[K.ONBOARDED] = s.onboarded
+        if (s.taperStartAlt != null) p[K.TAPER_START_ALT] = s.taperStartAlt else p.remove(K.TAPER_START_ALT)
+        if (s.taperTargetAlt != null) p[K.TAPER_TARGET_ALT] = s.taperTargetAlt else p.remove(K.TAPER_TARGET_ALT)
+        p[K.ZONE] = s.zoneId
     }
 }

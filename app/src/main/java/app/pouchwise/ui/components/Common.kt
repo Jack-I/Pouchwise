@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -28,7 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.pouchwise.R
 import app.pouchwise.model.GardenLevel
+import app.pouchwise.model.LimitMode
 import app.pouchwise.ui.theme.AppColors
+import app.pouchwise.util.Fmt
 
 val CardShape = RoundedCornerShape(24.dp)
 
@@ -171,6 +174,19 @@ fun LegendSwatch(color: Color, text: String, dashed: Boolean = false) {
         Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
+
+/** A limit with its unit: "1 pouch", "3 пауча", "40 mg". */
+@Composable
+fun limitAmount(mode: LimitMode, value: Double): String {
+    if (mode == LimitMode.MG) return "${Fmt.mg(value)} ${stringResource(R.string.unit_mg)}"
+    val n = Math.round(value).toInt()
+    return pluralStringResource(R.plurals.count_pouches, n, n)
+}
+
+/** The unit alone, for a number shown apart from it. */
+@Composable
+fun limitUnit(mode: LimitMode, value: Int): String =
+    if (mode == LimitMode.MG) stringResource(R.string.unit_mg) else pluralStringResource(R.plurals.pouches_word, value)
 
 /** Human-readable duration from milliseconds. */
 @Composable

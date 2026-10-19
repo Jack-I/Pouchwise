@@ -33,6 +33,8 @@ fun OnboardingScreen(vm: AppViewModel) {
     var perDayTarget by rememberSaveable { mutableStateOf("") }
     var strengthTarget by rememberSaveable { mutableStateOf("") }
     val startImport = rememberImportFlow(vm)
+    // A quick second tap would create the pouch twice before the screen goes away.
+    var starting by remember { mutableStateOf(false) }
 
     val brand = resolveBrand(brandSel, custom)
     val sNow = parseDecimal(strengthNow)
@@ -110,8 +112,9 @@ fun OnboardingScreen(vm: AppViewModel) {
             }
 
             Button(
-                enabled = valid,
+                enabled = valid && !starting,
                 onClick = {
+                    starting = true
                     vm.completeOnboarding(
                         brand = brand,
                         strengthNow = sNow ?: 0.0,

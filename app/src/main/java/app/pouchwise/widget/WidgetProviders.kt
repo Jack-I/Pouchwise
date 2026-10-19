@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import app.pouchwise.data.RunningDay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -32,19 +33,20 @@ class WideWidgetProvider : AppWidgetProvider() {
         when (intent.action) {
             // Our alarm, and system changes that move "today" or the language of the texts.
             WidgetUpdater.ACTION_REFRESH,
-            Intent.ACTION_TIMEZONE_CHANGED,
             Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_LOCALE_CHANGED -> refreshAsync(context)
+            Intent.ACTION_TIMEZONE_CHANGED -> refreshAsync(context, zoneChanged = true)
             else -> super.onReceive(context, intent)
         }
     }
 }
 
-private fun BroadcastReceiver.refreshAsync(context: Context) {
+private fun BroadcastReceiver.refreshAsync(context: Context, zoneChanged: Boolean = false) {
     val pending = goAsync()
     CoroutineScope(Dispatchers.IO).launch {
         try {
-            // A failed refresh must not crash the app from a background broadcast; the next one will retry.
+            // A failure must not crash the app from a background broadcast; the next one will retry.
+            if (zoneChanged) runCatching { RunningDay.checkZone(context) }
             runCatching { WidgetUpdater.updateAll(context) }
         } finally {
             pending.finish()

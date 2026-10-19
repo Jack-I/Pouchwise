@@ -73,11 +73,13 @@ object PouchTiming {
     /**
      * The entry with its start moved to [newStartMs]. A recorded removal stays where it was, so fixing a
      * late tap on + does not shorten the pouch; it moves along only if it would otherwise come before the
-     * new start. The tracking day follows the new start under the current rules.
+     * new start. The tracking day stays unless the new start falls on another day under the current rules.
      */
     fun withNewStart(e: LogEntry, newStartMs: Long, s: Settings): LogEntry {
         val end = e.endTimestamp?.let { if (it >= newStartMs + MIN_DURATION_MS) it else it + (newStartMs - e.timestamp) }
             ?.coerceIn(newStartMs + MIN_DURATION_MS, newStartMs + autoMs(e, s))
-        return e.copy(timestamp = newStartMs, endTimestamp = end, day = DayKeys.epochDay(newStartMs, s.dayStartHour))
+        val newDay = DayKeys.epochDay(newStartMs, s.dayStartHour)
+        val day = if (e.day != null && DayKeys.epochDay(e.timestamp, s.dayStartHour) == newDay) e.day else newDay
+        return e.copy(timestamp = newStartMs, endTimestamp = end, day = day)
     }
 }

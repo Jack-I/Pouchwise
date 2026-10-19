@@ -14,9 +14,9 @@ No account, no server, no analytics. Everything lives in a local SQLite database
 | Screen | What it does |
 |---|---|
 | **Track** | Today card: pouches or mg left, progress bar, the day's face. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** puts the pouch "in": a card with a timer and a **Remove** button appears; if you never tap Remove, the pouch counts as removed after the pouch time (30 min by default). Today's log shows each pouch with its time in, and you can adjust the time or delete an entry. |
-| **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL) and when 95 % of each will be gone. A chart with a solid line for the past and a dashed line for the forecast if you stop now; 24 h / 48 h / 7 d ranges. |
+| **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL) and when 95 % of each will be gone. A chart you can drag: back through up to 30 days of history (solid) and ahead through the forecast if you stop now (dashed). "Now" starts two thirds of the way across, and **Now** brings it back; 24 h / 48 h / 7 d windows. |
 | **History** | Five weeks of day tiles: pouches and mg per day, coloured in seven steps by how the day went against the limit that applied on that day. Streak within the limit, days over the limit, the last 30 and 7 finished days, totals. Daily bars against the limit line, projected a week ahead. |
-| **Plan** | Limit counted in pouches or in mg of nicotine. Either a fixed daily limit or a taper: start value → target value by a date, with today's limit interpolated linearly. A change applies from today on; past days keep the plan they had. |
+| **Plan** | Limit counted in whole pouches or whole mg of nicotine. Either a fixed daily limit or a taper: start value → target value by a date, with today's limit interpolated linearly. Switching the unit converts the plan with your typical pouch strength, and switching back restores the values you had. A change applies from today on; past days keep the plan they had. |
 | **Settings** | Manage pouches: brand from a catalogue (or any other), optional flavour, strength in mg, a "fast release" tick for mini / dry-slim lines, colour; hide and restore. Hour at which a new day starts. Body weight and pouch time. Theme and, on Android 13+, language. Export to CSV or JSON through the share sheet; import a JSON export to move everything to another phone. |
 
 On first launch the app asks for your usual pouch, how many you use per day, and where you want to be
@@ -36,7 +36,7 @@ Long-press the home screen → Widgets → Pouchwise. Two sizes:
 Widgets refresh right after every change made in the app, whenever the app is opened, when a new
 tracking day starts and when a pouch reaches its pouch time. The last two use an ordinary alarm that
 needs no permission and lands within about ten minutes of the moment. They also refresh when the
-time zone or the system language changes, and once an hour on their own.
+time zone or the system language changes.
 
 Going over the limit never blocks logging. The day card turns red with "N pouches over the limit"
 and the extra entries are marked in the log — the data stays honest.
@@ -119,19 +119,21 @@ set JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=C:\__no_unix_sockets__
 
 ## Body model
 
-Each pouch is a constant-rate nicotine input for as long as it is in. The model is anchored at one
-point: a pouch kept in for 30 minutes delivers 30 % of its labelled nicotine. Any other time in
-scales that by first-order release from the pouch, `(1 − e^(−k·t)) / (1 − e^(−k·30))`, with t the
-minutes actually in, so a shorter time gives less and a longer one a little more. The pouch-time
-setting only decides when a pouch counts as removed by itself; every entry keeps the value that was
-set when it went in, so changing the setting affects new pouches only.
+While a pouch is in, nicotine comes in as the pouch releases it: fast at first, then slowing down
+(first-order). Taking the pouch out stops the input. The model is anchored at one point: a pouch kept
+in for 30 minutes delivers 30 % of its labelled nicotine. Any other time in scales that by
+`(1 − e^(−k·t)) / (1 − e^(−k·30))`, with t the minutes actually in, so a shorter time gives less and a
+longer one more. The pouch-time setting only decides when a pouch counts as removed by itself; every
+entry keeps the value that was set when it went in, so changing the setting affects new pouches only.
 
-The 30 % is a rough estimate, not a measured constant. Studies of nicotine pouches report 24–52 % of
-the labelled nicotine leaving the pouch within 20 minutes
+The 30 % is the typical value in eight studies that measured blood nicotine after pouches: fitted to
+them, this model needs a median of about 27–31 %. Products differ a lot, and most of these studies were
+funded by manufacturers, so treat the absolute levels on the Body screen as approximate. For scale,
+24–52 % of the labelled nicotine leaves a pouch within 20 minutes
 ([Mallock-Ohnesorg et al., Front Pharmacol 2024](https://doi.org/10.3389/fphar.2024.1392027)), and only
-part of what leaves reaches the blood. Treat the absolute levels on the Body screen as approximate.
+part of that reaches the blood.
 
-The rate k comes with the brand you pick when creating a pouch. The catalogue holds the seven
+The rate k starts from the brand you pick when creating a pouch. The catalogue holds the seven
 brands measured by in-vitro dissolution in artificial saliva
 (Platt et al., [Sci Rep 2026](https://www.nature.com/articles/s41598-025-34556-5), USP-4 flow-through, 60 min):
 
@@ -148,24 +150,30 @@ brands measured by in-vitro dissolution in artificial saliva
 
 Two things from that study shaped the design: every product released nicotine front-loaded
 (first-order), and "dry" versus "wet" did not predict speed — the wet pouches (Loop, Volt) were the
-slowest, while the dry ZYN was the fastest. A pouch taken out after 15 minutes has given up ~72 % of
-its 30-minute dose with the average k, ~82 % for ZYN, ~58 % for Loop. Lines within a brand can differ (mini,
-dry-slim, extra-strong); the "fast release" tick on a pouch raises its k to 0.10 /min (ZYN-like) when
-the brand's own value is lower. Pouches above 12 mg get a blunt tolerance warning in the dialog.
+slowest, while the dry ZYN was the fastest. Lines within a brand can differ (mini, dry-slim,
+extra-strong); the "fast release" tick on a pouch raises its k to 0.10 /min (ZYN-like) when the brand's
+own value is lower. Pouches above 12 mg get a blunt tolerance warning in the dialog.
+
+In the mouth, release is slower than in that flow-through test: blood levels after pouches and snus
+kept in for different times fit k × 0.25 (`IN_MOUTH_RELEASE_FACTOR`). With the average k, a pouch taken
+out after 15 minutes has given 0.56 of its 30-minute dose and one kept in for 60 minutes 1.63×; for
+ZYN 0.60 and 1.46×, for Loop 0.52 and 1.85×.
 
 From there it is a one-compartment model: nicotine is eliminated with a 2 h half-life, 75 % of it
 becomes cotinine (mass-adjusted), and cotinine is eliminated with a 16 h half-life. The cascade is
 solved in closed form, so any instant is evaluated directly.
 
-The Body screen quotes the moment 95 % of the current amount will be gone: log₂(20) ≈ 4.3 half-lives,
-about 8 h 40 min for nicotine and 2 d 21 h for cotinine once absorption has stopped. Body weight does
-not change these times; it only enters the ng/mL conversion, through volumes of distribution of
-2.6 L/kg (nicotine) and 0.9 L/kg (cotinine).
+The Body screen quotes when 95 % will be gone, counted from the highest level still ahead (now, or the
+peak a pouch that is in will bring): log₂(20) ≈ 4.3 half-lives, about 8 h 40 min for nicotine and
+2 d 21 h for cotinine after each has peaked. Below 0.1 mg of nicotine or 0.5 mg of cotinine, now and
+ahead, it says the substance has cleared. Body weight does not change these times; it only enters the
+ng/mL conversion, through volumes of distribution of 2.6 L/kg (nicotine) and 0.9 L/kg (cotinine).
 
 Two numbers live side by side. The daily total and the limit count the labelled mg of each pouch —
 what you put in, independent of how long it stayed. The *absorbed* estimate (labelled × 30 % ×
 released share for the minutes in) is shown next to it: on the Today card, per entry in the log, in
-the day detail on History, in the export, and it is what drives the Body chart.
+the day detail on History, in the export, and it is what drives the Body chart. The chart follows the
+same curve while a pouch is in, so taking one out never redraws the past.
 Code: `model/Pharmacokinetics.kt`, `model/Brands.kt`; tests: `app/src/test/.../model/`.
 
 ## Data
@@ -175,8 +183,8 @@ future.
 
 - Database `pouchwise.db` (Room, schema v7). `pouch_types` and `log_entries`; an entry stores the
   strength, release constant, pouch time (`pouchMinutes`) and tracking day (`day`) at log time, so
-  editing a pouch, the pouch time, the day-start hour or travelling across time zones never moves or
-  rewrites old entries. `endTimestamp` is when the pouch was removed (NULL = stayed in for its full
+  editing a pouch or the pouch time never rewrites old entries. A new day-start hour or time zone
+  re-files only the pouches of the running day, so they stay in "today"; finished days keep theirs. `endTimestamp` is when the pouch was removed (NULL = stayed in for its full
   pouch time). `plan_versions` keeps the limit plan from the day each change was made, and every past
   day is judged by the version in force on that day.
 - Export from Settings → Data: CSV

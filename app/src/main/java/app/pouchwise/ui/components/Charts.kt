@@ -1,11 +1,23 @@
 package app.pouchwise.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -15,6 +27,9 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -30,6 +45,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.launch
 import kotlin.math.ceil
 import kotlin.math.max
 
@@ -71,15 +87,25 @@ private fun niceStep(maxValue: Double, targetTicks: Int = 4): Double {
     return nice * mag
 }
 
+/** Body levels around [nowMs], sorted by time: [past] ends and [future] starts at [nowMs]. */
+data class BodySpan(
+    val nowMs: Long,
+    val past: List<Pair<Long, BodyLevels>>,
+    val future: List<Pair<Long, BodyLevels>>,
+)
+
 /**
- * Nicotine (left axis) and cotinine (right axis) over time. [past] ends at now, [future] starts at now
- * and is drawn dashed.
+ * Nicotine (left scale) and cotinine (right scale) in a window [windowMs] wide that the user drags between
+ * [startMs] and [endMs]. [endOffsetH] is where the window ends, in hours after [BodySpan.nowMs]. Solid lines
+ * show the past, dashed ones the forecast if nothing more is taken; the scales follow the visible part.
  */
 @Composable
-fun BodyChart(
-    past: List<Pair<Long, BodyLevels>>,
-    future: List<Pair<Long, BodyLevels>>,
-    nowMs: Long,
+fun ScrollableBodyChart(
+    span: BodySpan,
+    startMs: Long,
+    endMs: Long,
+    windowMs: Long,
+    endOffsetH: Animatable<Float, AnimationVector1D>,
     nicotineColor: Color,
     cotinineColor: Color,
     leftAxisTitle: String,
@@ -93,78 +119,100 @@ fun BodyChart(
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val nowColor = MaterialTheme.colorScheme.onSurfaceVariant
     val zone = remember { ZoneId.systemDefault() }
-    val all = past + future
+    val timeFmt = remember { DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()) }
+    val dayFmt = remember { DateTimeFormatter.ofPattern("EEE d", Locale.getDefault()) }
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val padL = with(density) { 44.dp.toPx() }
+    val padR = with(density) { 48.dp.toPx() }
+    var widthPx by remember { mutableIntStateOf(0) }
+    val nowMs = span.nowMs
+    val windowH = windowMs / 3_600_000f
+    val hoursPerPx = if (widthPx > padL + padR) windowH / (widthPx - padL - padR) else 0f
 
-    Canvas(modifier.fillMaxWidth().height(272.dp)) {
-        if (all.size < 2) return@Canvas
-        val padL = 44.dp.toPx()
-        val padR = 48.dp.toPx()
+    // Bounds clamp the value themselves, and only when no fling is running.
+    LaunchedEffect(startMs, endMs, windowMs, nowMs) {
+        val minEnd = (startMs - nowMs) / 3_600_000f + windowH
+        val maxEnd = max((endMs - nowMs) / 3_600_000f, minEnd)
+        endOffsetH.updateBounds(minEnd, maxEnd)
+    }
+
+    val t1 = nowMs + (endOffsetH.value * 3_600_000f).toLong()
+    val t0 = t1 - windowMs
+    val past = slice(span.past, t0, t1)
+    val future = slice(span.future, t0, t1)
+    fun peak(pick: (BodyLevels) -> Double) =
+        max(past.maxOfOrNull { pick(it.second) } ?: 0.0, future.maxOfOrNull { pick(it.second) } ?: 0.0)
+    val nTarget = max(peak { it.nicotineMg }, 0.5)
+    val cTarget = max(peak { it.cotinineMg }, 2.0)
+    val nStep = niceStep(nTarget)
+    val cStep = niceStep(cTarget)
+    val nMax by animateFloatAsState((ceil(nTarget / nStep) * nStep).toFloat(), label = "nicotine scale")
+    val cMax by animateFloatAsState((ceil(cTarget / cStep) * cStep).toFloat(), label = "cotinine scale")
+
+    Canvas(
+        modifier
+            .fillMaxWidth()
+            .height(272.dp)
+            .onSizeChanged { widthPx = it.width }
+            .draggable(
+                state = rememberDraggableState { delta -> scope.launch { endOffsetH.snapTo(endOffsetH.value - delta * hoursPerPx) } },
+                orientation = Orientation.Horizontal,
+                onDragStopped = { velocity -> endOffsetH.animateDecay(-velocity * hoursPerPx, exponentialDecay()) },
+            ),
+    ) {
         val padT = 24.dp.toPx()
         val padB = 26.dp.toPx()
         val w = size.width - padL - padR
         val h = size.height - padT - padB
-        val t0 = all.first().first
-        val t1 = all.last().first
-        if (t1 <= t0) return@Canvas
+        if (w <= 0f || h <= 0f || nMax <= 0f || cMax <= 0f) return@Canvas
 
-        // axis titles: nicotine on the left scale, cotinine on the right one
         label(measurer, leftAxisTitle, 0f, 0f, nicLabelStyle, Align.START)
         label(measurer, rightAxisTitle, size.width, 0f, cotLabelStyle, Align.END)
 
-        val nMaxRaw = max(all.maxOf { it.second.nicotineMg }, 0.5)
-        val cMaxRaw = max(all.maxOf { it.second.cotinineMg }, 2.0)
-        val nStep = niceStep(nMaxRaw)
-        val cStep = niceStep(cMaxRaw)
-        val nMax = ceil(nMaxRaw / nStep) * nStep
-        val cMax = ceil(cMaxRaw / cStep) * cStep
-
-        fun x(t: Long) = padL + (t - t0).toFloat() / (t1 - t0).toFloat() * w
+        fun x(t: Long) = padL + (t - t0).toFloat() / windowMs.toFloat() * w
         fun yN(v: Double) = padT + h - (v / nMax).toFloat() * h
         fun yC(v: Double) = padT + h - (v / cMax).toFloat() * h
 
-        // horizontal grid with both axes
         var v = 0.0
-        while (v <= nMax + 1e-9) {
+        while (v <= nMax + 1e-6) {
             val yy = yN(v)
             drawLine(gridColor, Offset(padL, yy), Offset(padL + w, yy), strokeWidth = 1f)
             label(measurer, Fmt.mg(v), padL - 6.dp.toPx(), yy - 7.sp.toPx(), nicLabelStyle, Align.END)
             v += nStep
         }
         var c = 0.0
-        while (c <= cMax + 1e-9) {
-            val yy = yC(c)
-            label(measurer, Fmt.mg(c), padL + w + 6.dp.toPx(), yy - 7.sp.toPx(), cotLabelStyle, Align.START)
+        while (c <= cMax + 1e-6) {
+            label(measurer, Fmt.mg(c), padL + w + 6.dp.toPx(), yC(c) - 7.sp.toPx(), cotLabelStyle, Align.START)
             c += cStep
         }
 
-        // x ticks aligned to local clock
-        val spanH = (t1 - t0) / 3_600_000.0
-        val tickMs = when {
-            spanH <= 30 -> 6L * 3_600_000L
-            spanH <= 60 -> 12L * 3_600_000L
-            spanH <= 100 -> 24L * 3_600_000L
-            else -> 48L * 3_600_000L
+        // x ticks on the local clock; midnight shows the day, so a window dragged into the past says which one
+        val tickH = when {
+            windowH <= 30 -> 6L
+            windowH <= 60 -> 12L
+            windowH <= 100 -> 24L
+            else -> 48L
         }
-        val offsetMs = zone.rules.getOffset(Instant.ofEpochMilli(nowMs)).totalSeconds * 1000L
-        var tick = Math.floorDiv(t0 + offsetMs, tickMs) * tickMs - offsetMs
-        if (tick < t0) tick += tickMs
-        val fmt = if (tickMs < 24L * 3_600_000L) DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault())
-                  else DateTimeFormatter.ofPattern("EEE d", Locale.getDefault())
-        while (tick <= t1) {
-            val xx = x(tick)
-            drawLine(gridColor, Offset(xx, padT), Offset(xx, padT + h), strokeWidth = 1f)
-            val text = fmt.format(Instant.ofEpochMilli(tick).atZone(zone))
-            label(measurer, text, xx, padT + h + 6.dp.toPx(), labelStyle, Align.CENTER)
-            tick += tickMs
+        val firstDay = Instant.ofEpochMilli(t0).atZone(zone).toLocalDate()
+        var tick = (if (tickH == 48L) firstDay.minusDays(Math.floorMod(firstDay.toEpochDay(), 2L)) else firstDay).atStartOfDay()
+        while (true) {
+            val at = tick.atZone(zone)
+            val ms = at.toInstant().toEpochMilli()
+            if (ms > t1) break
+            if (ms >= t0) {
+                val xx = x(ms)
+                drawLine(gridColor, Offset(xx, padT), Offset(xx, padT + h), strokeWidth = 1f)
+                val text = if (at.hour == 0 && at.minute == 0) dayFmt.format(at) else timeFmt.format(at)
+                label(measurer, text, xx, padT + h + 6.dp.toPx(), labelStyle, Align.CENTER)
+            }
+            tick = tick.plusHours(tickH)
         }
 
-        // series
         fun path(points: List<Pair<Long, BodyLevels>>, pick: (BodyLevels) -> Double, y: (Double) -> Float): Path {
             val p = Path()
             points.forEachIndexed { i, (t, l) ->
-                val px = x(t)
-                val py = y(pick(l))
-                if (i == 0) p.moveTo(px, py) else p.lineTo(px, py)
+                if (i == 0) p.moveTo(x(t), y(pick(l))) else p.lineTo(x(t), y(pick(l)))
             }
             return p
         }
@@ -173,29 +221,37 @@ fun BodyChart(
             width = 3.dp.toPx(), cap = StrokeCap.Round,
             pathEffect = PathEffect.dashPathEffect(floatArrayOf(10.dp.toPx(), 8.dp.toPx())),
         )
-        if (past.size >= 2) {
-            drawPath(path(past, { it.cotinineMg }, ::yC), cotinineColor, style = solid)
-            drawPath(path(past, { it.nicotineMg }, ::yN), nicotineColor, style = solid)
-        }
-        if (future.size >= 2) {
-            drawPath(path(future, { it.cotinineMg }, ::yC), cotinineColor.copy(alpha = 0.8f), style = dashed)
-            drawPath(path(future, { it.nicotineMg }, ::yN), nicotineColor.copy(alpha = 0.8f), style = dashed)
-        }
-
-        // now marker
-        if (nowMs in t0..t1) {
-            val xn = x(nowMs)
-            drawLine(
-                nowColor, Offset(xn, padT), Offset(xn, padT + h), strokeWidth = 1.5.dp.toPx(),
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx())),
-            )
-            val lv = (past.lastOrNull() ?: future.firstOrNull())?.second
-            if (lv != null) {
-                drawCircle(cotinineColor, radius = 5.dp.toPx(), center = Offset(xn, yC(lv.cotinineMg)))
-                drawCircle(nicotineColor, radius = 5.dp.toPx(), center = Offset(xn, yN(lv.nicotineMg)))
+        clipRect(padL, padT - 8.dp.toPx(), padL + w, padT + h + 2.dp.toPx()) {
+            if (past.size >= 2) {
+                drawPath(path(past, { it.cotinineMg }, ::yC), cotinineColor, style = solid)
+                drawPath(path(past, { it.nicotineMg }, ::yN), nicotineColor, style = solid)
+            }
+            if (future.size >= 2) {
+                drawPath(path(future, { it.cotinineMg }, ::yC), cotinineColor.copy(alpha = 0.8f), style = dashed)
+                drawPath(path(future, { it.nicotineMg }, ::yN), nicotineColor.copy(alpha = 0.8f), style = dashed)
+            }
+            if (nowMs in t0..t1) {
+                val xn = x(nowMs)
+                drawLine(
+                    nowColor, Offset(xn, padT), Offset(xn, padT + h), strokeWidth = 1.5.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx())),
+                )
+                val lv = (span.past.lastOrNull() ?: span.future.firstOrNull())?.second
+                if (lv != null) {
+                    drawCircle(cotinineColor, radius = 5.dp.toPx(), center = Offset(xn, yC(lv.cotinineMg)))
+                    drawCircle(nicotineColor, radius = 5.dp.toPx(), center = Offset(xn, yN(lv.nicotineMg)))
+                }
             }
         }
     }
+}
+
+/** The points inside [t0, t1] plus one on each side, so the lines run to the edges. */
+private fun slice(points: List<Pair<Long, BodyLevels>>, t0: Long, t1: Long): List<Pair<Long, BodyLevels>> {
+    if (points.isEmpty()) return points
+    val from = points.binarySearchBy(t0) { it.first }.let { if (it < 0) -it - 2 else it }.coerceIn(0, points.lastIndex)
+    val to = points.binarySearchBy(t1) { it.first }.let { if (it < 0) -it - 1 else it }.coerceIn(from, points.lastIndex)
+    return points.subList(from, to + 1)
 }
 
 /**
