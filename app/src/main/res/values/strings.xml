@@ -168,8 +168,8 @@
     <string name="settings_model">Body model</string>
     <string name="weight">Body weight, kg</string>
     <string name="weight_hint">Only used to convert mg in the body into an approximate blood concentration.</string>
-    <string name="absorption_minutes">Pouch time, min</string>
-    <string name="pouch_time_hint">A pouch counts as in for this long unless you remove it earlier on the Track screen. A shorter time means less nicotine absorbed.</string>
+    <string name="absorption_minutes">Pouch time, minutes</string>
+    <string name="pouch_time_hint">A pouch counts as in for this long unless you remove it earlier on the Track screen. A shorter time means less nicotine absorbed. Applies to pouches you put in from now on; logged ones keep their own time.</string>
     <string name="model_hint">The body estimate assumes about 30%% of the labelled nicotine is absorbed over the full pouch time, a nicotine half-life of 2 h and a cotinine half-life of 16 h — published averages.</string>
     <string name="settings_appearance">Appearance</string>
     <string name="theme_system">System</string>

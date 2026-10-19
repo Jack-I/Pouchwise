@@ -25,7 +25,7 @@ class BackupTest {
         ),
     )
     private val entries = listOf(
-        LogEntry(id = 10, pouchTypeId = 3, timestamp = 1_760_000_000_000L, strengthMg = 10.0, endTimestamp = 1_760_000_900_000L, releaseK = 0.10),
+        LogEntry(id = 10, pouchTypeId = 3, timestamp = 1_760_000_000_000L, strengthMg = 10.0, endTimestamp = 1_760_000_900_000L, releaseK = 0.10, pouchMinutes = 25),
         LogEntry(id = 11, pouchTypeId = 7, timestamp = 1_760_001_000_000L, strengthMg = 7.0, releaseK = 0.0624),
     )
     private val settings = Settings(

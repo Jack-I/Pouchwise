@@ -11,7 +11,9 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:padding="2dp"
+        android:paddingStart="2dp"
+        android:paddingTop="2dp"
+        android:paddingEnd="2dp"
         android:scaleType="fitCenter"
         android:contentDescription="@string/widget_ring_label" />
 
@@ -19,7 +21,6 @@
         android:id="@+id/widget_ring_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:includeFontPadding="false"
         android:maxLines="1"
         android:shadowColor="#59000000"
         android:shadowDx="0"

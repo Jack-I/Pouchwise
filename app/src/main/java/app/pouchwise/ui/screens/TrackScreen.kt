@@ -76,7 +76,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val pouchInNow = activeEntries.isNotEmpty()
     // "Last pouch" counts from the moment it came out (or its automatic removal), not from when it went in.
     val lastOutMs = entries.lastOrNull()?.let { e ->
-        minOf(e.endTimestamp ?: (e.timestamp + PouchTiming.autoMs(settings)), clock)
+        minOf(e.endTimestamp ?: (e.timestamp + PouchTiming.autoMs(e, settings)), clock)
     }
 
     var timePickFor by remember { mutableStateOf<PouchType?>(null) }
@@ -102,7 +102,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                 name = typesById[e.pouchTypeId]?.name ?: "?",
                 colorIndex = typesById[e.pouchTypeId]?.colorIndex ?: 0,
                 nowMs = tick,
-                autoMs = PouchTiming.autoMs(settings),
+                autoMs = PouchTiming.autoMs(e, settings),
                 absorbedMg = PouchTiming.absorbedMg(e, settings, tick),
                 onRemove = { vm.finishPouch(e) },
             )

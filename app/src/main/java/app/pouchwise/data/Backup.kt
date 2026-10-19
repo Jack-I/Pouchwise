@@ -2,6 +2,7 @@ package app.pouchwise.data
 
 import app.pouchwise.model.Brands
 import app.pouchwise.model.LimitMode
+import app.pouchwise.model.PouchTiming
 import app.pouchwise.model.Settings
 import app.pouchwise.model.ThemeMode
 import org.json.JSONException
@@ -95,5 +96,6 @@ object Backup {
         strengthMg = o.getDouble("strengthMg"),
         endTimestamp = if (o.isNull("endTimestamp")) null else o.getLong("endTimestamp"),
         releaseK = o.optDouble("releaseK", Brands.averageK),
+        pouchMinutes = if (o.isNull("pouchMinutes")) null else o.getInt("pouchMinutes").coerceIn(1, PouchTiming.MAX_POUCH_MINUTES),
     )
 }

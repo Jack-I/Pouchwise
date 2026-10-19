@@ -67,6 +67,7 @@ object Export {
                     put("timestamp", e.timestamp); put("strengthMg", e.strengthMg)
                     put("endTimestamp", e.endTimestamp ?: JSONObject.NULL)
                     put("releaseK", e.releaseK)
+                    put("pouchMinutes", e.pouchMinutes ?: JSONObject.NULL)
                 })
             }
         })

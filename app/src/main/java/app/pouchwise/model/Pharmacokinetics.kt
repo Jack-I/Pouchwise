@@ -8,7 +8,7 @@ import kotlin.math.max
 data class PkParams(
     /** Share of the labelled nicotine that reaches the bloodstream when a pouch stays in for the full time. */
     val absorptionFraction: Double = 0.30,
-    /** Default (and maximum) time a pouch stays in, minutes. Also the auto-removal time on the Track screen. */
+    /** Pouch time for pouches put in from now on, minutes; each logged pouch keeps the value it was logged with. */
     val absorptionMinutes: Int = 30,
     val nicotineHalfLifeHours: Double = 2.0,
     val cotinineHalfLifeHours: Double = 16.0,
@@ -16,8 +16,17 @@ data class PkParams(
     val cotinineYield: Double = 0.75,
 )
 
-/** One pouch: when it went in, its labelled strength, how long it stayed in and its release rate (see [Brands]). */
-data class Dose(val timeMs: Long, val labelledMg: Double, val durationMs: Long, val kPerMin: Double = Brands.averageK)
+/**
+ * One pouch: when it went in, its labelled strength, how long it stayed in, its release rate (see [Brands])
+ * and its full pouch time in minutes (null = [PkParams.absorptionMinutes]).
+ */
+data class Dose(
+    val timeMs: Long,
+    val labelledMg: Double,
+    val durationMs: Long,
+    val kPerMin: Double = Brands.averageK,
+    val fullMinutes: Int? = null,
+)
 
 data class BodyLevels(val nicotineMg: Double, val cotinineMg: Double)
 
@@ -61,8 +70,6 @@ object Pharmacokinetics {
         val kn = ln(2.0) / p.nicotineHalfLifeHours.coerceAtLeast(0.05)
         var kc = ln(2.0) / p.cotinineHalfLifeHours.coerceAtLeast(0.05)
         if (abs(kc - kn) < 1e-9) kc *= 1.0001
-        val fullMs = max(p.absorptionMinutes, 1) * 60_000L
-        val fullMin = fullMs / 60_000.0
         val yieldMass = p.cotinineYield * COTININE_MW / NICOTINE_MW
 
         var n = 0.0
@@ -71,6 +78,8 @@ object Pharmacokinetics {
             if (d.timeMs > timeMs) continue
             val ageMs = timeMs - d.timeMs
             if (ageMs > LOOKBACK_MS) continue
+            val fullMs = max(d.fullMinutes ?: p.absorptionMinutes, 1) * 60_000L
+            val fullMin = fullMs / 60_000.0
             val durMs = d.durationMs.coerceIn(MIN_DURATION_MS, fullMs)
             val tInf = durMs / HOUR_MS
             val absorbed = d.labelledMg * p.absorptionFraction * releaseFraction(durMs / 60_000.0, fullMin, d.kPerMin)

@@ -24,7 +24,7 @@ data class WidgetState(
     val inLabel: String? = null,
     /** When that pouch went in; the widget's timer counts from here. */
     val inSinceMs: Long? = null,
-    /** When the first of the pouches that are in counts as removed by itself. */
+    /** When the next of the pouches that are in counts as removed by itself. */
     val nextAutoEndMs: Long? = null,
 ) {
     val used: Double get() = Limits.usage(mode, count, mg)
@@ -65,14 +65,15 @@ object WidgetData {
             hasTypes = dao.activeTypes().isNotEmpty(),
             inLabel = latest?.let { widgetLabel(it.second) },
             inSinceMs = latest?.first?.timestamp,
-            nextAutoEndMs = inNow.firstOrNull()?.let { it.first.timestamp + PouchTiming.autoMs(settings) },
+            nextAutoEndMs = inNow.minOfOrNull { it.first.timestamp + PouchTiming.autoMs(it.first, settings) },
         )
     }
 
     /** Pouches in right now with their types, oldest first. Pouches put in before the day boundary count too. */
     suspend fun pouchesInNow(context: Context, settings: Settings, nowMs: Long): List<Pair<LogEntry, PouchType?>> {
         val dao = AppDatabase.get(context).dao()
-        val entries = pouchesIn(dao.entriesBetween(nowMs - PouchTiming.autoMs(settings), nowMs + 1), settings, nowMs)
+        val since = nowMs - PouchTiming.MAX_POUCH_MINUTES * 60_000L
+        val entries = pouchesIn(dao.entriesBetween(since, nowMs + 1), settings, nowMs)
         if (entries.isEmpty()) return emptyList()
         val types = dao.typesByIds(entries.map { it.pouchTypeId }.distinct()).associateBy { it.id }
         return entries.map { it to types[it.pouchTypeId] }

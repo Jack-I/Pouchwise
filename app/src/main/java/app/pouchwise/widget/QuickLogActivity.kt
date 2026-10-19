@@ -186,12 +186,14 @@ object QuickLog {
     fun log(context: Context, type: PouchType) {
         val app = context.applicationContext
         scope.launch {
+            val settings = SettingsRepository(app).settings.first()
             AppDatabase.get(app).dao().insertEntry(
                 LogEntry(
                     pouchTypeId = type.id,
                     timestamp = System.currentTimeMillis(),
                     strengthMg = type.strengthMg,
                     releaseK = type.releaseK,
+                    pouchMinutes = PouchTiming.newPouchMinutes(settings),
                 ),
             )
             toast(app, app.getString(R.string.widget_logged, type.name))

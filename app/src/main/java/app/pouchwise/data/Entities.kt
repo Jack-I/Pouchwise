@@ -28,8 +28,8 @@ data class PouchType(
 
 /**
  * One pouch used. [timestamp] is when it went in; [endTimestamp] is when the user took it out,
- * or null when it was left in for the default pouch time. Strength and release constant are copied
- * at log time so later edits of the type do not rewrite history.
+ * or null when it was left in for its full pouch time. Strength, release constant and pouch time are
+ * copied at log time so later edits of the type or of the settings do not rewrite history.
  */
 @Entity(tableName = "log_entries", indices = [Index("timestamp"), Index("pouchTypeId")])
 data class LogEntry(
@@ -41,4 +41,6 @@ data class LogEntry(
     /** Schema v3 column, superseded by [releaseK]. */
     val releaseSpeed: Int = 1,
     val releaseK: Double = Brands.averageK,
+    /** Full pouch time in minutes when the pouch went in; null only for rows from before schema v6 until backfilled. */
+    val pouchMinutes: Int? = null,
 )

@@ -54,6 +54,10 @@ interface PouchDao {
     @Query("DELETE FROM log_entries")
     suspend fun deleteAllEntries()
 
+    /** Freezes the pouch time of entries that have none yet (rows from before schema v6, old imports). */
+    @Query("UPDATE log_entries SET pouchMinutes = :minutes WHERE pouchMinutes IS NULL")
+    suspend fun fillMissingPouchMinutes(minutes: Int)
+
     @Query("DELETE FROM pouch_types")
     suspend fun deleteAllTypes()
 

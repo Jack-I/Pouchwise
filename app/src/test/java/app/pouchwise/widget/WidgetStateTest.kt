@@ -48,6 +48,9 @@ class WidgetStateTest {
         val takenOut = LogEntry(id = 4, pouchTypeId = 1, timestamp = now - 10 * min, strengthMg = 6.0, endTimestamp = now - 2 * min)
         assertEquals(listOf(oldest, latest), pouchesIn(listOf(latest, expired, oldest, takenOut), s, now))
         assertTrue(pouchesIn(listOf(expired, takenOut), s, now).isEmpty())
+
+        val loggedWithAnHour = expired.copy(id = 5, pouchMinutes = 60) // logged before the setting dropped to 30
+        assertEquals(listOf(loggedWithAnHour), pouchesIn(listOf(loggedWithAnHour, expired), s, now))
     }
 
     @Test

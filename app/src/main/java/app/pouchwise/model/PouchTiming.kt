@@ -6,26 +6,36 @@ import kotlin.math.min
 
 /**
  * How long a pouch was (or is) in, and how much nicotine it has delivered. A pouch counts as removed
- * after the default pouch time ([PkParams.absorptionMinutes]) unless the user removed it earlier.
+ * after its own pouch time ([LogEntry.pouchMinutes], taken from the settings when it went in) unless
+ * the user removed it earlier. Changing the setting later affects new pouches only.
  */
 object PouchTiming {
     private const val MIN_DURATION_MS = 60_000L
 
-    fun autoMs(s: Settings): Long = s.pk.absorptionMinutes.coerceAtLeast(1) * 60_000L
+    /** Upper bound of the pouch-time setting; no pouch can stay in longer. */
+    const val MAX_POUCH_MINUTES = 90
 
-    /** True while the pouch is still in and the automatic removal time has not passed. */
+    /** Pouch time for a pouch put in now. */
+    fun newPouchMinutes(s: Settings): Int = s.pk.absorptionMinutes.coerceAtLeast(1)
+
+    /** This pouch's full time; rows from before it was stored fall back to the current setting. */
+    fun pouchMinutes(e: LogEntry, s: Settings): Int = (e.pouchMinutes ?: s.pk.absorptionMinutes).coerceAtLeast(1)
+
+    fun autoMs(e: LogEntry, s: Settings): Long = pouchMinutes(e, s) * 60_000L
+
+    /** True while the pouch is still in and its automatic removal time has not passed. */
     fun isActive(e: LogEntry, s: Settings, nowMs: Long): Boolean =
-        e.endTimestamp == null && nowMs >= e.timestamp && nowMs < e.timestamp + autoMs(s)
+        e.endTimestamp == null && nowMs >= e.timestamp && nowMs < e.timestamp + autoMs(e, s)
 
-    /** Planned or actual time in the mouth, clamped to [1 min, default pouch time]. */
+    /** Planned or actual time in the mouth, clamped to [1 min, the pouch's own time]. */
     fun effectiveDurationMs(e: LogEntry, s: Settings): Long {
-        val auto = autoMs(s)
+        val auto = autoMs(e, s)
         val end = e.endTimestamp ?: return auto
         return (end - e.timestamp).coerceIn(MIN_DURATION_MS, auto)
     }
 
     fun toDose(e: LogEntry, s: Settings): Dose =
-        Dose(e.timestamp, e.strengthMg, effectiveDurationMs(e, s), e.releaseK)
+        Dose(e.timestamp, e.strengthMg, effectiveDurationMs(e, s), e.releaseK, pouchMinutes(e, s))
 
     /**
      * Nicotine absorbed from this pouch by [nowMs]: labelled strength × absorbed share × released
@@ -35,11 +45,11 @@ object PouchTiming {
         val planned = effectiveDurationMs(e, s)
         val soFar = min(planned, max(nowMs - e.timestamp, 0L))
         if (soFar <= 0L) return 0.0
-        val fullMin = s.pk.absorptionMinutes.coerceAtLeast(1).toDouble()
+        val fullMin = pouchMinutes(e, s).toDouble()
         return e.strengthMg * s.pk.absorptionFraction * Pharmacokinetics.releaseFraction(soFar / 60_000.0, fullMin, e.releaseK)
     }
 
     /** Marks the pouch as taken out now. */
     fun finish(e: LogEntry, s: Settings, nowMs: Long): LogEntry =
-        e.copy(endTimestamp = nowMs.coerceIn(e.timestamp + MIN_DURATION_MS, e.timestamp + autoMs(s)))
+        e.copy(endTimestamp = nowMs.coerceIn(e.timestamp + MIN_DURATION_MS, e.timestamp + autoMs(e, s)))
 }

@@ -21,6 +21,7 @@ import app.pouchwise.widget.WidgetUpdater
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -36,6 +37,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Home-screen widgets mirror today's state; refresh them after anything that changes it. */
     private suspend fun refreshWidgets() {
         runCatching { WidgetUpdater.updateAll(appContext) }
+    }
+
+    init {
+        // Rows logged before the pouch time was stored per entry take the current setting once and keep it.
+        viewModelScope.launch {
+            dao.fillMissingPouchMinutes(PouchTiming.newPouchMinutes(settingsRepo.settings.first()))
+        }
     }
 
     /** Null until the first read from the database completes. */
@@ -93,7 +101,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Puts a pouch in: it stays "active" until removed or until the default pouch time passes. */
     fun logPouch(type: PouchType, atMs: Long = System.currentTimeMillis()) = viewModelScope.launch {
-        dao.insertEntry(LogEntry(pouchTypeId = type.id, timestamp = atMs, strengthMg = type.strengthMg, releaseK = type.releaseK))
+        val minutes = PouchTiming.newPouchMinutes(settingsRepo.settings.first())
+        dao.insertEntry(
+            LogEntry(pouchTypeId = type.id, timestamp = atMs, strengthMg = type.strengthMg, releaseK = type.releaseK, pouchMinutes = minutes),
+        )
         refreshWidgets()
     }
 
@@ -165,16 +176,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Replaces all pouches and entries with the file's in one transaction, then takes over its settings. */
     fun importBackup(contents: Backup.Contents) = viewModelScope.launch {
+        val imported = contents.settingsOver(settingsRepo.settings.first()).copy(onboarded = true)
+        // Files from before 0.7.6 have no per-entry pouch time; their own setting is the best guess.
+        val minutes = PouchTiming.newPouchMinutes(imported)
+        val entries = contents.entries.map { if (it.pouchMinutes == null) it.copy(pouchMinutes = minutes) else it }
         val ok = runCatching {
             db.withTransaction {
                 dao.deleteAllEntries()
                 dao.deleteAllTypes()
                 dao.insertTypes(contents.types)
-                dao.insertEntries(contents.entries)
+                dao.insertEntries(entries)
             }
         }.isSuccess
         if (ok) {
-            settingsRepo.update { contents.settingsOver(it).copy(onboarded = true) }
+            settingsRepo.update { imported }
             refreshWidgets()
         }
         val res = appContext.resources

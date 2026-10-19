@@ -141,6 +141,14 @@ class PharmacokineticsTest {
     }
 
     @Test
+    fun aDoseKeepsItsOwnFullTime() {
+        val dose = Dose(0L, 10.0, 20 * min, fullMinutes = 30)
+        val asLogged = Pharmacokinetics.levelsAt(2 * h, listOf(dose), p).nicotineMg
+        val afterSettingChange = Pharmacokinetics.levelsAt(2 * h, listOf(dose), p.copy(absorptionMinutes = 60)).nicotineMg
+        assertEquals(asLogged, afterSettingChange, 1e-12)
+    }
+
+    @Test
     fun ngPerMlConversion() {
         // 1 mg nicotine in an 80 kg person: 1000 µg / (80*2.6 L) ≈ 4.8 ng/mL
         assertEquals(4.8077, Pharmacokinetics.toNgPerMl(1.0, 80.0, Pharmacokinetics.NICOTINE_VD_L_PER_KG), 1e-3)

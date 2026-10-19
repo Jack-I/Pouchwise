@@ -121,7 +121,8 @@ set JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=C:\__no_unix_sockets__
 Each pouch is a constant-rate nicotine input for as long as it is in. A full pouch time (30 min by
 default, adjustable) delivers 30 % of the labelled nicotine. Removing the pouch earlier delivers
 less, following first-order release from the pouch normalised to the full time:
-`(1 − e^(−k·t)) / (1 − e^(−k·T))`, with t the minutes in and T the full pouch time.
+`(1 − e^(−k·t)) / (1 − e^(−k·T))`, with t the minutes in and T the full pouch time. Every entry keeps
+the pouch time that was set when the pouch went in, so changing the setting affects new pouches only.
 
 The rate k comes with the brand you pick when creating a pouch. The catalogue holds the seven
 brands measured by in-vitro dissolution in artificial saliva
@@ -162,9 +163,10 @@ Code: `model/Pharmacokinetics.kt`, `model/Brands.kt`; tests: `app/src/test/.../m
 
 ## Data
 
-- Database `pouchwise.db` (Room, schema v5). `pouch_types` and `log_entries`; an entry stores the
-  strength and release constant at log time, so editing a pouch never rewrites history.
-  `endTimestamp` is when the pouch was removed (NULL = stayed in for the full pouch time).
+- Database `pouchwise.db` (Room, schema v6). `pouch_types` and `log_entries`; an entry stores the
+  strength, release constant and pouch time (`pouchMinutes`) at log time, so editing a pouch or the
+  settings never rewrites history. `endTimestamp` is when the pouch was removed (NULL = stayed in for
+  its full pouch time).
 - Export from Settings → Data: CSV
   (`id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg`)
   or JSON (everything, settings included).

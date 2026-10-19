@@ -55,4 +55,26 @@ class PouchTimingTest {
         assertEquals(start + min, PouchTiming.finish(e, s, start + 5_000).endTimestamp)
         assertEquals(start + 30 * min, PouchTiming.finish(e, s, start + 90 * min).endTimestamp)
     }
+
+    @Test
+    fun aLoggedPouchKeepsItsOwnTimeWhenTheSettingChanges() {
+        val e = LogEntry(pouchTypeId = 1, timestamp = start, strengthMg = 8.0, pouchMinutes = 30)
+        val longer = Settings(pk = PkParams(absorptionMinutes = 60))
+        val shorter = Settings(pk = PkParams(absorptionMinutes = 20))
+        for (changed in listOf(longer, shorter)) {
+            assertEquals(30 * min, PouchTiming.effectiveDurationMs(e, changed))
+            assertTrue(PouchTiming.isActive(e, changed, start + 25 * min))
+            assertFalse(PouchTiming.isActive(e, changed, start + 30 * min))
+            assertEquals(PouchTiming.absorbedMg(e, s, start + 25 * min), PouchTiming.absorbedMg(e, changed, start + 25 * min), 1e-12)
+        }
+        val takenOut = PouchTiming.finish(e, s, start + 25 * min)
+        assertEquals(25 * min, PouchTiming.effectiveDurationMs(takenOut, shorter)) // not cut to the new 20 min
+    }
+
+    @Test
+    fun rowsWithoutAStoredTimeFollowTheSetting() {
+        val e = LogEntry(pouchTypeId = 1, timestamp = start, strengthMg = 8.0)
+        assertEquals(20 * min, PouchTiming.effectiveDurationMs(e, Settings(pk = PkParams(absorptionMinutes = 20))))
+        assertEquals(30, PouchTiming.newPouchMinutes(s))
+    }
 }
