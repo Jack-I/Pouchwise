@@ -8,6 +8,11 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
+import android.os.SystemClock
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.text.style.RelativeSizeSpan
 import android.view.View
 import android.widget.RemoteViews
 import androidx.core.content.ContextCompat
@@ -71,35 +76,62 @@ object WidgetRenderer {
     fun wideViews(context: Context, state: WidgetState): RemoteViews =
         RemoteViews(context.packageName, R.layout.widget_wide).apply {
             setImageViewBitmap(R.id.widget_wide_ring, ring(context, 192, state))
+            setContentDescription(R.id.widget_wide_ring, countText(context, state))
             setInt(R.id.widget_wide_root, "setBackgroundResource", if (state.over) R.drawable.widget_bg_over else R.drawable.widget_bg)
-            setTextViewText(R.id.widget_wide_count, countText(context, state))
-            setTextViewText(
-                R.id.widget_wide_sub,
-                context.getString(
-                    when {
-                        state.over -> R.string.widget_over
-                        state.mode == LimitMode.COUNT -> R.string.widget_pouches_today
-                        else -> R.string.widget_mg_today
-                    },
-                ),
-            )
+            setTextViewText(R.id.widget_wide_count, countWithLimit(state))
             setOnClickPendingIntent(R.id.widget_wide_root, openApp(context))
-            if (state.hasTypes) {
-                setViewVisibility(R.id.widget_wide_add, View.VISIBLE)
-                setContentDescription(R.id.widget_wide_add, context.getString(R.string.widget_add))
-                setOnClickPendingIntent(R.id.widget_wide_add, quickLog(context))
+
+            val since = state.inSinceMs
+            if (since != null) {
+                setTextViewText(R.id.widget_wide_sub, state.inLabel.orEmpty())
+                // The launcher runs the chronometer itself, on the elapsed-realtime clock.
+                val base = SystemClock.elapsedRealtime() - (System.currentTimeMillis() - since).coerceAtLeast(0L)
+                setChronometer(R.id.widget_wide_timer, base, null, true)
+                setViewVisibility(R.id.widget_wide_timer, View.VISIBLE)
             } else {
-                setViewVisibility(R.id.widget_wide_add, View.GONE)
+                setTextViewText(
+                    R.id.widget_wide_sub,
+                    context.getString(if (state.mode == LimitMode.COUNT) R.string.widget_unit_pouches else R.string.widget_unit_mg_today),
+                )
+                setChronometer(R.id.widget_wide_timer, SystemClock.elapsedRealtime(), null, false)
+                setViewVisibility(R.id.widget_wide_timer, View.GONE)
+            }
+
+            if (state.hasTypes) {
+                setViewVisibility(R.id.widget_wide_buttons, View.VISIBLE)
+                setOnClickPendingIntent(R.id.widget_wide_add, quickAction(context, QuickLogActivity.ACTION_LOG, 1))
+                val anyIn = since != null
+                setInt(R.id.widget_wide_remove, "setBackgroundResource", if (anyIn) R.drawable.widget_btn_bg else R.drawable.widget_btn_bg_off)
+                setImageViewResource(R.id.widget_wide_remove, if (anyIn) R.drawable.ic_widget_check else R.drawable.ic_widget_check_off)
+                setOnClickPendingIntent(R.id.widget_wide_remove, quickAction(context, QuickLogActivity.ACTION_REMOVE, 2))
+            } else {
+                setViewVisibility(R.id.widget_wide_buttons, View.GONE)
             }
         }
 
-    /** The "+" opens a small chooser over the home screen (or logs straight away when there is one pouch). */
-    private fun quickLog(context: Context): PendingIntent =
+    /** "+" and "✓" open a small chooser over the home screen, or act straight away when there is nothing to choose. */
+    private fun quickAction(context: Context, action: String, requestCode: Int): PendingIntent =
         PendingIntent.getActivity(
-            context, 1,
-            Intent(context, QuickLogActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
+            context, requestCode,
+            Intent(context, QuickLogActivity::class.java)
+                .setAction(action)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+
+    /** "39/60": today's amount large, the limit small; the unit goes on the line below. */
+    private fun countWithLimit(state: WidgetState): CharSequence {
+        val used = when (state.mode) {
+            LimitMode.COUNT -> state.count.toString()
+            LimitMode.MG -> Fmt.mg(state.mg)
+        }
+        val text = SpannableStringBuilder(used)
+        val start = text.length
+        text.append("/${state.limit}")
+        text.setSpan(RelativeSizeSpan(0.6f), start, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        text.setSpan(ForegroundColorSpan(0xD9FFFFFF.toInt()), start, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        return text
+    }
 
     private fun countText(context: Context, state: WidgetState): String = when (state.mode) {
         LimitMode.COUNT -> "${state.count} / ${state.limit}"

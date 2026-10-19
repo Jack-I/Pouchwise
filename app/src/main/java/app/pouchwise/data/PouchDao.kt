@@ -39,6 +39,9 @@ interface PouchDao {
     @Query("SELECT * FROM pouch_types WHERE archived = 0 ORDER BY sortOrder, id")
     suspend fun activeTypes(): List<PouchType>
 
+    @Query("SELECT * FROM pouch_types WHERE id IN (:ids)")
+    suspend fun typesByIds(ids: List<Long>): List<PouchType>
+
     @Insert
     suspend fun insertEntry(entry: LogEntry): Long
 

@@ -26,7 +26,6 @@
     <string name="time_now">now</string>
 
     <!-- track -->
-    <string name="today">Today</string>
     <plurals name="pouches_left_today">
         <item quantity="one">%d pouch left today</item>
         <item quantity="other">%d pouches left today</item>
@@ -39,12 +38,14 @@
     </plurals>
     <string name="over_limit_by_mg">%1$s mg over the limit</string>
     <string name="used_of_limit_count">%1$d of %2$d pouches · %3$s mg nicotine</string>
-    <string name="used_of_limit_mg">%1$s of %2$s mg · %3$d pouches</string>
+    <plurals name="used_of_limit_mg">
+        <item quantity="one">%1$s of %2$s mg · %3$d pouch</item>
+        <item quantity="other">%1$s of %2$s mg · %3$d pouches</item>
+    </plurals>
     <string name="last_pouch_ago">Last pouch out %1$s ago</string>
-    <string name="pouch_in_now">A pouch is in right now</string>
     <string name="no_pouches_today">No pouches yet today</string>
     <string name="your_pouches">Your pouches</string>
-    <string name="edit_pouches">Edit pouches</string>
+    <string name="edit_short">Edit</string>
     <string name="add_pouch_type">Add pouch</string>
     <string name="todays_log">Today\'s log</string>
     <string name="empty_log">Nothing logged today.</string>
@@ -187,10 +188,13 @@
     <string name="widget_ring_desc">Today against your daily limit</string>
     <string name="widget_wide_label">Pouchwise counter</string>
     <string name="widget_wide_desc">Today\'s count, the limit and one-tap logging</string>
-    <string name="widget_pouches_today">pouches today</string>
-    <string name="widget_mg_today">today</string>
-    <string name="widget_over">over the limit</string>
+    <string name="widget_unit_pouches">pouches</string>
+    <string name="widget_unit_mg_today">mg today</string>
     <string name="widget_add">Log a pouch</string>
+    <string name="widget_remove">Take the pouch out</string>
     <string name="widget_logged">%1$s logged</string>
+    <string name="widget_removed">%1$s out</string>
+    <string name="widget_nothing_in">Nothing is in right now</string>
     <string name="quick_log_title">Which pouch?</string>
+    <string name="quick_remove_title">Which one comes out?</string>
 </resources>

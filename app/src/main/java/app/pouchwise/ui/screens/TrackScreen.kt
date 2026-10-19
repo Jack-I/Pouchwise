@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +21,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
@@ -35,7 +35,6 @@ import app.pouchwise.util.Fmt
 import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.ZoneId
-import java.util.Locale
 
 @Composable
 fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
@@ -88,7 +87,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
             TodayCard(
@@ -125,7 +124,8 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             }
         } else {
             item {
-                SectionTitle(stringResource(R.string.your_pouches), modifier = Modifier.padding(top = 8.dp)) {
+                SectionTitle(stringResource(R.string.your_pouches), style = MaterialTheme.typography.titleMedium) {
+                    TextButton(onClick = onEditPouches) { Text(stringResource(R.string.edit_short)) }
                     TextButton(onClick = { addDialog = true }) { Text(stringResource(R.string.add_pouch_type)) }
                 }
             }
@@ -138,14 +138,15 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                     onLogAtTime = { timePickFor = type },
                 )
             }
-            item {
-                OutlinedButton(onClick = onEditPouches, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(16.dp)) {
-                    Text(stringResource(R.string.edit_pouches), style = MaterialTheme.typography.titleMedium)
-                }
-            }
         }
 
-        item { SectionTitle(stringResource(R.string.todays_log), modifier = Modifier.padding(top = 8.dp)) }
+        item {
+            SectionTitle(
+                stringResource(R.string.todays_log),
+                modifier = Modifier.padding(top = 6.dp),
+                style = MaterialTheme.typography.titleMedium,
+            )
+        }
         if (todays.isEmpty()) {
             item { Text(stringResource(R.string.empty_log), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         } else {
@@ -223,11 +224,6 @@ private fun timeTodayAt(hour: Int, minute: Int, nowMs: Long): Long {
     return at
 }
 
-private fun mmss(ms: Long): String {
-    val total = (ms / 1000L).coerceAtLeast(0)
-    return String.format(Locale.getDefault(), "%02d:%02d", total / 60, total % 60)
-}
-
 @Composable
 private fun TodayCard(
     settings: Settings,
@@ -265,59 +261,48 @@ private fun TodayCard(
     }
     val detail = when (mode) {
         LimitMode.COUNT -> stringResource(R.string.used_of_limit_count, count, limit, Fmt.mg(mg))
-        LimitMode.MG -> stringResource(R.string.used_of_limit_mg, Fmt.mg(mg), limit.toString(), count)
+        LimitMode.MG -> pluralStringResource(R.plurals.used_of_limit_mg, count, Fmt.mg(mg), limit.toString(), count)
     }
     val container = if (over) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant
     val barColor = if (over) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
     val headlineColor = if (over) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface
 
-    SoftCard(containerColor = container) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (over) {
-                Icon(Icons.Filled.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
-            } else {
-                Icon(Icons.Outlined.CalendarToday, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-            }
-            Spacer(Modifier.width(6.dp))
-            Text(stringResource(R.string.today), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Spacer(Modifier.height(8.dp))
+    SoftCard(containerColor = container, padding = 16.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(headline, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = headlineColor)
-                Spacer(Modifier.height(6.dp))
-                Text(detail, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(headline, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = headlineColor)
+                Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
                     stringResource(R.string.absorbed_today, Fmt.oneDecimal(absorbedMg)),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Spacer(Modifier.width(12.dp))
-            BigEmoji(level.emoji.ifEmpty { "🌱" }, size = 60)
+            BigEmoji(level.emoji.ifEmpty { "🌱" }, size = 40)
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             LinearProgressIndicator(
                 progress = { ratio.coerceIn(0.0, 1.0).toFloat() },
-                modifier = Modifier.weight(1f).height(10.dp),
+                modifier = Modifier.weight(1f).height(8.dp),
                 color = barColor,
                 trackColor = MaterialTheme.colorScheme.surface,
                 strokeCap = StrokeCap.Round,
             )
-            Spacer(Modifier.width(12.dp))
-            Text(Fmt.percent(ratio), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.width(10.dp))
+            Text(Fmt.percent(ratio), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Spacer(Modifier.height(10.dp))
-        Text(
-            text = when {
-                pouchInNow -> stringResource(R.string.pouch_in_now)
-                lastOutMs != null -> stringResource(R.string.last_pouch_ago, durationText(nowMs - lastOutMs))
-                else -> stringResource(R.string.no_pouches_today)
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        // While a pouch is in, its own card right below says so.
+        if (!pouchInNow) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = if (lastOutMs != null) stringResource(R.string.last_pouch_ago, durationText(nowMs - lastOutMs))
+                       else stringResource(R.string.no_pouches_today),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -333,41 +318,62 @@ private fun ActivePouchCard(
 ) {
     val elapsed = (nowMs - entry.timestamp).coerceIn(0L, autoMs)
     val remaining = autoMs - elapsed
-    SoftCard(containerColor = MaterialTheme.colorScheme.primaryContainer) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+    SoftCard(containerColor = MaterialTheme.colorScheme.primaryContainer, padding = 16.dp) {
+        Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.in_mouth), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     ColorDot(pouchColor(colorIndex))
                     Spacer(Modifier.width(8.dp))
-                    Text(name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.mg_value, Fmt.mg(entry.strengthMg)), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        stringResource(R.string.mg_value, Fmt.mg(entry.strengthMg)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
                 }
-                Spacer(Modifier.height(2.dp))
                 Text(
-                    stringResource(R.string.auto_remove_in, mmss(remaining)) + " · " +
-                        stringResource(R.string.absorbed_short, Fmt.oneDecimal(absorbedMg)),
-                    style = MaterialTheme.typography.bodyMedium,
+                    stringResource(R.string.auto_remove_in, Fmt.mmss(remaining)),
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Text(
+                    stringResource(R.string.absorbed_short, Fmt.oneDecimal(absorbedMg)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { (elapsed.toFloat() / autoMs.toFloat()).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth().height(6.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surface,
+                    strokeCap = StrokeCap.Round,
+                )
             }
-            Text(mmss(elapsed), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-        }
-        Spacer(Modifier.height(12.dp))
-        LinearProgressIndicator(
-            progress = { (elapsed.toFloat() / autoMs.toFloat()).coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(8.dp),
-            color = MaterialTheme.colorScheme.primary,
-            trackColor = MaterialTheme.colorScheme.surface,
-            strokeCap = StrokeCap.Round,
-        )
-        Spacer(Modifier.height(12.dp))
-        Button(onClick = onRemove, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(14.dp)) {
-            Icon(Icons.Filled.Check, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.remove_pouch), style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.width(14.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(Fmt.mmss(elapsed), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Spacer(Modifier.height(4.dp))
+                Button(
+                    onClick = onRemove,
+                    modifier = Modifier.height(36.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(start = 10.dp, end = 14.dp),
+                ) {
+                    Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.remove_pouch), style = MaterialTheme.typography.labelLarge)
+                }
+            }
         }
     }
 }
@@ -375,37 +381,49 @@ private fun ActivePouchCard(
 @Composable
 private fun PouchTypeRow(type: PouchType, fits: Int, onLog: () -> Unit, onLogAtTime: () -> Unit) {
     Card(
-        shape = CardShape,
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(Modifier.padding(start = 20.dp, end = 16.dp, top = 16.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             ColorDot(pouchColor(type.colorIndex))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(type.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.mg_value, Fmt.mg(type.strengthMg)), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row {
+                    Text(
+                        type.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false).alignByBaseline(),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        stringResource(R.string.mg_value, Fmt.mg(type.strengthMg)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        modifier = Modifier.alignByBaseline(),
+                    )
                 }
-                Spacer(Modifier.height(2.dp))
                 Text(
                     text = if (fits > 0) pluralStringResource(R.plurals.fits_today, fits, fits) else stringResource(R.string.none_fit_today),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = if (fits > 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
                 )
             }
             Spacer(Modifier.width(12.dp))
             Box(
                 modifier = Modifier
-                    .size(56.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(14.dp))
                     .background(MaterialTheme.colorScheme.primary)
                     .combinedClickable(onClick = onLog, onLongClick = onLogAtTime),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.log_one), tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(32.dp))
+                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.log_one), tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(28.dp))
             }
         }
     }

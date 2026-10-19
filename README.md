@@ -28,11 +28,14 @@ Long-press the home screen → Widgets → Pouchwise. Two sizes:
 
 - **1×1 ring** — the logo inside a ring that fills up towards today's limit and turns red once you
   are over it, with the app name underneath. Tap to open the app.
-- **2×1 counter** — the same ring plus "4 / 10" (or mg), and a **+** that pops up a chooser of your
-  pouches over the home screen and logs the one you tap (with a single pouch it logs straight away).
+- **2×1 counter** — the same ring plus "4/10" (or mg), and two buttons. **+** pops up a chooser of
+  your pouches over the home screen and logs the one you tap (with a single pouch it logs straight
+  away). **✓** takes the pouch out; with two or more in, it asks which one. While a pouch is in, its
+  brand and a running timer show under the count, and ✓ turns white; otherwise ✓ is greyed out.
 
-Widgets refresh right after every change made in the app and once an hour on their own, so the day
-rolls over on time.
+Widgets refresh right after every change made in the app, when a pouch reaches its pouch time (an
+ordinary alarm that needs no permission, so Android may deliver it a few minutes late), and once an
+hour on their own, so the day rolls over on time.
 
 Going over the limit never blocks logging. The day card turns red with "N pouches over the limit"
 and the extra entries are marked in the log — the data stays honest.
@@ -146,7 +149,7 @@ Code: `model/Pharmacokinetics.kt`, `model/Brands.kt`; tests: `app/src/test/.../m
 
 ## Data
 
-- Database `pouchwise.db` (Room, schema v4). `pouch_types` and `log_entries`; an entry stores the
+- Database `pouchwise.db` (Room, schema v5). `pouch_types` and `log_entries`; an entry stores the
   strength and release constant at log time, so editing a pouch never rewrites history.
   `endTimestamp` is when the pouch was removed (NULL = stayed in for the full pouch time).
 - Export from Settings → Data: CSV

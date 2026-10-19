@@ -25,6 +25,12 @@ object Fmt {
 
     fun percent(ratio: Double): String = String.format(Locale.getDefault(), "%d%%", (ratio * 100).roundToInt())
 
+    /** "06:21" for a pouch timer. */
+    fun mmss(ms: Long): String {
+        val total = (ms / 1000L).coerceAtLeast(0)
+        return String.format(Locale.getDefault(), "%02d:%02d", total / 60, total % 60)
+    }
+
     fun time(ms: Long, zone: ZoneId = ZoneId.systemDefault()): String =
         DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()).format(Instant.ofEpochMilli(ms).atZone(zone))
 

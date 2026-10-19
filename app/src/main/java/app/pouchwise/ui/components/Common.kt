@@ -1,5 +1,6 @@
 package app.pouchwise.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,9 +15,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.pouchwise.R
@@ -37,9 +44,14 @@ fun ScreenTitle(title: String, subtitle: String? = null, modifier: Modifier = Mo
 }
 
 @Composable
-fun SectionTitle(text: String, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null) {
+fun SectionTitle(
+    text: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.titleLarge,
+    trailing: (@Composable () -> Unit)? = null,
+) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        Text(text, style = style, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
         if (trailing != null) trailing()
     }
 }
@@ -48,6 +60,7 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier, trailing: (@Compos
 fun SoftCard(
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    padding: Dp = 20.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(
@@ -56,7 +69,24 @@ fun SoftCard(
         colors = CardDefaults.cardColors(containerColor = containerColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
-        Column(Modifier.padding(20.dp), content = content)
+        Column(Modifier.padding(padding), content = content)
+    }
+}
+
+/** The launcher icon in miniature: the drawing on the brand-blue disc, cropped the way the launcher crops it. */
+@Composable
+fun AppLogo(size: Dp) {
+    Box(
+        Modifier.size(size).clip(CircleShape).background(colorResource(R.color.ic_launcher_background)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            bitmap = ImageBitmap.imageResource(R.mipmap.ic_launcher_foreground),
+            contentDescription = null,
+            filterQuality = FilterQuality.High,
+            // The foreground canvas is 108 units, of which the launcher shows the middle 72.
+            modifier = Modifier.requiredSize(size * 1.5f),
+        )
     }
 }
 

@@ -23,7 +23,6 @@
     <string name="duration_d_h">%1$d д %2$d ч</string>
     <string name="time_now">сейчас</string>
 
-    <string name="today">Сегодня</string>
     <plurals name="pouches_left_today">
         <item quantity="one">Остался %d пауч на сегодня</item>
         <item quantity="few">Осталось %d пауча на сегодня</item>
@@ -40,12 +39,16 @@
     </plurals>
     <string name="over_limit_by_mg">%1$s мг сверх лимита</string>
     <string name="used_of_limit_count">%1$d из %2$d паучей · %3$s мг никотина</string>
-    <string name="used_of_limit_mg">%1$s из %2$s мг · паучей: %3$d</string>
+    <plurals name="used_of_limit_mg">
+        <item quantity="one">%1$s из %2$s мг · %3$d пауч</item>
+        <item quantity="few">%1$s из %2$s мг · %3$d пауча</item>
+        <item quantity="many">%1$s из %2$s мг · %3$d паучей</item>
+        <item quantity="other">%1$s из %2$s мг · %3$d пауча</item>
+    </plurals>
     <string name="last_pouch_ago">Последний пауч вынут %1$s назад</string>
-    <string name="pouch_in_now">Пауч сейчас под губой</string>
     <string name="no_pouches_today">Сегодня ещё ни одного</string>
     <string name="your_pouches">Ваши паучи</string>
-    <string name="edit_pouches">Редактировать паучи</string>
+    <string name="edit_short">Изменить</string>
     <string name="add_pouch_type">Добавить пауч</string>
     <string name="todays_log">Записи за сегодня</string>
     <string name="empty_log">Сегодня записей нет.</string>
@@ -185,10 +188,13 @@
     <string name="widget_ring_desc">Сегодня относительно дневного лимита</string>
     <string name="widget_wide_label">Счётчик Pouchwise</string>
     <string name="widget_wide_desc">Счёт за сегодня, лимит и запись в одно касание</string>
-    <string name="widget_pouches_today">паучей сегодня</string>
-    <string name="widget_mg_today">сегодня</string>
-    <string name="widget_over">сверх лимита</string>
+    <string name="widget_unit_pouches">паучей</string>
+    <string name="widget_unit_mg_today">мг сегодня</string>
     <string name="widget_add">Записать пауч</string>
+    <string name="widget_remove">Вынуть пауч</string>
     <string name="widget_logged">%1$s записан</string>
+    <string name="widget_removed">%1$s вынут</string>
+    <string name="widget_nothing_in">Сейчас ничего не заложено</string>
     <string name="quick_log_title">Какой пауч закидываем?</string>
+    <string name="quick_remove_title">Какой вынимаем?</string>
 </resources>
