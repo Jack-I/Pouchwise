@@ -1,6 +1,7 @@
 package app.pouchwise.data
 
 import app.pouchwise.model.Brands
+import app.pouchwise.model.IntervalMode
 import app.pouchwise.model.LimitMode
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.model.Settings
@@ -49,6 +50,10 @@ object Backup {
                         .coerceIn(5, PouchTiming.MAX_POUCH_MINUTES),
                 ),
                 themeMode = ThemeMode.entries.firstOrNull { it.name == s.optString("themeMode") } ?: current.themeMode,
+                intervalMode = IntervalMode.entries.firstOrNull { it.name == s.optString("intervalMode") } ?: current.intervalMode,
+                baselinePerDay = if (s.has("baselinePerDay") && !s.isNull("baselinePerDay")) s.optInt("baselinePerDay").coerceIn(0, 200)
+                                 else current.baselinePerDay,
+                currency = if (s.has("currency")) s.optString("currency").take(8) else current.currency,
             )
         }
     }
@@ -95,6 +100,8 @@ object Backup {
             // Exports from 0.7.0 lack the tick; the release constant gives it away.
             fastRelease = if (o.has("fastRelease")) o.getBoolean("fastRelease")
                           else releaseK >= Brands.FAST_K - 1e-9 && Brands.kFor(brand) < Brands.FAST_K,
+            pricePerCan = o.amount("pricePerCan"),
+            pouchesPerCan = o.optInt("pouchesPerCan", 20).coerceIn(1, 1_000),
         )
     }
 
@@ -112,6 +119,8 @@ object Backup {
             pouchMinutes = if (o.isNull("pouchMinutes")) null else o.getInt("pouchMinutes").coerceIn(1, PouchTiming.MAX_POUCH_MINUTES),
             // A day far from the timestamp is corrupt; null makes the import recompute it.
             day = if (o.isNull("day")) null else o.getLong("day").takeIf { abs(it - Math.floorDiv(start, DAY_MS)) <= 2 },
+            pricePerPouch = o.amount("pricePerPouch"),
+            planLevelMg = o.amount("planLevelMg")?.takeIf { it <= 100.0 },
         )
     }
 
@@ -137,6 +146,10 @@ object Backup {
         if (!mg.isFinite() || mg <= 0.0 || mg > MAX_STRENGTH_MG) throw NotAnExport("bad strength $mg")
         return mg
     }
+
+    /** An optional non-negative amount; missing, null or not a sane number gives null. */
+    private fun JSONObject.amount(name: String): Double? =
+        if (!has(name) || isNull(name)) null else optDouble(name).takeIf { it.isFinite() && it >= 0.0 && it < 1e9 }
 
     /** A number field, or [fallback] when it is missing or not finite (org.json reads "NaN" and "Infinity" strings). */
     private fun JSONObject.finite(name: String, fallback: Double): Double =

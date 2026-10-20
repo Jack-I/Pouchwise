@@ -30,8 +30,10 @@ import app.pouchwise.data.LogEntry
 import app.pouchwise.data.PouchType
 import app.pouchwise.model.*
 import app.pouchwise.ui.components.*
+import app.pouchwise.ui.theme.AppColors
 import app.pouchwise.ui.theme.pouchColor
 import app.pouchwise.util.Fmt
+import app.pouchwise.util.Money
 import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.ZoneId
@@ -74,6 +76,17 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val limit = Limits.limitForDayRounded(settings, today)
     val overIds = remember(todaysAsc, settings, limit) { Limits.overLimitEntryIds(todaysAsc, settings, limit) }
     val pouchInNow = activeEntries.isNotEmpty()
+    // The interval plan: the level below which the next pouch is due, and when the forecast gets there.
+    val doses = remember(entries, settings) { entries.map { PouchTiming.toDose(it, settings) } }
+    val planLevel = remember(entries, settings, today) {
+        val since = wallNow - IntervalPlan.DATA_MS
+        IntervalPlan.threshold(entries.filter { it.timestamp >= since }, settings, wallNow)
+    }
+    val nextOnPlan = remember(doses, settings, planLevel) {
+        planLevel?.let { IntervalPlan.nextOnPlanMs(doses, settings.pk, it, System.currentTimeMillis()) }
+    }
+    val earlyIds = remember(todaysAsc, entries, settings) { IntervalPlan.earlyIds(todaysAsc, entries, settings) }
+    val spentToday = todaysAsc.mapNotNull { it.pricePerPouch }.takeIf { it.isNotEmpty() }?.sum()
     // "Last pouch" counts from the moment the most recent one came out, by hand or by its own time.
     val lastOutMs = PouchTiming.lastOutMs(entries, settings, clock)
 
@@ -91,6 +104,8 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             TodayCard(
                 settings = settings, count = count, mg = mg, absorbedMg = absorbedToday, limit = limit,
                 lastOutMs = lastOutMs, pouchInNow = pouchInNow, nowMs = clock,
+                money = spentToday?.let { Fmt.money(it, Money.symbol(settings)) },
+                plan = if (settings.intervalMode == IntervalMode.OFF) null else PlanInfo(settings.intervalMode, planLevel, nextOnPlan),
             )
         }
 
@@ -158,6 +173,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                                     else stringResource(R.string.duration_m, (PouchTiming.effectiveDurationMs(e, settings) / 60_000L).toInt()),
                     absorbedLabel = stringResource(R.string.absorbed_short, Fmt.oneDecimal(PouchTiming.absorbedMg(e, settings, clock))),
                     over = e.id in overIds,
+                    early = e.id in earlyIds,
                     onEditTime = { editEntry = e },
                     onDelete = { deleteEntry = e },
                 )
@@ -206,7 +222,8 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         PouchTypeDialog(
             initial = null,
             onDismiss = { addDialog = false },
-            onSave = { brand, variant, strength, color, fast -> vm.addType(brand, variant, strength, color, fast); addDialog = false },
+            currency = Money.symbol(settings),
+            onSave = { vm.addType(it); addDialog = false },
         )
     }
 }
@@ -221,6 +238,8 @@ private fun TodayCard(
     lastOutMs: Long?,
     pouchInNow: Boolean,
     nowMs: Long,
+    money: String?,
+    plan: PlanInfo?,
 ) {
     val mode = settings.limitMode
     val used = Limits.usage(mode, count, mg)
@@ -260,7 +279,7 @@ private fun TodayCard(
                 Text(headline, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = headlineColor)
                 Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
-                    stringResource(R.string.absorbed_today, Fmt.oneDecimal(absorbedMg)),
+                    stringResource(R.string.absorbed_today, Fmt.oneDecimal(absorbedMg)) + (money?.let { " · ≈ $it" } ?: ""),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -292,6 +311,43 @@ private fun TodayCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+        if (plan != null) {
+            Spacer(Modifier.height(10.dp))
+            PlanRow(plan, nowMs)
+        }
+    }
+}
+
+/** What the interval plan says now: its mode, its level (null while it is still learning) and when the next is due. */
+private class PlanInfo(val mode: IntervalMode, val levelMg: Double?, val nextMs: Long?)
+
+@Composable
+private fun PlanRow(plan: PlanInfo, nowMs: Long) {
+    val level = plan.levelMg
+    val title = when {
+        level == null -> stringResource(R.string.plan_learning)
+        plan.nextMs == null || plan.nextMs <= nowMs -> stringResource(R.string.plan_now)
+        else -> stringResource(R.string.plan_next_at, Fmt.time(plan.nextMs), durationText(plan.nextMs - nowMs))
+    }
+    val detail = when {
+        level == null -> stringResource(R.string.plan_learning_hint)
+        plan.mode == IntervalMode.LOWER -> stringResource(R.string.plan_rule_lower, Fmt.oneDecimal(level))
+        else -> stringResource(R.string.plan_rule_keep, Fmt.oneDecimal(level))
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(AppColors.plan.copy(alpha = 0.14f))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Filled.Schedule, contentDescription = null, tint = AppColors.plan)
+        Spacer(Modifier.width(10.dp))
+        Column {
+            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -427,6 +483,7 @@ private fun LogRow(
     durationLabel: String,
     absorbedLabel: String,
     over: Boolean,
+    early: Boolean,
     onEditTime: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -444,7 +501,21 @@ private fun LogRow(
         ColorDot(pouchColor(colorIndex), size = 10)
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
-            Text(name, style = MaterialTheme.typography.bodyLarge, color = accent)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(name, style = MaterialTheme.typography.bodyLarge, color = accent, modifier = Modifier.weight(1f, fill = false))
+                if (early) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        stringResource(R.string.early_marker),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(AppColors.plan.copy(alpha = 0.3f))
+                            .padding(horizontal = 6.dp, vertical = 1.dp),
+                    )
+                }
+            }
             Text(
                 "${stringResource(R.string.mg_value, Fmt.mg(entry.strengthMg))} · $durationLabel · $absorbedLabel",
                 style = MaterialTheme.typography.bodySmall,

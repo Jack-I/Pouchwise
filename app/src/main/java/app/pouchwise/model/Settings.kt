@@ -4,6 +4,9 @@ enum class LimitMode { COUNT, MG }
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
+/** Spacing between pouches by nicotine level, see [IntervalPlan]. */
+enum class IntervalMode { OFF, KEEP, LOWER }
+
 data class Settings(
     val limitMode: LimitMode = LimitMode.COUNT,
     val dailyLimitCount: Int = 10,
@@ -27,4 +30,9 @@ data class Settings(
     val onboarded: Boolean = false,
     /** Time zone the running day was counted in; empty until first seen. */
     val zoneId: String = "",
+    val intervalMode: IntervalMode = IntervalMode.OFF,
+    /** Pouches a day before Pouchwise, the yardstick for savings; null until known. */
+    val baselinePerDay: Int? = null,
+    /** Currency symbol for prices; empty means the one of the phone's region. */
+    val currency: String = "",
 )

@@ -1,6 +1,7 @@
 package app.pouchwise.data
 
 import app.pouchwise.model.Brands
+import app.pouchwise.model.IntervalMode
 import app.pouchwise.model.LimitMode
 import app.pouchwise.model.PkParams
 import app.pouchwise.model.PlanHistory
@@ -62,6 +63,17 @@ class BackupTest {
         assertEquals(Brands.kFor("ZYN"), ok.types.single().releaseK, 1e-12)
         val weird = Backup.parse("""{"types":[],"entries":[],"settings":{"dailyLimitMg":"Infinity"}}""")
         assertEquals(60.0, weird.settingsOver(Settings()).dailyLimitMg, 1e-12)
+    }
+
+    @Test
+    fun pricesPlanLevelsAndTheirSettingsRoundTrip() {
+        val priced = types.map { it.copy(pricePerCan = 450.0, pouchesPerCan = 20) }
+        val logged = entries.map { it.copy(pricePerPouch = 22.5, planLevelMg = 2.1) }
+        val s = settings.copy(intervalMode = IntervalMode.LOWER, baselinePerDay = 15, currency = "₽")
+        val back = Backup.parse(Export.json(logged, priced, s))
+        assertEquals(priced, back.types)
+        assertEquals(logged, back.entries)
+        assertEquals(s, back.settingsOver(Settings()))
     }
 
     @Test

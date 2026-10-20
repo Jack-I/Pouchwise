@@ -17,6 +17,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
 import app.pouchwise.R
 import app.pouchwise.model.Clearance
+import app.pouchwise.model.DayKeys
+import app.pouchwise.model.IntervalPlan
 import app.pouchwise.model.Pharmacokinetics
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.ui.components.*
@@ -62,6 +64,17 @@ fun BodyScreen(vm: AppViewModel) {
     val mostlyGone by produceState<Clearance?>(initialValue = null, doses, pk, clock) {
         value = withContext(Dispatchers.Default) { Pharmacokinetics.mostlyGone(clock, doses, pk) }
     }
+    // Receptors are more than half free below this level; how long they were today, and the interval plan.
+    val today = DayKeys.epochDay(clock, settings.dayStartHour)
+    val restMs by produceState<Long?>(initialValue = null, doses, settings, clock) {
+        value = withContext(Dispatchers.Default) {
+            IntervalPlan.restMs(doses, pk, IntervalPlan.restLevelMg(settings), DayKeys.startOfDayMs(today, settings.dayStartHour), clock)
+        }
+    }
+    val planLevel = remember(entries, settings, today) {
+        IntervalPlan.threshold(entries.filter { it.timestamp >= clock - IntervalPlan.DATA_MS }, settings, clock)
+    }
+    val nextOnPlan = remember(doses, pk, planLevel) { planLevel?.let { IntervalPlan.nextOnPlanMs(doses, pk, it, clock) } }
 
     // The chart can be dragged back to the first pouch (30 days at most) and ahead until both have cleared
     // (7 days at most). One set of points serves every window size; computed off the main thread.
@@ -121,6 +134,24 @@ fun BodyScreen(vm: AppViewModel) {
                     modifier = Modifier.weight(1f),
                 )
             }
+            HorizontalDivider(Modifier.padding(vertical = 10.dp))
+            val rest = restMs
+            Text(
+                stringResource(
+                    R.string.receptor_rest,
+                    when {
+                        rest == null -> "…"
+                        rest < 60_000L -> stringResource(R.string.duration_m, 0)
+                        else -> durationText(rest)
+                    },
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                stringResource(R.string.receptor_rest_hint, Fmt.ngMl(IntervalPlan.RECEPTOR_HALF_NG_ML)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         SoftCard(padding = 16.dp) {
@@ -162,6 +193,10 @@ fun BodyScreen(vm: AppViewModel) {
                         cotinineColor = AppColors.cotinine,
                         leftAxisTitle = stringResource(R.string.axis_nicotine),
                         rightAxisTitle = stringResource(R.string.axis_cotinine),
+                        planLevelMg = planLevel,
+                        nextOnPlanMs = nextOnPlan?.takeIf { it > clock },
+                        planColor = AppColors.plan,
+                        planLabel = planLevel?.let { stringResource(R.string.chart_plan, Fmt.oneDecimal(it)) }.orEmpty(),
                     )
                 }
                 Row(Modifier.fillMaxWidth()) {

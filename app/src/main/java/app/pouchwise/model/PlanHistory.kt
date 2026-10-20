@@ -1,6 +1,8 @@
 package app.pouchwise.model
 
 import app.pouchwise.data.PlanVersion
+import app.pouchwise.data.PouchType
+import kotlin.math.roundToInt
 
 /**
  * Which limit plan applied on which day. The settings hold the plan for today and the future; each
@@ -21,6 +23,22 @@ object PlanHistory {
 
     fun samePlan(a: Settings, b: Settings): Boolean =
         versionOf(a, 0) == versionOf(b, 0)
+
+    /**
+     * Pouches a day before the app, read back from the first plan: the limit it started from, divided by the
+     * strength of the first pouch when it counted mg. Null when there is nothing to go by.
+     */
+    fun baselinePerDay(first: PlanVersion?, firstType: PouchType?): Int? {
+        if (first == null) return null
+        val count = first.limitMode == LimitMode.COUNT.name
+        val start = when {
+            first.taperEnabled -> first.taperStartValue
+            count -> first.dailyLimitCount.toDouble()
+            else -> first.dailyLimitMg
+        }
+        val pouches = if (count) start else start / (firstType?.strengthMg?.takeIf { it > 0 } ?: return null)
+        return pouches.roundToInt().takeIf { it > 0 }
+    }
 
     /**
      * [current] with the plan of [day]: the latest version that started on or before it, or the oldest one

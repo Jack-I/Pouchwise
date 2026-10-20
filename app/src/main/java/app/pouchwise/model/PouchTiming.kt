@@ -19,7 +19,15 @@ object PouchTiming {
     fun newPouchMinutes(s: Settings): Int = s.pk.absorptionMinutes.coerceAtLeast(1)
 
     /** A pouch going in at [atMs], with everything that shapes its past fixed now. */
-    fun newEntry(pouchTypeId: Long, strengthMg: Double, releaseK: Double, atMs: Long, s: Settings): LogEntry =
+    fun newEntry(
+        pouchTypeId: Long,
+        strengthMg: Double,
+        releaseK: Double,
+        atMs: Long,
+        s: Settings,
+        pricePerPouch: Double? = null,
+        planLevelMg: Double? = null,
+    ): LogEntry =
         LogEntry(
             pouchTypeId = pouchTypeId,
             timestamp = atMs,
@@ -27,6 +35,8 @@ object PouchTiming {
             releaseK = releaseK,
             pouchMinutes = newPouchMinutes(s),
             day = DayKeys.epochDay(atMs, s.dayStartHour),
+            pricePerPouch = pricePerPouch,
+            planLevelMg = planLevelMg,
         )
 
     /** This pouch's full time; rows from before it was stored fall back to the current setting. */

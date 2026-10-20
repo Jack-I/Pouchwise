@@ -135,11 +135,10 @@ object WidgetRenderer {
                 setViewVisibility(R.id.cover_status_timer, View.GONE)
                 setViewVisibility(R.id.cover_check, View.GONE)
                 setTextColor(R.id.cover_status_text, muted)
-                setTextViewText(
-                    R.id.cover_status_text,
-                    cover.lastOutMs?.let { context.getString(R.string.cover_last_out_at, Fmt.timeOrDayTime(it, now)) }
-                        ?: context.getString(R.string.cover_nothing_yet),
-                )
+                val last = cover.lastOutMs?.let { context.getString(R.string.cover_last_out_at, Fmt.timeOrDayTime(it, now)) }
+                    ?: context.getString(R.string.cover_nothing_yet)
+                val next = state.nextOnPlanMs?.let { " · " + context.getString(R.string.cover_next, Fmt.time(it)) }.orEmpty()
+                setTextViewText(R.id.cover_status_text, last + next)
             } else {
                 val (entry, type) = latest
                 setViewVisibility(R.id.cover_status_dot, View.VISIBLE)
@@ -259,7 +258,8 @@ object WidgetRenderer {
             } else {
                 setTextViewText(
                     R.id.widget_wide_sub,
-                    context.getString(if (state.mode == LimitMode.COUNT) R.string.widget_unit_pouches else R.string.widget_unit_mg_today),
+                    state.nextOnPlanMs?.let { context.getString(R.string.widget_next, Fmt.time(it)) }
+                        ?: context.getString(if (state.mode == LimitMode.COUNT) R.string.widget_unit_pouches else R.string.widget_unit_mg_today),
                 )
                 setChronometer(R.id.widget_wide_timer, SystemClock.elapsedRealtime(), null, false)
                 setViewVisibility(R.id.widget_wide_timer, View.GONE)

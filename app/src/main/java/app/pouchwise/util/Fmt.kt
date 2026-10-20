@@ -1,5 +1,6 @@
 package app.pouchwise.util
 
+import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -25,6 +26,19 @@ object Fmt {
         else String.format(Locale.getDefault(), "%.1f", v)
 
     fun percent(ratio: Double): String = String.format(Locale.getDefault(), "%d%%", (ratio * 100).roundToInt())
+
+    /** "22.5 ₽", "2,480 ₽": whole units from 100 up, otherwise up to two decimals. */
+    fun money(v: Double, symbol: String): String {
+        val n = NumberFormat.getNumberInstance(Locale.getDefault()).apply {
+            minimumFractionDigits = 0
+            maximumFractionDigits = if (abs(v) >= 100) 0 else 2
+        }.format(v)
+        return if (symbol.isEmpty()) n else "$n $symbol"
+    }
+
+    /** "08:40" from minutes after midnight. */
+    fun clockMinutes(minutes: Int): String =
+        String.format(Locale.getDefault(), "%02d:%02d", Math.floorMod(minutes, 24 * 60) / 60, Math.floorMod(minutes, 60))
 
     /** "06:21" for a pouch timer. */
     fun mmss(ms: Long): String {

@@ -24,13 +24,21 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
 import app.pouchwise.R
+import androidx.compose.ui.res.pluralStringResource
+import app.pouchwise.data.LogEntry
+import app.pouchwise.model.IntervalMode
+import app.pouchwise.model.IntervalPlan
+import app.pouchwise.model.Pharmacokinetics
+import app.pouchwise.model.Settings
 import app.pouchwise.model.ThemeMode
 import app.pouchwise.ui.components.*
 import app.pouchwise.util.Fmt
+import app.pouchwise.util.Money
 
 @Composable
 fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> Unit) {
     val settings by vm.settings.collectAsStateWithLifecycle()
+    val entries by vm.entries.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val startImport = rememberImportFlow(vm)
     val pk = settings.pk
@@ -79,6 +87,34 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
                     onMinus = { vm.updateSettings { it.copy(dayStartHour = (it.dayStartHour - 1).coerceIn(0, 12)) } },
                     onPlus = { vm.updateSettings { it.copy(dayStartHour = (it.dayStartHour + 1).coerceIn(0, 12)) } },
                     hint = stringResource(R.string.day_starts_hint),
+                )
+            }
+
+            SectionTitle(stringResource(R.string.settings_interval))
+            SoftCard { IntervalSettings(settings, entries) { mode -> vm.updateSettings { it.copy(intervalMode = mode) } } }
+
+            SectionTitle(stringResource(R.string.settings_spending))
+            SoftCard {
+                val baseline = settings.baselinePerDay
+                StepperRow(
+                    label = stringResource(R.string.baseline_label),
+                    valueText = baseline?.let { pluralStringResource(R.plurals.pouches_a_day, it, it) } ?: stringResource(R.string.baseline_unset),
+                    onMinus = { vm.updateSettings { it.copy(baselinePerDay = ((it.baselinePerDay ?: 11) - 1).coerceIn(0, 200)) } },
+                    onPlus = { vm.updateSettings { it.copy(baselinePerDay = ((it.baselinePerDay ?: 9) + 1).coerceIn(0, 200)) } },
+                    hint = stringResource(R.string.baseline_hint),
+                )
+                Spacer(Modifier.height(12.dp))
+                var currency by remember(settings.currency) { mutableStateOf(settings.currency) }
+                OutlinedTextField(
+                    value = currency,
+                    onValueChange = { v ->
+                        currency = v.take(8)
+                        vm.updateSettings { it.copy(currency = v.take(8)) }
+                    },
+                    label = { Text(stringResource(R.string.currency_label)) },
+                    placeholder = { Text(Money.regionSymbol()) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 
@@ -155,6 +191,43 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
             }
         }
     }
+}
+
+/** Off / keep / lower, with the levels they mean for this user right now. */
+@Composable
+private fun IntervalSettings(settings: Settings, entries: List<LogEntry>, onMode: (IntervalMode) -> Unit) {
+    val recent = remember(entries) { entries.filter { it.timestamp >= System.currentTimeMillis() - IntervalPlan.DATA_MS } }
+    val usual = remember(recent, settings) {
+        val now = System.currentTimeMillis()
+        IntervalPlan.usualLevel(recent, settings, now - IntervalPlan.WINDOW_MS, now)
+    }
+    val lower = remember(recent, settings) {
+        IntervalPlan.threshold(recent, settings.copy(intervalMode = IntervalMode.LOWER), System.currentTimeMillis())
+    }
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        val modes = listOf(IntervalMode.OFF to R.string.interval_off, IntervalMode.KEEP to R.string.interval_keep, IntervalMode.LOWER to R.string.interval_lower)
+        modes.forEachIndexed { i, (m, res) ->
+            SegmentedButton(
+                selected = settings.intervalMode == m,
+                onClick = { onMode(m) },
+                shape = SegmentedButtonDefaults.itemShape(index = i, count = modes.size),
+            ) { Text(stringResource(res)) }
+        }
+    }
+    Spacer(Modifier.height(10.dp))
+    val small = MaterialTheme.typography.bodySmall
+    if (usual == null) {
+        Text(stringResource(R.string.interval_learning), style = small)
+    } else {
+        val ng = Pharmacokinetics.toNgPerMl(usual, settings.bodyWeightKg, Pharmacokinetics.NICOTINE_VD_L_PER_KG)
+        Text(stringResource(R.string.interval_usual, Fmt.oneDecimal(usual), Fmt.ngMl(ng)), style = small)
+        Spacer(Modifier.height(6.dp))
+        Text(stringResource(R.string.interval_keep_rule, Fmt.oneDecimal(usual)), style = small)
+        Spacer(Modifier.height(4.dp))
+        Text(stringResource(R.string.interval_lower_rule, Fmt.oneDecimal(lower ?: usual * IntervalPlan.LOWER_SHARE)), style = small)
+    }
+    Spacer(Modifier.height(6.dp))
+    Text(stringResource(R.string.interval_never_blocks), style = small, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 /** System default, English or Russian; the system stores the choice and recreates the screen in the new language. */

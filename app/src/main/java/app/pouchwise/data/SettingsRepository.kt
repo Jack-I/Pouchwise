@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import app.pouchwise.model.IntervalMode
 import app.pouchwise.model.LimitMode
 import app.pouchwise.model.PkParams
 import app.pouchwise.model.Settings
@@ -39,6 +40,9 @@ class SettingsRepository(private val context: Context) {
         val TAPER_START_ALT = doublePreferencesKey("taper_start_alt")
         val TAPER_TARGET_ALT = doublePreferencesKey("taper_target_alt")
         val ZONE = stringPreferencesKey("zone_id")
+        val INTERVAL_MODE = stringPreferencesKey("interval_mode")
+        val BASELINE = intPreferencesKey("baseline_per_day")
+        val CURRENCY = stringPreferencesKey("currency")
     }
 
     val settings: Flow<Settings> = context.settingsStore.data.map { read(it) }
@@ -76,6 +80,9 @@ class SettingsRepository(private val context: Context) {
             themeMode = p[K.THEME]?.let { runCatching { ThemeMode.valueOf(it) }.getOrNull() } ?: d.themeMode,
             onboarded = p[K.ONBOARDED] ?: d.onboarded,
             zoneId = p[K.ZONE] ?: d.zoneId,
+            intervalMode = p[K.INTERVAL_MODE]?.let { runCatching { IntervalMode.valueOf(it) }.getOrNull() } ?: d.intervalMode,
+            baselinePerDay = p[K.BASELINE],
+            currency = p[K.CURRENCY] ?: d.currency,
         )
     }
 
@@ -96,5 +103,8 @@ class SettingsRepository(private val context: Context) {
         if (s.taperStartAlt != null) p[K.TAPER_START_ALT] = s.taperStartAlt else p.remove(K.TAPER_START_ALT)
         if (s.taperTargetAlt != null) p[K.TAPER_TARGET_ALT] = s.taperTargetAlt else p.remove(K.TAPER_TARGET_ALT)
         p[K.ZONE] = s.zoneId
+        p[K.INTERVAL_MODE] = s.intervalMode.name
+        if (s.baselinePerDay != null) p[K.BASELINE] = s.baselinePerDay else p.remove(K.BASELINE)
+        p[K.CURRENCY] = s.currency
     }
 }

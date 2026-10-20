@@ -26,7 +26,7 @@ object Export {
         val byId = types.associateBy { it.id }
         val zone = ZoneId.systemDefault()
         val now = System.currentTimeMillis()
-        val sb = StringBuilder("id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg,pouch_min,day\n")
+        val sb = StringBuilder("id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg,pouch_min,day,price,plan_level_mg\n")
         for (e in entries) {
             val iso = isoFormatter.format(Instant.ofEpochMilli(e.timestamp).atZone(zone))
             val type = byId[e.pouchTypeId]
@@ -42,7 +42,9 @@ object Export {
                 .append(String.format(Locale.ROOT, "%.4f", e.releaseK)).append(',')
                 .append(String.format(Locale.ROOT, "%.3f", PouchTiming.absorbedMg(e, settings, now))).append(',')
                 .append(PouchTiming.pouchMinutes(e, settings)).append(',')
-                .append(DayKeys.localDate(DayKeys.of(e, settings.dayStartHour))).append('\n')
+                .append(DayKeys.localDate(DayKeys.of(e, settings.dayStartHour))).append(',')
+                .append(e.pricePerPouch?.let { String.format(Locale.ROOT, "%.2f", it) } ?: "").append(',')
+                .append(e.planLevelMg?.let { String.format(Locale.ROOT, "%.3f", it) } ?: "").append('\n')
         }
         return sb.toString()
     }
@@ -67,6 +69,7 @@ object Export {
                     put("colorIndex", t.colorIndex); put("sortOrder", t.sortOrder); put("archived", t.archived)
                     put("createdAt", t.createdAt); put("brand", t.brand); put("releaseK", t.releaseK)
                     put("fastRelease", t.fastRelease)
+                    put("pricePerCan", t.pricePerCan ?: JSONObject.NULL); put("pouchesPerCan", t.pouchesPerCan)
                 })
             }
         })
@@ -79,6 +82,8 @@ object Export {
                     put("releaseK", e.releaseK)
                     put("pouchMinutes", e.pouchMinutes ?: JSONObject.NULL)
                     put("day", e.day ?: JSONObject.NULL)
+                    put("pricePerPouch", e.pricePerPouch ?: JSONObject.NULL)
+                    put("planLevelMg", e.planLevelMg ?: JSONObject.NULL)
                 })
             }
         })
@@ -112,6 +117,9 @@ object Export {
                 put("cotinineYield", settings.pk.cotinineYield)
             })
             put("themeMode", settings.themeMode.name)
+            put("intervalMode", settings.intervalMode.name)
+            put("baselinePerDay", settings.baselinePerDay ?: JSONObject.NULL)
+            put("currency", settings.currency)
         })
         return root.toString(2)
     }

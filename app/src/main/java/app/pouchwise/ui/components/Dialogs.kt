@@ -24,6 +24,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.pouchwise.R
 import app.pouchwise.data.PouchType
+import app.pouchwise.util.Fmt
+import app.pouchwise.data.PouchEdit
 import app.pouchwise.model.Brands
 import app.pouchwise.ui.theme.PouchPalette
 import java.time.Instant
@@ -91,7 +93,8 @@ const val STRONG_POUCH_MG = 12.0
 fun PouchTypeDialog(
     initial: PouchType?,
     onDismiss: () -> Unit,
-    onSave: (brand: String, variant: String, strengthMg: Double, colorIndex: Int, fastRelease: Boolean) -> Unit,
+    currency: String,
+    onSave: (PouchEdit) -> Unit,
 ) {
     val initialKnown = initial?.brand?.takeIf { Brands.isKnown(it) }?.let { Brands.find(it)!!.name }
     var brandSel by rememberSaveable { mutableStateOf(initialKnown ?: OTHER_BRAND) }
@@ -111,9 +114,15 @@ fun PouchTypeDialog(
     var strength by rememberSaveable { mutableStateOf(initial?.let { fmtInput(it.strengthMg) } ?: "") }
     var color by rememberSaveable { mutableIntStateOf(initial?.colorIndex ?: 0) }
     var fast by rememberSaveable { mutableStateOf(initial?.fastRelease ?: false) }
+    var price by rememberSaveable { mutableStateOf(initial?.pricePerCan?.let { fmtInput(it) } ?: "") }
+    var perCan by rememberSaveable { mutableStateOf((initial?.pouchesPerCan ?: 20).toString()) }
     val mg = parseDecimal(strength)
     val brand = resolveBrand(brandSel, custom)
-    val valid = brand.isNotBlank() && mg != null && mg > 0 && mg < 200
+    val priceValue = parseDecimal(price)
+    val perCanValue = perCan.trim().toIntOrNull()
+    val priceOk = price.isBlank() || (priceValue != null && priceValue >= 0 && priceValue < 1e7)
+    val perCanOk = perCanValue != null && perCanValue in 1..1000
+    val valid = brand.isNotBlank() && mg != null && mg > 0 && mg < 200 && priceOk && perCanOk
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -167,6 +176,35 @@ fun PouchTypeDialog(
                     }
                 }
                 Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = price,
+                        onValueChange = { price = it },
+                        label = { Text(stringResource(R.string.price_per_can)) },
+                        suffix = { Text(currency) },
+                        singleLine = true,
+                        isError = !priceOk,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = perCan,
+                        onValueChange = { perCan = it },
+                        label = { Text(stringResource(R.string.pouches_per_can)) },
+                        singleLine = true,
+                        isError = !perCanOk,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                if (priceValue != null && perCanValue != null && perCanValue > 0) {
+                    Text(
+                        stringResource(R.string.price_per_pouch, Fmt.money(priceValue / perCanValue, currency)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.pouch_color), style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(8.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -177,7 +215,12 @@ fun PouchTypeDialog(
             }
         },
         confirmButton = {
-            TextButton(enabled = valid, onClick = { onSave(brand, variant.trim(), mg ?: 0.0, color, fast) }) {
+            TextButton(
+                enabled = valid,
+                onClick = {
+                    onSave(PouchEdit(brand, variant.trim(), mg ?: 0.0, color, fast, priceValue.takeIf { price.isNotBlank() }, perCanValue ?: 20))
+                },
+            ) {
                 Text(stringResource(R.string.save))
             }
         },

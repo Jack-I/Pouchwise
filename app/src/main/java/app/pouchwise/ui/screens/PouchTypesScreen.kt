@@ -23,10 +23,12 @@ import app.pouchwise.model.Brands
 import app.pouchwise.ui.components.*
 import app.pouchwise.ui.theme.pouchColor
 import app.pouchwise.util.Fmt
+import app.pouchwise.util.Money
 
 @Composable
 fun PouchTypesScreen(vm: AppViewModel, onBack: () -> Unit) {
     val typesOrNull by vm.types.collectAsStateWithLifecycle()
+    val settings by vm.settings.collectAsStateWithLifecycle()
     val types = typesOrNull.orEmpty()
     val active = types.filter { !it.archived }
     val archived = types.filter { it.archived }
@@ -90,15 +92,17 @@ fun PouchTypesScreen(vm: AppViewModel, onBack: () -> Unit) {
         PouchTypeDialog(
             initial = null,
             onDismiss = { adding = false },
-            onSave = { brand, variant, mg, color, fast -> vm.addType(brand, variant, mg, color, fast); adding = false },
+            currency = Money.symbol(settings),
+            onSave = { vm.addType(it); adding = false },
         )
     }
     editing?.let { t ->
         PouchTypeDialog(
             initial = t,
             onDismiss = { editing = null },
-            onSave = { brand, variant, mg, color, fast ->
-                vm.updateType(t, brand, variant, mg, color, fast)
+            currency = Money.symbol(settings),
+            onSave = {
+                vm.updateType(t, it)
                 editing = null
             },
         )

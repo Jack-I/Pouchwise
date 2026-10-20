@@ -10,7 +10,10 @@ import app.pouchwise.data.AppDatabase
 import app.pouchwise.data.Backup
 import app.pouchwise.data.LogEntry
 import app.pouchwise.data.PlanVersion
+import app.pouchwise.data.PouchEdit
+import app.pouchwise.data.PouchLog
 import app.pouchwise.data.PouchType
+import app.pouchwise.data.pricePerPouch
 import app.pouchwise.data.RunningDay
 import app.pouchwise.data.SettingsRepository
 import app.pouchwise.model.Brands
@@ -54,6 +57,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     for (e in dao.entriesWithoutDay()) dao.setDayIfMissing(e.id, DayKeys.epochDay(e.timestamp, s.dayStartHour))
                 }
                 if (dao.planCount() == 0) dao.upsertPlan(PlanHistory.versionOf(s, fromDay = 0L))
+                if (s.onboarded && s.baselinePerDay == null) {
+                    PlanHistory.baselinePerDay(dao.allPlans().firstOrNull(), dao.allTypes().minByOrNull { it.id })
+                        ?.let { base -> settingsRepo.update { it.copy(baselinePerDay = it.baselinePerDay ?: base) } }
+                }
             }
         }
     }
@@ -86,26 +93,28 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), System.currentTimeMillis())
 
-    fun addType(brand: String, variant: String, strengthMg: Double, colorIndex: Int, fastRelease: Boolean) = viewModelScope.launch {
+    fun addType(edit: PouchEdit) = viewModelScope.launch {
         val order = dao.maxSortOrder() + 1
         dao.insertType(
             PouchType(
-                name = Brands.displayName(brand, variant), strengthMg = strengthMg, colorIndex = colorIndex,
-                sortOrder = order, brand = brand.trim(), releaseK = Brands.effectiveK(brand, fastRelease),
-                fastRelease = fastRelease,
+                name = Brands.displayName(edit.brand, edit.variant), strengthMg = edit.strengthMg, colorIndex = edit.colorIndex,
+                sortOrder = order, brand = edit.brand.trim(), releaseK = Brands.effectiveK(edit.brand, edit.fastRelease),
+                fastRelease = edit.fastRelease, pricePerCan = edit.pricePerCan, pouchesPerCan = edit.pouchesPerCan,
             ),
         )
         refreshWidgets()
     }
 
-    fun updateType(type: PouchType, brand: String, variant: String, strengthMg: Double, colorIndex: Int, fastRelease: Boolean) =
+    fun updateType(type: PouchType, edit: PouchEdit) =
         viewModelScope.launch {
-            dao.updateType(
-                type.copy(
-                    name = Brands.displayName(brand, variant), strengthMg = strengthMg, colorIndex = colorIndex,
-                    brand = brand.trim(), releaseK = Brands.effectiveK(brand, fastRelease), fastRelease = fastRelease,
-                ),
+            val updated = type.copy(
+                name = Brands.displayName(edit.brand, edit.variant), strengthMg = edit.strengthMg, colorIndex = edit.colorIndex,
+                brand = edit.brand.trim(), releaseK = Brands.effectiveK(edit.brand, edit.fastRelease), fastRelease = edit.fastRelease,
+                pricePerCan = edit.pricePerCan, pouchesPerCan = edit.pouchesPerCan,
             )
+            dao.updateType(updated)
+            // Pouches logged before the kind had a price take this one; logged prices never change.
+            updated.pricePerPouch()?.let { dao.fillMissingPrices(type.id, it) }
             refreshWidgets()
         }
 
@@ -126,7 +135,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Puts a pouch in: it stays "active" until removed or until its pouch time passes. */
     fun logPouch(type: PouchType, atMs: Long = System.currentTimeMillis()) = viewModelScope.launch {
         val s = settingsRepo.settings.first()
-        dao.insertEntry(PouchTiming.newEntry(type.id, type.strengthMg, type.releaseK, atMs, s))
+        dao.insertEntry(PouchLog.entry(dao, type, atMs, s))
         refreshWidgets()
     }
 
@@ -195,6 +204,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     taperTargetDay = targetDay,
                     taperTargetValue = targetValue,
                     onboarded = true,
+                    baselinePerDay = perDayNow,
                 )
             }
             recordPlan(before, after)

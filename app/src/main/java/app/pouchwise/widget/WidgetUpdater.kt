@@ -49,7 +49,8 @@ object WidgetUpdater {
             }
             // The 1×1 shows only today's numbers; the others also show the pouch that is in.
             val autoEnd = if (wideIds.isNotEmpty() || coverIds.isNotEmpty()) state.nextAutoEndMs else null
-            scheduleRefresh(app, listOfNotNull(autoEnd, state.dayEndMs).minOrNull())
+            // The "next" time on the plan goes when it passes.
+            scheduleRefresh(app, listOfNotNull(autoEnd, state.dayEndMs, state.nextOnPlanMs).minOrNull())
         }
     }
 

@@ -225,4 +225,8 @@ object Pharmacokinetics {
         val litres = weightKg.coerceAtLeast(30.0) * vdLPerKg
         return mg * 1000.0 / litres
     }
+
+    /** The other way round: a plasma concentration in ng/mL to mg in the body. */
+    fun toMg(ngPerMl: Double, weightKg: Double, vdLPerKg: Double): Double =
+        ngPerMl * weightKg.coerceAtLeast(30.0) * vdLPerKg / 1000.0
 }

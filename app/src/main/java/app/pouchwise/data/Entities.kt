@@ -24,7 +24,24 @@ data class PouchType(
     val releaseK: Double = Brands.averageK,
     /** User marked this line as fast-releasing (mini, dry-slim, strong tingle). */
     val fastRelease: Boolean = false,
+    /** Price of a can in the user's currency; null until entered. */
+    val pricePerCan: Double? = null,
+    val pouchesPerCan: Int = 20,
 )
+
+/** What the pouch editor hands back. */
+data class PouchEdit(
+    val brand: String,
+    val variant: String,
+    val strengthMg: Double,
+    val colorIndex: Int,
+    val fastRelease: Boolean,
+    val pricePerCan: Double?,
+    val pouchesPerCan: Int,
+)
+
+/** What one pouch of this kind costs, or null without a price. */
+fun PouchType.pricePerPouch(): Double? = pricePerCan?.takeIf { pouchesPerCan > 0 }?.div(pouchesPerCan)
 
 /**
  * One pouch used. [timestamp] is when it went in; [endTimestamp] is when the user took it out,
@@ -48,6 +65,13 @@ data class LogEntry(
      * when it was logged; null only for rows from before schema v7 until backfilled.
      */
     val day: Long? = null,
+    /** What the pouch cost when it was logged; null when its kind had no price yet. */
+    val pricePerPouch: Double? = null,
+    /**
+     * The interval plan in force when it went in: the next pouch was due once nicotine dropped below this many mg.
+     * Null with the plan off or still learning.
+     */
+    val planLevelMg: Double? = null,
 )
 
 /** The limit plan from [fromDay] on, until the next version; past days are judged by the version of their day. */

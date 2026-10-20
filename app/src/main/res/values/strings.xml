@@ -248,4 +248,56 @@
     <string name="widget_nothing_in">Nothing is in right now</string>
     <string name="quick_log_title">Which pouch?</string>
     <string name="quick_remove_title">Which one comes out?</string>
+
+    <!-- interval plan, spending, patterns -->
+    <string name="plan_next_at">Next on plan at %1$s · in %2$s</string>
+    <string name="plan_now">On plan now</string>
+    <string name="plan_learning">The interval plan is learning your usual level</string>
+    <string name="plan_learning_hint">It needs at least five pouches over two weeks, not counting each day\'s first.</string>
+    <string name="plan_rule_keep">Keep: the next one once nicotine drops below %1$s mg</string>
+    <string name="plan_rule_lower">Lower: the next one once nicotine drops below %1$s mg</string>
+    <string name="early_marker">early</string>
+    <string name="chart_plan">plan %1$s mg</string>
+    <string name="receptor_rest">Receptors at rest today: %1$s</string>
+    <string name="receptor_rest_hint">Time with nicotine below %1$s ng/mL, when fewer than half of them are taken.</string>
+    <string name="widget_next">next %1$s</string>
+    <string name="cover_next">next at %1$s</string>
+    <string name="settings_interval">Interval between pouches</string>
+    <string name="interval_off">Off</string>
+    <string name="interval_keep">Keep</string>
+    <string name="interval_lower">Lower</string>
+    <string name="interval_usual">You usually take the next pouch at about %1$s mg of nicotine (≈ %2$s ng/mL), over the last two weeks.</string>
+    <string name="interval_keep_rule">Keep — the next one once nicotine drops below %1$s mg: days stay as they are.</string>
+    <string name="interval_lower_rule">Lower — a quarter below that, %1$s mg now, recalculated every Monday: the gaps grow week by week.</string>
+    <string name="interval_learning">To learn your usual level the plan needs at least five pouches over two weeks, not counting each day\'s first.</string>
+    <string name="interval_never_blocks">A pouch taken earlier is logged and marked, never blocked.</string>
+    <string name="settings_spending">Spending</string>
+    <string name="baseline_label">Before Pouchwise</string>
+    <plurals name="pouches_a_day">
+        <item quantity="one">%d pouch a day</item>
+        <item quantity="other">%d pouches a day</item>
+    </plurals>
+    <string name="baseline_unset">not set</string>
+    <string name="baseline_hint">How many you used a day before you started; savings count from this. Prices go in each pouch.</string>
+    <string name="currency_label">Currency</string>
+    <string name="price_per_can">Price per can</string>
+    <string name="pouches_per_can">Pouches per can</string>
+    <string name="price_per_pouch">≈ %1$s a pouch</string>
+    <string name="spending_title">Spending</string>
+    <string name="spending_week">This week</string>
+    <string name="spending_month">This month</string>
+    <string name="spending_saved">Saved since %1$s</string>
+    <string name="spending_basis">Against %1$s a day before Pouchwise, at your average %2$s a pouch.</string>
+    <string name="spending_no_prices">Add a price to your pouches (Settings → Manage pouches) to see what you spend.</string>
+    <string name="spending_no_baseline">Set how many pouches a day you used before Pouchwise in Settings to see what you save.</string>
+    <string name="spending_unpriced">Pouches without a price are left out.</string>
+    <string name="patterns_title">Patterns · last 30 days</string>
+    <string name="patterns_by_hour">Pouches by hour of day</string>
+    <string name="patterns_by_weekday">By day of the week, on average</string>
+    <string name="patterns_first">First pouch of the day</string>
+    <string name="patterns_later">%1$s later than a month ago</string>
+    <string name="patterns_earlier">%1$s earlier than a month ago</string>
+    <string name="patterns_gap">Typical gap</string>
+    <string name="patterns_in_mouth">Average in mouth</string>
+    <string name="patterns_empty">Log a few days to see patterns.</string>
 </resources>

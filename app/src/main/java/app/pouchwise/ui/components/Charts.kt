@@ -19,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -111,11 +112,17 @@ fun ScrollableBodyChart(
     leftAxisTitle: String,
     rightAxisTitle: String,
     modifier: Modifier = Modifier,
+    /** The interval plan's level (mg), drawn as a line, and when the forecast drops below it. */
+    planLevelMg: Double? = null,
+    nextOnPlanMs: Long? = null,
+    planColor: Color = Color.Unspecified,
+    planLabel: String = "",
 ) {
     val measurer = rememberTextMeasurer()
     val labelStyle = TextStyle(fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     val nicLabelStyle = labelStyle.copy(color = nicotineColor)
     val cotLabelStyle = labelStyle.copy(color = cotinineColor)
+    val planLabelStyle = labelStyle.copy(color = planColor)
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val nowColor = MaterialTheme.colorScheme.onSurfaceVariant
     val zone = remember { ZoneId.systemDefault() }
@@ -143,7 +150,7 @@ fun ScrollableBodyChart(
     val future = slice(span.future, t0, t1)
     fun peak(pick: (BodyLevels) -> Double) =
         max(past.maxOfOrNull { pick(it.second) } ?: 0.0, future.maxOfOrNull { pick(it.second) } ?: 0.0)
-    val nTarget = max(peak { it.nicotineMg }, 0.5)
+    val nTarget = max(max(peak { it.nicotineMg }, (planLevelMg ?: 0.0) * 1.15), 0.5)
     val cTarget = max(peak { it.cotinineMg }, 2.0)
     val nStep = niceStep(nTarget)
     val cStep = niceStep(cTarget)
@@ -231,6 +238,19 @@ fun ScrollableBodyChart(
                 drawPath(path(future, { it.cotinineMg }, ::yC), cotinineColor.copy(alpha = 0.8f), style = dashed)
                 drawPath(path(future, { it.nicotineMg }, ::yN), nicotineColor.copy(alpha = 0.8f), style = dashed)
             }
+            if (planLevelMg != null) {
+                val yp = yN(planLevelMg)
+                drawLine(
+                    planColor, Offset(padL, yp), Offset(padL + w, yp), strokeWidth = 2.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 5.dp.toPx())),
+                )
+                label(measurer, planLabel, padL + w - 4.dp.toPx(), yp - 16.sp.toPx(), planLabelStyle, Align.END)
+                if (nextOnPlanMs != null && nextOnPlanMs in t0..t1) {
+                    val xp = x(nextOnPlanMs)
+                    drawCircle(planColor, radius = 5.dp.toPx(), center = Offset(xp, yp))
+                    label(measurer, Fmt.time(nextOnPlanMs), xp, yp + 8.dp.toPx(), planLabelStyle, Align.CENTER)
+                }
+            }
             if (nowMs in t0..t1) {
                 val xn = x(nowMs)
                 drawLine(
@@ -244,6 +264,48 @@ fun ScrollableBodyChart(
                 }
             }
         }
+    }
+}
+
+/** Plain bars, labelled under every [labelEvery]th one. */
+@Composable
+fun SimpleBars(values: List<Double>, labels: List<String>, color: Color, modifier: Modifier = Modifier, labelEvery: Int = 1) {
+    val measurer = rememberTextMeasurer()
+    val style = TextStyle(fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Canvas(modifier.fillMaxWidth().height(96.dp)) {
+        if (values.isEmpty()) return@Canvas
+        val labelH = 16.dp.toPx()
+        val h = size.height - labelH
+        val slot = size.width / values.size
+        val top = values.max().takeIf { it > 0 } ?: 1.0
+        values.forEachIndexed { i, v ->
+            val bh = (v / top).toFloat() * (h - 2.dp.toPx())
+            if (bh > 0f) {
+                drawRoundRect(
+                    color, topLeft = Offset(i * slot + slot * 0.15f, h - bh), size = Size(slot * 0.7f, bh),
+                    cornerRadius = CornerRadius(2.dp.toPx()),
+                )
+            }
+            if (i % labelEvery == 0) label(measurer, labels[i], i * slot + slot / 2, h + 3.dp.toPx(), style, Align.CENTER)
+        }
+    }
+}
+
+/** A line through [values], lowest at the bottom; for trends where the exact numbers are shown elsewhere. */
+@Composable
+fun Sparkline(values: List<Double>, color: Color, modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        if (values.size < 2) return@Canvas
+        val lo = values.min()
+        val span = (values.max() - lo).takeIf { it > 0 } ?: 1.0
+        val pad = 3.dp.toPx()
+        val path = Path()
+        values.forEachIndexed { i, v ->
+            val px = pad + i * (size.width - 2 * pad) / (values.size - 1)
+            val py = size.height - pad - ((v - lo) / span).toFloat() * (size.height - 2 * pad)
+            if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
+        }
+        drawPath(path, color, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round))
     }
 }
 

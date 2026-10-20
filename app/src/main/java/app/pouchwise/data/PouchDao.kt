@@ -83,6 +83,10 @@ interface PouchDao {
     @Query("SELECT * FROM plan_versions ORDER BY fromDay")
     suspend fun allPlans(): List<PlanVersion>
 
+    /** Pouches logged before their kind had a price take the first one entered. */
+    @Query("UPDATE log_entries SET pricePerPouch = :price WHERE pouchTypeId = :typeId AND pricePerPouch IS NULL")
+    suspend fun fillMissingPrices(typeId: Long, price: Double)
+
     @Query("SELECT pouchTypeId, COUNT(*) AS uses FROM log_entries WHERE timestamp >= :fromMs GROUP BY pouchTypeId")
     suspend fun usageSince(fromMs: Long): List<TypeUsage>
 

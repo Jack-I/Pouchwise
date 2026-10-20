@@ -68,6 +68,8 @@ private val DarkColors = darkColorScheme(
 object AppColors {
     val nicotine = Color(0xFF1E88E5)
     val cotinine = Color(0xFF8E24AA)
+    /** The interval plan: its level on the chart, the "next" row and the early marker. */
+    val plan = Color(0xFFFFB300)
     /** Tile colours for the seven day levels, best to worst. */
     val garden = listOf(
         Color(0xFF66BB6A), Color(0xFF9CCC65), Color(0xFFC5E1A5), Color(0xFFE6EE9C),

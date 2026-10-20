@@ -25,6 +25,7 @@ import app.pouchwise.R
 import app.pouchwise.model.*
 import app.pouchwise.ui.components.*
 import app.pouchwise.util.Fmt
+import app.pouchwise.util.Money
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.TextStyle
@@ -152,6 +153,100 @@ fun HistoryScreen(vm: AppViewModel) {
                 lineColor = MaterialTheme.colorScheme.onSurface,
             )
         }
+
+        SpendingCard(remember(entries, settings, today) { Spending.summary(entries, settings, today) }, settings)
+        PatternsCard(remember(entries, settings, today) { Patterns.summary(entries, settings, today, System.currentTimeMillis()) })
+    }
+}
+
+@Composable
+private fun SpendingCard(summary: SpendingSummary, settings: Settings) {
+    val currency = Money.symbol(settings)
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    SoftCard {
+        Text(stringResource(R.string.spending_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        val perPouch = summary.perPouch
+        if (perPouch == null) {
+            Text(stringResource(R.string.spending_no_prices), style = MaterialTheme.typography.bodySmall, color = muted)
+            return@SoftCard
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MiniTile(stringResource(R.string.spending_week), Fmt.money(summary.week, currency), Modifier.weight(1f))
+            MiniTile(stringResource(R.string.spending_month), Fmt.money(summary.month, currency), Modifier.weight(1f))
+            if (summary.saved != null && summary.sinceDay != null) {
+                MiniTile(
+                    stringResource(R.string.spending_saved, Fmt.dateShort(summary.sinceDay)),
+                    "≈ " + Fmt.money(summary.saved, currency),
+                    Modifier.weight(1f),
+                    accent = MaterialTheme.colorScheme.secondary,
+                )
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        val baseline = settings.baselinePerDay
+        Text(
+            if (summary.saved != null && baseline != null) {
+                stringResource(R.string.spending_basis, pluralStringResource(R.plurals.count_pouches, baseline, baseline), Fmt.money(perPouch, currency))
+            } else stringResource(R.string.spending_no_baseline),
+            style = MaterialTheme.typography.bodySmall,
+            color = muted,
+        )
+        if (summary.unpriced) Text(stringResource(R.string.spending_unpriced), style = MaterialTheme.typography.bodySmall, color = muted)
+    }
+}
+
+@Composable
+private fun PatternsCard(p: PatternSummary) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val small = MaterialTheme.typography.bodySmall
+    SoftCard {
+        Text(stringResource(R.string.patterns_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        if (p.byHour.sum() == 0) {
+            Text(stringResource(R.string.patterns_empty), style = small, color = muted)
+            return@SoftCard
+        }
+        Text(stringResource(R.string.patterns_by_hour), style = small, color = muted)
+        SimpleBars(p.byHour.map { it.toDouble() }, (0..23).map { it.toString() }, MaterialTheme.colorScheme.primary, labelEvery = 3)
+        Spacer(Modifier.height(10.dp))
+        Text(stringResource(R.string.patterns_by_weekday), style = small, color = muted)
+        val locale = Locale.getDefault()
+        SimpleBars(p.byWeekday, DayOfWeek.entries.map { it.getDisplayName(TextStyle.SHORT, locale) }, MaterialTheme.colorScheme.secondary)
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.patterns_first), style = small, color = muted)
+                Text(p.firstNow?.let { Fmt.clockMinutes(it) } ?: "—", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                p.firstShift?.takeIf { it != 0 }?.let { shift ->
+                    Text(
+                        if (shift > 0) stringResource(R.string.patterns_later, durationText(shift * 60_000L))
+                        else stringResource(R.string.patterns_earlier, durationText(-shift * 60_000L)),
+                        style = small,
+                        color = if (shift > 0) MaterialTheme.colorScheme.secondary else muted,
+                    )
+                }
+            }
+            Sparkline(p.firstPouch.map { it.toDouble() }, MaterialTheme.colorScheme.secondary, Modifier.size(width = 120.dp, height = 44.dp))
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MiniTile(stringResource(R.string.patterns_gap), p.typicalGapMs?.let { durationText(it) } ?: "—", Modifier.weight(1f))
+            MiniTile(stringResource(R.string.patterns_in_mouth), p.avgInMouthMs?.let { durationText(it) } ?: "—", Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun MiniTile(label: String, value: String, modifier: Modifier = Modifier, accent: androidx.compose.ui.graphics.Color? = null) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = accent ?: MaterialTheme.colorScheme.onSurface)
     }
 }
 

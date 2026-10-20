@@ -40,6 +40,7 @@ import app.pouchwise.MainActivity
 import app.pouchwise.R
 import app.pouchwise.data.AppDatabase
 import app.pouchwise.data.LogEntry
+import app.pouchwise.data.PouchLog
 import app.pouchwise.data.PouchType
 import app.pouchwise.data.SettingsRepository
 import app.pouchwise.model.PouchTiming
@@ -225,7 +226,8 @@ object QuickLog {
 
     private suspend fun insert(app: Context, type: PouchType, atMs: Long) {
         val settings = SettingsRepository(app).settings.first()
-        AppDatabase.get(app).dao().insertEntry(PouchTiming.newEntry(type.id, type.strengthMg, type.releaseK, atMs, settings))
+        val dao = AppDatabase.get(app).dao()
+        dao.insertEntry(PouchLog.entry(dao, type, atMs, settings))
         toast(app, app.getString(R.string.widget_logged, type.name))
         runCatching { WidgetUpdater.updateAll(app) }
     }

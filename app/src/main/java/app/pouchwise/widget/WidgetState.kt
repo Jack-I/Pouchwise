@@ -6,6 +6,8 @@ import app.pouchwise.data.LogEntry
 import app.pouchwise.data.PouchType
 import app.pouchwise.data.SettingsRepository
 import app.pouchwise.model.DayKeys
+import app.pouchwise.model.IntervalMode
+import app.pouchwise.model.IntervalPlan
 import app.pouchwise.model.LimitMode
 import app.pouchwise.model.Limits
 import app.pouchwise.model.PouchTiming
@@ -28,6 +30,8 @@ data class WidgetState(
     val nextAutoEndMs: Long? = null,
     /** When the next tracking day starts; the widgets refresh then. */
     val dayEndMs: Long? = null,
+    /** When the interval plan has the next pouch due, if that is still ahead. */
+    val nextOnPlanMs: Long? = null,
 ) {
     val used: Double get() = Limits.usage(mode, count, mg)
     val over: Boolean get() = used > limit + 1e-9
@@ -80,6 +84,12 @@ object WidgetData {
         val entries = dao.entriesOfDay(day, DayKeys.startOfDayMs(day, settings.dayStartHour), dayEnd)
         val inNow = pouchesInNow(context, settings, now)
         val latest = inNow.lastOrNull()
+        val nextOnPlan = if (settings.intervalMode == IntervalMode.OFF) null else {
+            val recent = dao.entriesBetween(now - IntervalPlan.DATA_MS, now + 1)
+            IntervalPlan.threshold(recent, settings, now)
+                ?.let { IntervalPlan.nextOnPlanMs(recent.map { PouchTiming.toDose(it, settings) }, settings.pk, it, now) }
+                ?.takeIf { it > now }
+        }
         return WidgetState(
             mode = settings.limitMode,
             count = entries.size,
@@ -90,6 +100,7 @@ object WidgetData {
             inSinceMs = latest?.first?.timestamp,
             nextAutoEndMs = inNow.minOfOrNull { it.first.timestamp + PouchTiming.autoMs(it.first, settings) },
             dayEndMs = dayEnd,
+            nextOnPlanMs = nextOnPlan,
         )
     }
 
