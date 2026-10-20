@@ -9,7 +9,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -19,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -27,6 +30,8 @@ import app.pouchwise.data.PouchType
 import app.pouchwise.util.Fmt
 import app.pouchwise.data.PouchEdit
 import app.pouchwise.model.Brands
+import app.pouchwise.model.DayKeys
+import app.pouchwise.model.PouchTiming
 import app.pouchwise.ui.theme.PouchPalette
 import java.time.Instant
 import java.time.ZoneId
@@ -274,6 +279,102 @@ fun TimeDialog(
                 }
             }
         }
+    }
+}
+
+/**
+ * Corrects a logged pouch: when it went in and, once it is out, how many minutes it stayed. Moving the start
+ * keeps the minutes. [durationMs] is null while the pouch is still in; [onSave] gets the same shape back.
+ */
+@Composable
+fun EntryDialog(
+    title: String,
+    color: Color,
+    startMs: Long,
+    durationMs: Long?,
+    onDismiss: () -> Unit,
+    onSave: (startMs: Long, durationMs: Long?) -> Unit,
+) {
+    var start by rememberSaveable { mutableLongStateOf(startMs) }
+    val initialMinutes = durationMs?.let { (it / 60_000L).toInt() }
+    var minutesText by rememberSaveable { mutableStateOf(initialMinutes?.toString().orEmpty()) }
+    var pickTime by rememberSaveable { mutableStateOf(false) }
+    val minutes = minutesText.toIntOrNull()?.takeIf { it in 1..PouchTiming.MAX_POUCH_MINUTES }
+    // Untouched minutes keep the exact time, seconds included.
+    val newDurationMs = when {
+        durationMs == null -> null
+        minutes == initialMinutes -> durationMs
+        else -> minutes?.let { it * 60_000L }
+    }
+    val endsAfterNow = newDurationMs != null && start + newDurationMs > System.currentTimeMillis()
+    val valid = (durationMs == null || newDurationMs != null) && !endsAfterNow
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.edit_entry)) },
+        text = {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ColorDot(color, size = 10)
+                    Spacer(Modifier.width(8.dp))
+                    Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Spacer(Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.put_in_at), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    FilledTonalButton(onClick = { pickTime = true }) { Text(Fmt.time(start), style = MaterialTheme.typography.titleMedium) }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.in_the_mouth), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    if (durationMs == null) {
+                        Text(stringResource(R.string.still_in), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        val shown = (minutesText.toIntOrNull() ?: initialMinutes ?: 1).coerceIn(1, PouchTiming.MAX_POUCH_MINUTES)
+                        FilledTonalIconButton(onClick = { minutesText = (shown - 1).coerceAtLeast(1).toString() }) {
+                            Icon(Icons.Filled.Remove, contentDescription = null)
+                        }
+                        OutlinedTextField(
+                            value = minutesText,
+                            onValueChange = { v -> minutesText = v.filter { it.isDigit() }.take(2) },
+                            singleLine = true,
+                            isError = minutes == null,
+                            textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.width(56.dp).padding(horizontal = 4.dp),
+                        )
+                        Text(stringResource(R.string.unit_min), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        FilledTonalIconButton(onClick = { minutesText = (shown + 1).coerceAtMost(PouchTiming.MAX_POUCH_MINUTES).toString() }) {
+                            Icon(Icons.Filled.Add, contentDescription = null)
+                        }
+                    }
+                }
+                if (newDurationMs != null) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        if (endsAfterNow) stringResource(R.string.ends_after_now) else stringResource(R.string.taken_out_at, Fmt.time(start + newDurationMs)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (endsAfterNow) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = valid, onClick = { onSave(start, newDurationMs) }) { Text(stringResource(R.string.save)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+
+    if (pickTime) {
+        TimeDialog(
+            title = stringResource(R.string.put_in_at),
+            initialMs = start,
+            onDismiss = { pickTime = false },
+            onConfirm = { h, m ->
+                start = DayKeys.nearestPastTimeMs(start, h, m, System.currentTimeMillis())
+                pickTime = false
+            },
+        )
     }
 }
 

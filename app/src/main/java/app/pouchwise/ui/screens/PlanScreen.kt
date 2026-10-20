@@ -63,7 +63,7 @@ fun PlanScreen(vm: AppViewModel) {
             .padding(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        ScreenTitle(stringResource(R.string.plan_title), stringResource(R.string.plan_subtitle))
+        ScreenTitle(stringResource(R.string.plan_title))
 
         // headline card
         SoftCard(containerColor = MaterialTheme.colorScheme.secondaryContainer) {

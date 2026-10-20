@@ -17,10 +17,10 @@
     <string name="unit_mg">мг</string>
     <string name="unit_pouches">паучей</string>
     <string name="per_day">в день</string>
-    <string name="mg_value">%1$s мг</string>
-    <string name="duration_m">%1$d мин</string>
-    <string name="duration_h_m">%1$d ч %2$d мин</string>
-    <string name="duration_d_h">%1$d д %2$d ч</string>
+    <string name="mg_value">%1$s\u00A0мг</string>
+    <string name="duration_m">%1$d\u00A0мин</string>
+    <string name="duration_h_m">%1$d\u00A0ч\u00A0%2$d\u00A0мин</string>
+    <string name="duration_d_h">%1$d\u00A0д\u00A0%2$d\u00A0ч</string>
     <string name="time_now">сейчас</string>
 
     <plurals name="pouches_left_today">
@@ -59,7 +59,7 @@
     <string name="todays_log">Записи за сегодня</string>
     <string name="empty_log">Сегодня записей нет.</string>
     <string name="no_types_title">Добавьте первый пауч</string>
-    <string name="no_types_body">Заведите пауч с названием и крепостью в мг. Нажимайте +, когда кладёте его, и «Убрать», когда вынимаете; иначе он считается убранным через %1$d мин (меняется в настройках). Долгое нажатие на + — записать задним числом.</string>
+    <string name="no_types_body">Добавьте свои паучи с крепостью. Нажимайте +, когда кладёте пауч, и «Убрать», когда вынимаете; иначе он считается вынутым через %1$d\u00A0мин. Долгое нажатие на + — запись задним числом.</string>
     <string name="log_one">Записать один</string>
     <plurals name="fits_today">
         <item quantity="one">Влезет ещё %d</item>
@@ -72,9 +72,15 @@
     <string name="remove_pouch">Убрать</string>
     <string name="auto_remove_in">Сам снимется через %1$s</string>
     <string name="over_limit_marker">Сверх лимита</string>
-    <string name="edit_time">Изменить время</string>
     <string name="pick_time">Выберите время</string>
     <string name="delete_entry_q">Удалить эту запись?</string>
+    <string name="edit_entry">Изменить запись</string>
+    <string name="put_in_at">Заложен в</string>
+    <string name="in_the_mouth">Во рту</string>
+    <string name="unit_min">мин</string>
+    <string name="still_in">ещё во рту</string>
+    <string name="taken_out_at">Вынут в %1$s</string>
+    <string name="ends_after_now">Это позже, чем сейчас</string>
 
     <string name="brand">Бренд</string>
     <string name="brand_other">Другой</string>
@@ -86,25 +92,25 @@
     <string name="pouch_strength">Крепость, мг на пауч</string>
     <string name="strong_warning">Вы просрали свою толерантность. Переключитесь на более слабые паучи.</string>
     <string name="fast_release">Быстрая отдача</string>
-    <string name="fast_release_hint">Для мини, сухих слимов и сильно щиплющих линеек: такой пауч отдаёт никотин быстрее, как ZYN, и время во рту для него значит меньше.</string>
+    <string name="fast_release_hint">Для мини, сухих слимов и сильно щиплющих: они отдают никотин быстро, как ZYN, и время во рту для них значит меньше.</string>
     <string name="pouch_color">Цвет</string>
-    <string name="absorbed_today">≈ %1$s мг усвоено за сегодня</string>
-    <string name="absorbed_short">≈ %1$s мг усвоено</string>
+    <string name="absorbed_today">≈\u00A0%1$s\u00A0мг усвоено сегодня</string>
+    <string name="absorbed_short">≈\u00A0%1$s\u00A0мг усвоено</string>
     <string name="new_pouch">Новый пауч</string>
     <string name="edit_pouch">Изменить пауч</string>
     <string name="archived">Скрытые</string>
     <string name="restore">Вернуть</string>
     <string name="delete_type_q">Убрать %1$s?</string>
-    <string name="delete_type_body">История останется в записях и графиках. Пауч исчезнет с экрана учёта, его можно вернуть позже.</string>
+    <string name="delete_type_body">Пауч пропадёт с экрана учёта, история останется. Его можно вернуть.</string>
     <string name="delete_type_body_unused">С этим паучем ещё нет записей, поэтому он удалится насовсем.</string>
     <string name="manage_pouches">Управление паучами</string>
     <string name="no_types_yet">Паучей пока нет.</string>
 
     <string name="body_title">В организме</string>
-    <string name="body_subtitle">Оценка по вашим записям через простую модель — не измерение.</string>
+    <string name="body_subtitle">Оценка по вашим записям, не измерение.</string>
     <string name="nicotine">Никотин</string>
     <string name="cotinine">Котинин</string>
-    <string name="approx_ng_ml">≈ %1$s нг/мл</string>
+    <string name="approx_ng_ml">≈\u00A0%1$s\u00A0нг/мл</string>
     <string name="gone_95_short">95%% выйдет через %1$s</string>
     <string name="gone_by">к %1$s</string>
     <string name="cleared_short">Уже вышел</string>
@@ -113,17 +119,16 @@
     <string name="chart_forecast_hint">прогноз →</string>
     <string name="axis_nicotine">Никотин, мг</string>
     <string name="axis_cotinine">Котинин, мг</string>
-    <string name="range_12h">12 ч</string>
+    <string name="range_6h">6\u00A0ч</string>
     <string name="range_48h">48 ч</string>
     <string name="range_7d">7 д</string>
-    <string name="legend_past">было</string>
     <string name="legend_future">если больше не брать</string>
     <string name="model_summary">t½ никотина %1$s ч · t½ котинина %2$s ч · усваивается %3$d%% за %4$d мин</string>
     <string name="no_data_yet">Запишите пауч, чтобы увидеть кривую.</string>
 
     <string name="history_title">История</string>
     <string name="garden_title">Ваши дни</string>
-    <string name="garden_subtitle">Одна плитка — день: сверху паучи, снизу мг. Цвет — как день прошёл относительно лимита.</string>
+    <string name="garden_subtitle">Плитка — день: сверху паучи, снизу мг. Цвет — доля дневного лимита.</string>
     <string name="stats_streak">Дней в лимите подряд</string>
     <string name="stats_over_total">Дней сверх лимита, всего</string>
     <string name="stats_within_30">Дней в лимите из последних 30</string>
@@ -145,10 +150,11 @@
     <string name="daily_usage">По дням</string>
     <string name="legend_usage">Использовано</string>
     <string name="legend_limit">Дневной лимит</string>
+    <string name="chart_earlier_days">← раньше</string>
+    <string name="chart_plan_ahead">план вперёд →</string>
 
     <string name="plan_title">Мой план</string>
-    <string name="plan_subtitle">Ваш путь к меньшему никотину.</string>
-    <string name="responsible_usage">ОСОЗНАННОЕ ПОТРЕБЛЕНИЕ</string>
+    <string name="responsible_usage">ПОСТЕПЕННОЕ СНИЖЕНИЕ</string>
     <plurals name="days_until_target">
         <item quantity="one">%d день до целевой даты</item>
         <item quantity="few">%d дня до целевой даты</item>
@@ -172,18 +178,18 @@
     <string name="target_date">Целевая дата</string>
     <string name="taper_summary">Сегодня: %1$s. Выйдем на %2$s к %3$s.</string>
     <string name="taper_invalid">Целевая дата должна быть позже даты старта.</string>
-    <string name="warn_over_limit_hint">Превышение просто записывается: день подсвечивается красным, лишние паучи помечаются в списке.</string>
+    <string name="warn_over_limit_hint">Ничего не запрещается, дни сверх лимита просто помечаются.</string>
 
     <string name="settings_pouches">Паучи</string>
     <string name="settings_day">День</string>
     <string name="day_starts_at">День начинается в</string>
-    <string name="day_starts_hint">Паучи до этого часа идут в зачёт предыдущего дня — удобно для ночных посиделок.</string>
+    <string name="day_starts_hint">Паучи до этого часа идут в предыдущий день.</string>
     <string name="settings_model">Модель организма</string>
     <string name="weight">Вес тела, кг</string>
-    <string name="weight_hint">Нужен только для пересчёта мг в организме в примерную концентрацию в крови.</string>
+    <string name="weight_hint">Нужен, чтобы перевести мг в организме в нг/мл в крови.</string>
     <string name="absorption_minutes">Время пауча под губой, минут</string>
-    <string name="pouch_time_hint">Столько пауч считается «под губой», если не убрать его раньше на экране учёта. Чем меньше время, тем меньше усвоилось никотина. Действует для новых паучей, у уже записанных остаётся своё время.</string>
-    <string name="model_hint" formatted="false">Оценка исходит из того, что за 30 минут под губой усваивается около 30% заявленного никотина (меньше, если короче, и больше, если дольше), период полувыведения никотина 2 ч, котинина 16 ч. 30% — типичное значение по восьми исследованиям никотина в крови после паучей; продукты различаются, а большинство исследований оплатили производители, поэтому уровни приблизительные.</string>
+    <string name="pouch_time_hint">Через столько пауч считается вынутым, если не убрать его раньше. У записанных паучей время своё.</string>
+    <string name="model_hint" formatted="false">Считается, что за 30 минут под губой усваивается около 30% никотина с этикетки (меньше, если короче, больше, если дольше), полувыведение никотина 2 ч, котинина 16 ч. 30% — типичное значение в восьми исследованиях крови, в основном оплаченных производителями, так что уровни примерные.</string>
     <string name="settings_appearance">Оформление</string>
     <string name="theme_system">Как в системе</string>
     <string name="theme_light">Светлая</string>
@@ -191,7 +197,7 @@
     <string name="settings_data">Данные</string>
     <string name="export_csv">Экспорт CSV</string>
     <string name="export_json">Экспорт JSON</string>
-    <string name="export_hint">Всё хранится только на этом телефоне. Экспортируйте для бэкапа или анализа, а JSON-экспорт можно импортировать на другом телефоне.</string>
+    <string name="export_hint">Данные хранятся только на этом телефоне. Экспорт — чтобы сохранить копию; JSON-экспорт можно импортировать на другом телефоне.</string>
     <string name="share_export">Поделиться экспортом</string>
     <string name="import_json">Импорт JSON</string>
     <string name="import_title">Заменить данные содержимым файла?</string>
@@ -258,26 +264,26 @@
     <string name="quick_remove_title">Какой вынимаем?</string>
 
     <!-- интервал, траты, закономерности -->
-    <string name="plan_next_at">Следующий — не раньше %1$s · через %2$s</string>
+    <string name="plan_next_at">Следующий — лучше после %1$s</string>
     <string name="plan_now">Перерыв выдержан</string>
     <string name="plan_learning">План толерантности изучает ваш обычный уровень</string>
     <string name="plan_learning_hint">Нужно хотя бы пять паучей за две недели, не считая первого за день.</string>
     <string name="early_marker">рано</string>
     <string name="receptor_rest">Рецепторы отдыхали сегодня: %1$s</string>
-    <string name="receptor_rest_hint">Время, когда никотин был ниже %1$s нг/мл и заняты меньше половины рецепторов.</string>
+    <string name="receptor_rest_hint">Время, когда никотин ниже %1$s\u00A0нг/мл и большинство рецепторов свободны.</string>
     <string name="widget_next">после %1$s</string>
-    <string name="cover_next">следующий не раньше %1$s</string>
+    <string name="cover_next">следующий лучше после %1$s</string>
     <string name="interval_off">Выкл.</string>
     <string name="interval_keep">Держать</string>
     <string name="interval_lower">Снижать</string>
-    <string name="interval_usual">Обычно вы берёте следующий пауч примерно при %1$s мг никотина (≈ %2$s нг/мл) — по последним двум неделям.</string>
-    <string name="interval_keep_rule">Держать — следующий не раньше, чем никотин опустится ниже %1$s мг: дни остаются как есть.</string>
-    <string name="interval_lower_rule">Снижать — на четверть ниже, сейчас %1$s мг, пересчёт по понедельникам: перерывы растут от недели к неделе.</string>
+    <string name="interval_usual">За последние две недели вы брали следующий пауч примерно при %1$s\u00A0мг никотина в организме (≈\u00A0%2$s\u00A0нг/мл).</string>
+    <string name="interval_keep_rule">Держать: следующий лучше после того, как никотин опустится ниже %1$s\u00A0мг. Дни остаются как есть.</string>
+    <string name="interval_lower_rule">Снижать: на четверть ниже, сейчас %1$s\u00A0мг, пересчёт по понедельникам — перерывы растут от недели к неделе.</string>
     <string name="interval_learning">Чтобы узнать ваш обычный уровень, плану нужно хотя бы пять паучей за две недели, не считая первого за день.</string>
-    <string name="interval_never_blocks">Пауч раньше плана записывается и помечается, но ничего не запрещается.</string>
+    <string name="interval_never_blocks">Пауч раньше времени помечается, но не запрещается.</string>
     <string name="settings_spending">Траты</string>
     <string name="baseline_label">Паучей в день до Pouchwise</string>
-    <string name="baseline_hint">Сколько паучей в день было до начала — от этого считается экономия. Цены задаются в каждом пауче.</string>
+    <string name="baseline_hint">От этого считается экономия. Цены задаются у каждого пауча.</string>
     <string name="currency_label">Валюта</string>
     <string name="price_per_can">Цена банки</string>
     <string name="pouches_per_can">Паучей в банке</string>
@@ -287,7 +293,7 @@
     <string name="spending_month">За месяц</string>
     <string name="spending_saved">Сэкономлено с %1$s</string>
     <string name="spending_basis">Против %1$s в день до Pouchwise, по средней цене %2$s за пауч.</string>
-    <string name="spending_no_prices">Укажите цену в своих паучах (Настройки → Управление паучами), чтобы видеть траты.</string>
+    <string name="spending_no_prices">Укажите цены паучей, чтобы видеть траты.</string>
     <string name="spending_no_baseline">Чтобы видеть экономию, укажите в настройках, сколько паучей в день было до Pouchwise.</string>
     <string name="spending_unpriced">Паучи без цены не учитываются.</string>
     <string name="patterns_title">Закономерности · 30 дней</string>
@@ -301,10 +307,10 @@
     <string name="patterns_empty">Записей пока мало для закономерностей.</string>
     <string name="tolerance_title">Толерантность</string>
     <string name="tolerance_honest">Ни одно исследование не даёт интервала, который держит или снижает толерантность; это правило построено на том, как долго никотин занимает рецепторы.</string>
-    <string name="plan_wait_hold">Держим толерантность: пока никотин не опустится ниже %1$s мг</string>
-    <string name="plan_wait_lower">Снижаем толерантность: пока никотин не опустится ниже %1$s мг</string>
-    <string name="plan_kept_hold">Держим толерантность: никотин ниже %1$s мг</string>
-    <string name="plan_kept_lower">Снижаем толерантность: никотин ниже %1$s мг</string>
+    <string name="plan_wait_hold">Через %1$s никотин опустится ниже %2$s\u00A0мг (держим толерантность)</string>
+    <string name="plan_wait_lower">Через %1$s никотин опустится ниже %2$s\u00A0мг (снижаем толерантность)</string>
+    <string name="plan_kept_hold">Никотин ниже %1$s\u00A0мг (держим толерантность)</string>
+    <string name="plan_kept_lower">Никотин ниже %1$s\u00A0мг (снижаем толерантность)</string>
     <string name="chart_hold">держать %1$s мг</string>
     <string name="chart_lower">снижать %1$s мг</string>
     <string name="history_days">Дни</string>

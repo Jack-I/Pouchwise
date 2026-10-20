@@ -19,10 +19,10 @@
     <string name="unit_mg">mg</string>
     <string name="unit_pouches">pouches</string>
     <string name="per_day">per day</string>
-    <string name="mg_value">%1$s mg</string>
-    <string name="duration_m">%1$d min</string>
-    <string name="duration_h_m">%1$d h %2$d min</string>
-    <string name="duration_d_h">%1$d d %2$d h</string>
+    <string name="mg_value">%1$s\u00A0mg</string>
+    <string name="duration_m">%1$d\u00A0min</string>
+    <string name="duration_h_m">%1$d\u00A0h\u00A0%2$d\u00A0min</string>
+    <string name="duration_d_h">%1$d\u00A0d\u00A0%2$d\u00A0h</string>
     <string name="time_now">now</string>
 
     <!-- track -->
@@ -54,7 +54,7 @@
     <string name="todays_log">Today\'s log</string>
     <string name="empty_log">Nothing logged today.</string>
     <string name="no_types_title">Add your first pouch</string>
-    <string name="no_types_body">Create a pouch with its brand and nicotine strength. Tap + when you put one in and Remove when you take it out; otherwise it counts as removed after %1$d min (change this in Settings). Long-press + to log at an earlier time.</string>
+    <string name="no_types_body">Add the pouches you use, with their strength. Tap + when one goes in and Remove when it comes out; otherwise it counts as out after %1$d\u00A0min. Long-press + to log an earlier time.</string>
     <string name="log_one">Log one</string>
     <plurals name="fits_today">
         <item quantity="one">%d more fits today</item>
@@ -65,9 +65,15 @@
     <string name="remove_pouch">Remove</string>
     <string name="auto_remove_in">Counts as removed in %1$s</string>
     <string name="over_limit_marker">Over the limit</string>
-    <string name="edit_time">Edit time</string>
     <string name="pick_time">Pick a time</string>
     <string name="delete_entry_q">Delete this entry?</string>
+    <string name="edit_entry">Edit entry</string>
+    <string name="put_in_at">Put in at</string>
+    <string name="in_the_mouth">In the mouth</string>
+    <string name="unit_min">min</string>
+    <string name="still_in">still in</string>
+    <string name="taken_out_at">Taken out at %1$s</string>
+    <string name="ends_after_now">That\'s later than now</string>
 
     <!-- pouch types -->
     <string name="brand">Brand</string>
@@ -80,26 +86,26 @@
     <string name="pouch_strength">Strength, mg per pouch</string>
     <string name="strong_warning">You\'ve blown your tolerance. Switch to weaker pouches.</string>
     <string name="fast_release">Fast release</string>
-    <string name="fast_release_hint">For mini, dry-slim or strongly tingling lines: such a pouch gives up its nicotine faster, like ZYN, so how long it stays in matters less.</string>
+    <string name="fast_release_hint">For minis, dry slims and pouches that tingle hard: they give up nicotine fast, like ZYN, so time in the mouth matters less.</string>
     <string name="pouch_color">Colour</string>
-    <string name="absorbed_today">≈ %1$s mg absorbed so far today</string>
-    <string name="absorbed_short">≈ %1$s mg absorbed</string>
+    <string name="absorbed_today">≈\u00A0%1$s\u00A0mg absorbed today</string>
+    <string name="absorbed_short">≈\u00A0%1$s\u00A0mg absorbed</string>
     <string name="new_pouch">New pouch</string>
     <string name="edit_pouch">Edit pouch</string>
     <string name="archived">Hidden</string>
     <string name="restore">Show again</string>
     <string name="delete_type_q">Remove %1$s?</string>
-    <string name="delete_type_body">Its history stays in your log and charts. The pouch is hidden from the Track screen and can be restored later.</string>
+    <string name="delete_type_body">It leaves the Track screen; its history stays. You can bring it back later.</string>
     <string name="delete_type_body_unused">Nothing has been logged with this pouch yet, so it is deleted for good.</string>
     <string name="manage_pouches">Manage pouches</string>
     <string name="no_types_yet">No pouches yet.</string>
 
     <!-- body -->
     <string name="body_title">In your body</string>
-    <string name="body_subtitle">Estimated from your log with a simple model — not a measurement.</string>
+    <string name="body_subtitle">An estimate from your log, not a measurement.</string>
     <string name="nicotine">Nicotine</string>
     <string name="cotinine">Cotinine</string>
-    <string name="approx_ng_ml">≈ %1$s ng/mL</string>
+    <string name="approx_ng_ml">≈\u00A0%1$s\u00A0ng/mL</string>
     <string name="gone_95_short">95%% gone in %1$s</string>
     <string name="gone_by">by %1$s</string>
     <string name="cleared_short">Has cleared</string>
@@ -108,10 +114,9 @@
     <string name="chart_forecast_hint">forecast →</string>
     <string name="axis_nicotine">Nicotine, mg</string>
     <string name="axis_cotinine">Cotinine, mg</string>
-    <string name="range_12h">12 h</string>
+    <string name="range_6h">6\u00A0h</string>
     <string name="range_48h">48 h</string>
     <string name="range_7d">7 d</string>
-    <string name="legend_past">so far</string>
     <string name="legend_future">if you stop now</string>
     <string name="model_summary">t½ nicotine %1$s h · t½ cotinine %2$s h · %3$d%% absorbed over %4$d min</string>
     <string name="no_data_yet">Log a pouch to see the curve.</string>
@@ -119,7 +124,7 @@
     <!-- history -->
     <string name="history_title">History</string>
     <string name="garden_title">Your days</string>
-    <string name="garden_subtitle">One tile per day: pouches on top, mg below. The colour shows how the day went against the limit.</string>
+    <string name="garden_subtitle">One tile per day: pouches on top, mg below. The colour is the share of the day\'s limit.</string>
     <string name="stats_streak">Days within limit in a row</string>
     <string name="stats_over_total">Days over the limit, total</string>
     <string name="stats_within_30">Days within limit, last 30</string>
@@ -142,11 +147,12 @@
     <string name="daily_usage">Daily usage</string>
     <string name="legend_usage">Usage</string>
     <string name="legend_limit">Daily limit</string>
+    <string name="chart_earlier_days">← earlier days</string>
+    <string name="chart_plan_ahead">plan ahead →</string>
 
     <!-- plan -->
     <string name="plan_title">My Plan</string>
-    <string name="plan_subtitle">Your path to less nicotine.</string>
-    <string name="responsible_usage">RESPONSIBLE USAGE</string>
+    <string name="responsible_usage">GRADUAL REDUCTION</string>
     <plurals name="days_until_target">
         <item quantity="one">%d day until your target date</item>
         <item quantity="other">%d days until your target date</item>
@@ -168,19 +174,19 @@
     <string name="target_date">Target date</string>
     <string name="taper_summary">Today: %1$s. Reaching %2$s by %3$s.</string>
     <string name="taper_invalid">The target date must be after the start date.</string>
-    <string name="warn_over_limit_hint">Going over the limit is simply recorded: the day turns red and the extra pouches are marked in the log.</string>
+    <string name="warn_over_limit_hint">Nothing is blocked; days over the limit are just marked.</string>
 
     <!-- settings -->
     <string name="settings_pouches">Pouches</string>
     <string name="settings_day">Day</string>
     <string name="day_starts_at">Day starts at</string>
-    <string name="day_starts_hint">Pouches before this hour count toward the previous day — handy for late nights.</string>
+    <string name="day_starts_hint">Pouches before this hour count toward the day before.</string>
     <string name="settings_model">Body model</string>
     <string name="weight">Body weight, kg</string>
-    <string name="weight_hint">Only used to convert mg in the body into an approximate blood concentration.</string>
+    <string name="weight_hint">Turns mg in the body into ng/mL in the blood.</string>
     <string name="absorption_minutes">Pouch time, minutes</string>
-    <string name="pouch_time_hint">A pouch counts as in for this long unless you remove it earlier on the Track screen. A shorter time means less nicotine absorbed. Applies to pouches you put in from now on; logged ones keep their own time.</string>
-    <string name="model_hint" formatted="false">The body estimate assumes that about 30% of the labelled nicotine is absorbed when a pouch stays in for 30 minutes (less if shorter, more if longer), a nicotine half-life of 2 h and a cotinine half-life of 16 h. The 30% is the typical value in eight studies that measured blood nicotine after pouches; products differ, and most of these studies were funded by manufacturers, so take the levels as approximate.</string>
+    <string name="pouch_time_hint">A pouch counts as out after this long, unless you remove it sooner. Logged pouches keep their own time.</string>
+    <string name="model_hint" formatted="false">Assumes about 30% of the label\'s nicotine is absorbed over 30 minutes in the mouth (less if shorter, more if longer), and half-lives of 2 h for nicotine and 16 h for cotinine. The 30% is typical of eight blood studies, most funded by manufacturers, so the levels are rough.</string>
     <string name="settings_appearance">Appearance</string>
     <string name="theme_system">System</string>
     <string name="theme_light">Light</string>
@@ -188,7 +194,7 @@
     <string name="settings_data">Data</string>
     <string name="export_csv">Export CSV</string>
     <string name="export_json">Export JSON</string>
-    <string name="export_hint">Everything stays on this phone. Export to back up or analyse your log; import a JSON export to move it to another phone.</string>
+    <string name="export_hint">Your data stays on this phone. Export it to keep a copy; a JSON export can be imported on another phone.</string>
     <string name="share_export">Share export</string>
     <string name="import_json">Import JSON</string>
     <string name="import_title">Replace your data with this file?</string>
@@ -250,26 +256,26 @@
     <string name="quick_remove_title">Which one comes out?</string>
 
     <!-- interval plan, spending, patterns -->
-    <string name="plan_next_at">Next one not before %1$s · in %2$s</string>
+    <string name="plan_next_at">Next one: better after %1$s</string>
     <string name="plan_now">Gap kept</string>
     <string name="plan_learning">The tolerance plan is learning your usual level</string>
     <string name="plan_learning_hint">It needs at least five pouches over two weeks, not counting each day\'s first.</string>
     <string name="early_marker">early</string>
     <string name="receptor_rest">Receptors at rest today: %1$s</string>
-    <string name="receptor_rest_hint">Time with nicotine below %1$s ng/mL, when fewer than half of them are taken.</string>
+    <string name="receptor_rest_hint">Time with nicotine below %1$s\u00A0ng/mL, when most of them are free.</string>
     <string name="widget_next">after %1$s</string>
-    <string name="cover_next">next not before %1$s</string>
+    <string name="cover_next">next one better after %1$s</string>
     <string name="interval_off">Off</string>
     <string name="interval_keep">Hold</string>
     <string name="interval_lower">Lower</string>
-    <string name="interval_usual">You usually take the next pouch at about %1$s mg of nicotine (≈ %2$s ng/mL), over the last two weeks.</string>
-    <string name="interval_keep_rule">Hold — the next one not before nicotine drops below %1$s mg: days stay as they are.</string>
-    <string name="interval_lower_rule">Lower — a quarter below that, %1$s mg now, recalculated every Monday: the gaps grow week by week.</string>
+    <string name="interval_usual">Over the last two weeks you took the next pouch at about %1$s\u00A0mg of nicotine in the body (≈\u00A0%2$s\u00A0ng/mL).</string>
+    <string name="interval_keep_rule">Hold: the next one is better after nicotine drops below %1$s\u00A0mg. Days stay as they are.</string>
+    <string name="interval_lower_rule">Lower: a quarter lower, now %1$s\u00A0mg, recalculated every Monday, so the gaps grow week by week.</string>
     <string name="interval_learning">To learn your usual level the plan needs at least five pouches over two weeks, not counting each day\'s first.</string>
-    <string name="interval_never_blocks">A pouch taken earlier is logged and marked, never blocked.</string>
+    <string name="interval_never_blocks">A pouch taken earlier is marked, never blocked.</string>
     <string name="settings_spending">Spending</string>
     <string name="baseline_label">Pouches a day before Pouchwise</string>
-    <string name="baseline_hint">How many you used a day before you started; savings count from this. Prices go in each pouch.</string>
+    <string name="baseline_hint">Savings are counted against this. Prices are set for each pouch.</string>
     <string name="currency_label">Currency</string>
     <string name="price_per_can">Price per can</string>
     <string name="pouches_per_can">Pouches per can</string>
@@ -279,7 +285,7 @@
     <string name="spending_month">This month</string>
     <string name="spending_saved">Saved since %1$s</string>
     <string name="spending_basis">Against %1$s a day before Pouchwise, at your average %2$s a pouch.</string>
-    <string name="spending_no_prices">Add a price to your pouches (Settings → Manage pouches) to see what you spend.</string>
+    <string name="spending_no_prices">Add prices to your pouches to see what you spend.</string>
     <string name="spending_no_baseline">Set how many pouches a day you used before Pouchwise in Settings to see what you save.</string>
     <string name="spending_unpriced">Pouches without a price are left out.</string>
     <string name="patterns_title">Patterns · last 30 days</string>
@@ -293,10 +299,10 @@
     <string name="patterns_empty">Log a few days to see patterns.</string>
     <string name="tolerance_title">Tolerance</string>
     <string name="tolerance_honest">No study gives an interval that holds or lowers tolerance; this rule is built on how long nicotine keeps the receptors busy.</string>
-    <string name="plan_wait_hold">Holding tolerance: until nicotine drops below %1$s mg</string>
-    <string name="plan_wait_lower">Lowering tolerance: until nicotine drops below %1$s mg</string>
-    <string name="plan_kept_hold">Holding tolerance: nicotine is below %1$s mg</string>
-    <string name="plan_kept_lower">Lowering tolerance: nicotine is below %1$s mg</string>
+    <string name="plan_wait_hold">In %1$s nicotine drops below %2$s\u00A0mg (holding tolerance)</string>
+    <string name="plan_wait_lower">In %1$s nicotine drops below %2$s\u00A0mg (lowering tolerance)</string>
+    <string name="plan_kept_hold">Nicotine is below %1$s\u00A0mg (holding tolerance)</string>
+    <string name="plan_kept_lower">Nicotine is below %1$s\u00A0mg (lowering tolerance)</string>
     <string name="chart_hold">hold %1$s mg</string>
     <string name="chart_lower">lower %1$s mg</string>
     <string name="history_days">Days</string>

@@ -110,6 +110,24 @@ class PouchTimingTest {
     }
 
     @Test
+    fun settingTheTimeInTheMouthChangesTheDoseEvenForAPouchThatCameOutByItself() {
+        // Out by itself after 30 min; really it was in for 12.
+        val e = LogEntry(pouchTypeId = 1, timestamp = start, strengthMg = 8.0, pouchMinutes = 30)
+        val shorter = PouchTiming.withTimes(e, start, 12 * min, s)
+        assertEquals(start + 12 * min, shorter.endTimestamp)
+        assertEquals(12 * min, PouchTiming.toDose(shorter, s).durationMs)
+        assertTrue(PouchTiming.absorbedMg(shorter, s, start + 60 * min) < PouchTiming.absorbedMg(e, s, start + 60 * min))
+        // Moving the start keeps the minutes.
+        val moved = PouchTiming.withTimes(shorter, start - 20 * min, 12 * min, s)
+        assertEquals(start - 8 * min, moved.endTimestamp)
+        // Longer than its own pouch time: that grows too, so the dose is not cut back to 30 min.
+        val longer = PouchTiming.withTimes(e, start, 45 * min, s)
+        assertEquals(45, longer.pouchMinutes)
+        assertEquals(45 * min, PouchTiming.effectiveDurationMs(longer, s))
+        assertEquals(PouchTiming.MAX_POUCH_MINUTES * min, PouchTiming.effectiveDurationMs(PouchTiming.withTimes(e, start, 500 * min, s), s))
+    }
+
+    @Test
     fun aNewEntryRecordsItsPouchTimeAndDay() {
         val e = PouchTiming.newEntry(7, 6.0, 0.08, start, Settings(pk = PkParams(absorptionMinutes = 40), dayStartHour = 4))
         assertEquals(40, e.pouchMinutes)

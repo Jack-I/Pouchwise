@@ -34,8 +34,8 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 private const val HOUR_MS = 3_600_000L
-private val RANGES_MS = listOf(12L, 48L, 7L * 24).map { it * HOUR_MS }
-/** Chart points every 6 min plus every pouch in and out: smooth at 12 h, light enough for 37 days. */
+private val RANGES_MS = listOf(6L, 48L, 7L * 24).map { it * HOUR_MS }
+/** Chart points every 6 min plus every pouch in and out: smooth at 6 h, light enough for 37 days. */
 private const val SAMPLE_STEP_MS = 6 * 60_000L
 private const val HISTORY_MAX_MS = 30L * 24 * HOUR_MS
 private const val FORECAST_MAX_MS = 7L * 24 * HOUR_MS
@@ -161,7 +161,7 @@ fun BodyScreen(vm: AppViewModel) {
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SingleChoiceSegmentedButtonRow(Modifier.weight(1f)) {
-                        val labels = listOf(R.string.range_12h, R.string.range_48h, R.string.range_7d)
+                        val labels = listOf(R.string.range_6h, R.string.range_48h, R.string.range_7d)
                         labels.forEachIndexed { i, res ->
                             SegmentedButton(
                                 selected = rangeIdx == i,
@@ -203,6 +203,7 @@ fun BodyScreen(vm: AppViewModel) {
                                 Fmt.oneDecimal(it),
                             )
                         }.orEmpty(),
+                        nowLabel = stringResource(R.string.time_now),
                     )
                 }
                 Row(Modifier.fillMaxWidth()) {
@@ -210,13 +211,9 @@ fun BodyScreen(vm: AppViewModel) {
                     Text(stringResource(R.string.chart_forecast_hint), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     LegendSwatch(AppColors.nicotine, stringResource(R.string.nicotine))
                     LegendSwatch(AppColors.cotinine, stringResource(R.string.cotinine))
-                }
-                Spacer(Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    LegendSwatch(MaterialTheme.colorScheme.onSurfaceVariant, stringResource(R.string.legend_past))
                     LegendSwatch(MaterialTheme.colorScheme.onSurfaceVariant, stringResource(R.string.legend_future), dashed = true)
                 }
             }

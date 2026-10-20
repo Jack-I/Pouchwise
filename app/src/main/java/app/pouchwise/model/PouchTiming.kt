@@ -88,8 +88,21 @@ object PouchTiming {
     fun withNewStart(e: LogEntry, newStartMs: Long, s: Settings): LogEntry {
         val end = e.endTimestamp?.let { if (it >= newStartMs + MIN_DURATION_MS) it else it + (newStartMs - e.timestamp) }
             ?.coerceIn(newStartMs + MIN_DURATION_MS, newStartMs + autoMs(e, s))
+        return e.copy(timestamp = newStartMs, endTimestamp = end, day = dayAfterMove(e, newStartMs, s))
+    }
+
+    /**
+     * A finished pouch with its start and its time in the mouth set by hand. A time longer than the pouch's
+     * own raises that too, so the model does not cut it back.
+     */
+    fun withTimes(e: LogEntry, newStartMs: Long, durationMs: Long, s: Settings): LogEntry {
+        val d = durationMs.coerceIn(MIN_DURATION_MS, MAX_POUCH_MINUTES * 60_000L)
+        val minutes = max(pouchMinutes(e, s), ((d + 59_999L) / 60_000L).toInt())
+        return e.copy(timestamp = newStartMs, endTimestamp = newStartMs + d, pouchMinutes = minutes, day = dayAfterMove(e, newStartMs, s))
+    }
+
+    private fun dayAfterMove(e: LogEntry, newStartMs: Long, s: Settings): Long {
         val newDay = DayKeys.epochDay(newStartMs, s.dayStartHour)
-        val day = if (e.day != null && DayKeys.epochDay(e.timestamp, s.dayStartHour) == newDay) e.day else newDay
-        return e.copy(timestamp = newStartMs, endTimestamp = end, day = day)
+        return if (e.day != null && DayKeys.epochDay(e.timestamp, s.dayStartHour) == newDay) e.day else newDay
     }
 }

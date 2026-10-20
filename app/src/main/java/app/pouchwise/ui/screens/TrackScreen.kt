@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -176,7 +177,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                     absorbedLabel = stringResource(R.string.absorbed_short, Fmt.oneDecimal(PouchTiming.absorbedMg(e, settings, clock))),
                     over = e.id in overIds,
                     early = e.id in earlyIds,
-                    onEditTime = { editEntry = e },
+                    onEdit = { editEntry = e },
                     onDelete = { deleteEntry = e },
                 )
             }
@@ -198,12 +199,16 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     }
 
     editEntry?.let { e ->
-        TimeDialog(
-            title = stringResource(R.string.edit_time),
-            initialMs = e.timestamp,
+        val type = typesById[e.pouchTypeId]
+        val stillIn = remember(e.id) { PouchTiming.isActive(e, settings, System.currentTimeMillis()) }
+        EntryDialog(
+            title = "${type?.name ?: "?"} · ${stringResource(R.string.mg_value, Fmt.mg(e.strengthMg))}",
+            color = pouchColor(type?.colorIndex ?: 0),
+            startMs = e.timestamp,
+            durationMs = if (stillIn) null else PouchTiming.effectiveDurationMs(e, settings),
             onDismiss = { editEntry = null },
-            onConfirm = { h, m ->
-                vm.moveEntry(e, DayKeys.nearestPastTimeMs(e.timestamp, h, m, System.currentTimeMillis()))
+            onSave = { start, duration ->
+                vm.editEntry(e, start, duration)
                 editEntry = null
             },
         )
@@ -281,7 +286,7 @@ private fun TodayCard(
                 Text(headline, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = headlineColor)
                 Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
-                    stringResource(R.string.absorbed_today, Fmt.oneDecimal(absorbedMg)) + (money?.let { " · ≈ $it" } ?: ""),
+                    stringResource(R.string.absorbed_today, Fmt.oneDecimal(absorbedMg)) + (money?.let { " · $it" } ?: ""),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -331,12 +336,15 @@ private fun PlanRow(plan: PlanInfo, nowMs: Long) {
     val lower = plan.mode == IntervalMode.LOWER
     val title = when {
         level == null -> stringResource(R.string.plan_learning)
-        waiting -> stringResource(R.string.plan_next_at, Fmt.time(plan.nextMs!!), durationText(plan.nextMs - nowMs))
+        waiting -> stringResource(R.string.plan_next_at, Fmt.time(plan.nextMs!!))
         else -> stringResource(R.string.plan_now)
     }
     val detail = when {
         level == null -> stringResource(R.string.plan_learning_hint)
-        waiting -> stringResource(if (lower) R.string.plan_wait_lower else R.string.plan_wait_hold, Fmt.oneDecimal(level))
+        waiting -> stringResource(
+            if (lower) R.string.plan_wait_lower else R.string.plan_wait_hold,
+            durationText(plan.nextMs!! - nowMs), Fmt.oneDecimal(level),
+        )
         else -> stringResource(if (lower) R.string.plan_kept_lower else R.string.plan_kept_hold, Fmt.oneDecimal(level))
     }
     Row(
@@ -488,7 +496,7 @@ private fun LogRow(
     absorbedLabel: String,
     over: Boolean,
     early: Boolean,
-    onEditTime: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val accent = if (over) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
@@ -530,7 +538,7 @@ private fun LogRow(
             Icon(Icons.Filled.Warning, contentDescription = stringResource(R.string.over_limit_marker), tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(4.dp))
         }
-        IconButton(onClick = onEditTime) { Icon(Icons.Filled.Schedule, contentDescription = stringResource(R.string.edit_time)) }
+        IconButton(onClick = onEdit) { Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.edit_entry)) }
         IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete)) }
     }
 }

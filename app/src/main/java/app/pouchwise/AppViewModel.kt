@@ -154,9 +154,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshWidgets()
     }
 
-    /** Corrects when a pouch went in; a recorded removal time stays where it was. */
-    fun moveEntry(entry: LogEntry, newTimestamp: Long) = viewModelScope.launch {
-        dao.updateEntry(PouchTiming.withNewStart(entry, newTimestamp, settingsRepo.settings.first()))
+    /** A hand correction: when the pouch went in and how long it stayed; [durationMs] is null while it is still in. */
+    fun editEntry(entry: LogEntry, newStartMs: Long, durationMs: Long?) = viewModelScope.launch {
+        val s = settingsRepo.settings.first()
+        dao.updateEntry(
+            if (durationMs == null) PouchTiming.withNewStart(entry, newStartMs, s)
+            else PouchTiming.withTimes(entry, newStartMs, durationMs, s),
+        )
         refreshWidgets()
     }
 

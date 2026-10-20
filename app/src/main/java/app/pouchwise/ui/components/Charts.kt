@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -35,6 +36,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,12 +45,15 @@ import app.pouchwise.model.DayStat
 import app.pouchwise.model.LimitMode
 import app.pouchwise.util.Fmt
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.launch
 import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.min
 
 private enum class Align { START, CENTER, END }
 
@@ -117,12 +122,15 @@ fun ScrollableBodyChart(
     nextOnPlanMs: Long? = null,
     planColor: Color = Color.Unspecified,
     planLabel: String = "",
+    /** Written over the "now" line where it does not run into the axis titles. */
+    nowLabel: String = "",
 ) {
     val measurer = rememberTextMeasurer()
     val labelStyle = TextStyle(fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     val nicLabelStyle = labelStyle.copy(color = nicotineColor)
     val cotLabelStyle = labelStyle.copy(color = cotinineColor)
     val planLabelStyle = labelStyle.copy(color = planColor)
+    val nowLabelStyle = labelStyle.copy(color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val nowColor = MaterialTheme.colorScheme.onSurfaceVariant
     val zone = remember { ZoneId.systemDefault() }
@@ -196,6 +204,7 @@ fun ScrollableBodyChart(
 
         // x ticks on the local clock; midnight shows the day, so a window dragged into the past says which one
         val tickH = when {
+            windowH <= 8 -> 2L
             windowH <= 15 -> 3L
             windowH <= 30 -> 6L
             windowH <= 60 -> 12L
@@ -251,17 +260,25 @@ fun ScrollableBodyChart(
                     label(measurer, Fmt.time(nextOnPlanMs), xp, yp + 8.dp.toPx(), planLabelStyle, Align.CENTER)
                 }
             }
-            if (nowMs in t0..t1) {
-                val xn = x(nowMs)
-                drawLine(
-                    nowColor, Offset(xn, padT), Offset(xn, padT + h), strokeWidth = 1.5.dp.toPx(),
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx())),
-                )
-                val lv = (span.past.lastOrNull() ?: span.future.firstOrNull())?.second
-                if (lv != null) {
-                    drawCircle(cotinineColor, radius = 5.dp.toPx(), center = Offset(xn, yC(lv.cotinineMg)))
-                    drawCircle(nicotineColor, radius = 5.dp.toPx(), center = Offset(xn, yN(lv.nicotineMg)))
-                }
+        }
+        if (nowMs in t0..t1) {
+            val xn = x(nowMs)
+            val nowText = measurer.measure(AnnotatedString(nowLabel), style = nowLabelStyle)
+            val half = nowText.size.width / 2f
+            val gap = 6.dp.toPx()
+            val leftEnd = measurer.measure(AnnotatedString(leftAxisTitle), style = nicLabelStyle).size.width + gap
+            val rightStart = size.width - measurer.measure(AnnotatedString(rightAxisTitle), style = cotLabelStyle).size.width - gap
+            val labelled = nowLabel.isNotEmpty() && xn - half > leftEnd && xn + half < rightStart
+            if (labelled) drawText(nowText, topLeft = Offset(xn - half, 0f))
+            drawLine(
+                nowColor, Offset(xn, if (labelled) nowText.size.height + 2.dp.toPx() else padT), Offset(xn, padT + h),
+                strokeWidth = 1.5.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx())),
+            )
+            val lv = (span.past.lastOrNull() ?: span.future.firstOrNull())?.second
+            if (lv != null) {
+                drawCircle(cotinineColor, radius = 5.dp.toPx(), center = Offset(xn, yC(lv.cotinineMg)))
+                drawCircle(nicotineColor, radius = 5.dp.toPx(), center = Offset(xn, yN(lv.nicotineMg)))
             }
         }
     }
@@ -317,8 +334,13 @@ private fun slice(points: List<Pair<Long, BodyLevels>>, t0: Long, t1: Long): Lis
     return points.subList(from, to + 1)
 }
 
+/** Width of one day in [DailyBarChart]: about a dozen days fit on a phone. */
+private const val DAY_SLOT_DP = 22
+
 /**
- * Bars of daily usage with the limit as a line; [future] continues the limit line past today.
+ * Bars of daily usage with the limit as a line, dragged sideways through the whole history and the days of
+ * [futureLimits] ahead. Every day carries its date and weekday; today starts two thirds of the way across.
+ * One scale covers all days, so bars compare across the history.
  */
 @Composable
 fun DailyBarChart(
@@ -334,90 +356,139 @@ fun DailyBarChart(
     fun value(st: DayStat): Double = if (mode == LimitMode.COUNT) st.count.toDouble() else st.mg
     val measurer = rememberTextMeasurer()
     val labelStyle = TextStyle(fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val todayStyle = labelStyle.copy(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+    val aheadStyle = labelStyle.copy(color = labelStyle.color.copy(alpha = 0.6f))
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val overColor = MaterialTheme.colorScheme.error
+    val locale = remember { Locale.getDefault() }
+    val monthFmt = remember { DateTimeFormatter.ofPattern("LLLL", locale) }
+    fun monthName(d: LocalDate) = monthFmt.format(d).replaceFirstChar { it.titlecase(locale) }
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val slot = with(density) { DAY_SLOT_DP.dp.toPx() }
+    val padL = with(density) { 36.dp.toPx() }
+    var widthPx by remember { mutableIntStateOf(0) }
+    val days = stats.size + futureLimits.size
+    val shown = if (widthPx > padL) (widthPx - padL) / slot else 0f
+    val todayIdx = stats.indexOfFirst { it.epochDay == todayDay }.takeIf { it >= 0 } ?: stats.lastIndex
 
-    Canvas(modifier.fillMaxWidth().height(220.dp)) {
-        if (stats.isEmpty()) return@Canvas
-        val padL = 36.dp.toPx()
-        val padR = 8.dp.toPx()
-        val padT = 24.dp.toPx()
-        val padB = 24.dp.toPx()
-        val w = size.width - padL - padR
-        val h = size.height - padT - padB
-        val days = stats.size + futureLimits.size
-        val slot = w / days
-        val barW = slot * 0.55f
-
-        val maxUsed = stats.maxOf { value(it) }
+    val scale = remember(stats, futureLimits, mode) {
+        val maxUsed = stats.maxOfOrNull { value(it) } ?: 0.0
         val maxLimit = max(stats.filter { it.mode == mode }.maxOfOrNull { it.limit } ?: 0, futureLimits.maxOfOrNull { it.second } ?: 0)
         val rawMax = max(max(maxUsed, maxLimit.toDouble()), 1.0)
         val step = niceStep(rawMax)
-        val yMax = ceil(rawMax * 1.1 / step) * step
+        step to ceil(rawMax * 1.1 / step) * step
+    }
 
-        fun xCenter(i: Int) = padL + slot * i + slot / 2f
+    // The slot at the left edge, fractional; dragging moves it.
+    val first = remember { Animatable(0f) }
+    var placed by remember { mutableStateOf(false) }
+    LaunchedEffect(days, shown) {
+        if (shown <= 0f) return@LaunchedEffect
+        first.updateBounds(0f, max(days - shown, 0f))
+        if (!placed) {
+            first.snapTo(todayIdx + 0.5f - shown * 2f / 3f)
+            placed = true
+        }
+    }
+
+    Canvas(
+        modifier
+            .fillMaxWidth()
+            .height(232.dp)
+            .onSizeChanged { widthPx = it.width }
+            .draggable(
+                state = rememberDraggableState { delta -> scope.launch { first.snapTo(first.value - delta / slot) } },
+                orientation = Orientation.Horizontal,
+                onDragStopped = { velocity -> first.animateDecay(-velocity / slot, exponentialDecay()) },
+            ),
+    ) {
+        if (stats.isEmpty()) return@Canvas
+        val padT = 22.dp.toPx()
+        val padB = 36.dp.toPx()
+        val h = size.height - padT - padB
+        val (step, yMax) = scale
+        val firstDay = stats.first().epochDay
+        val offset = first.value
+        val barW = slot * 0.55f
+
+        fun xCenter(i: Int) = padL + (i - offset) * slot + slot / 2f
         fun y(v: Double) = padT + h - (v / yMax).toFloat() * h
+        fun limitAt(i: Int): Int? =
+            if (i < stats.size) stats[i].takeIf { it.mode == mode }?.limit else futureLimits[i - stats.size].second
 
         var v = 0.0
         while (v <= yMax + 1e-9) {
             val yy = y(v)
-            drawLine(gridColor, Offset(padL, yy), Offset(padL + w, yy), strokeWidth = 1f)
+            drawLine(gridColor, Offset(padL, yy), Offset(size.width, yy), strokeWidth = 1f)
             label(measurer, Fmt.mg(v), padL - 6.dp.toPx(), yy - 7.sp.toPx(), labelStyle, Align.END)
             v += step
         }
 
-        stats.forEachIndexed { i, st ->
-            if (value(st) <= 0) return@forEachIndexed
-            val top = y(value(st))
-            // Colour by the day's own verdict, made under the plan of that day.
-            val color = if (st.withinLimit) barColor else overColor
-            drawRoundRect(
-                color = color,
-                topLeft = Offset(xCenter(i) - barW / 2f, top),
-                size = Size(barW, padT + h - top),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(barW / 2.5f, barW / 2.5f),
-            )
-        }
+        val from = (floor(offset).toInt() - 1).coerceAtLeast(0)
+        val to = min(days - 1, ceil(offset + shown).toInt())
+        clipRect(left = padL, top = 0f, right = size.width, bottom = size.height) {
+            for (i in from..min(to, stats.lastIndex)) {
+                val st = stats[i]
+                if (value(st) <= 0) continue
+                val top = y(value(st))
+                // Colour by the day's own verdict, made under the plan of that day.
+                drawRoundRect(
+                    color = if (st.withinLimit) barColor else overColor,
+                    topLeft = Offset(xCenter(i) - barW / 2f, top),
+                    size = Size(barW, padT + h - top),
+                    cornerRadius = CornerRadius(barW / 2.5f, barW / 2.5f),
+                )
+            }
 
-        // limit line across past and future days; gaps where a past day counted in the other unit
-        val limitPath = Path()
-        var idx = 0
-        var penDown = false
-        stats.forEach { st ->
-            if (st.mode == mode) {
-                val px = xCenter(idx); val py = y(st.limit.toDouble())
+            // limit line; gaps where a past day counted in the other unit
+            val limitPath = Path()
+            var penDown = false
+            for (i in from..to) {
+                val lim = limitAt(i)
+                if (lim == null) {
+                    penDown = false
+                    continue
+                }
+                val px = xCenter(i)
+                val py = y(lim.toDouble())
                 if (penDown) limitPath.lineTo(px, py) else limitPath.moveTo(px, py)
                 penDown = true
-            } else {
-                penDown = false
             }
-            idx++
-        }
-        futureLimits.forEach { (_, lim) ->
-            val px = xCenter(idx); val py = y(lim.toDouble())
-            if (penDown) limitPath.lineTo(px, py) else limitPath.moveTo(px, py)
-            penDown = true
-            idx++
-        }
-        drawPath(limitPath, lineColor, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round))
+            drawPath(limitPath, lineColor, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round))
 
-        // today marker and label
-        val todayIdx = stats.indexOfFirst { it.epochDay == todayDay }
-        if (todayIdx >= 0) {
-            val xt = xCenter(todayIdx)
-            drawLine(
-                gridColor, Offset(xt, padT - 6.dp.toPx()), Offset(xt, padT + h), strokeWidth = 1.5.dp.toPx(),
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx())),
-            )
-            val lim = stats[todayIdx].limit
-            drawCircle(lineColor, radius = 5.dp.toPx(), center = Offset(xt, y(lim.toDouble())))
-            label(measurer, Fmt.mg(lim.toDouble()), xt, y(lim.toDouble()) - 20.sp.toPx(), labelStyle.copy(color = lineColor), Align.CENTER)
-        }
+            if (todayIdx in from..to) {
+                val xt = xCenter(todayIdx)
+                drawLine(
+                    gridColor, Offset(xt, padT - 6.dp.toPx()), Offset(xt, padT + h), strokeWidth = 1.5.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx())),
+                )
+                val lim = stats[todayIdx].limit
+                drawCircle(lineColor, radius = 5.dp.toPx(), center = Offset(xt, y(lim.toDouble())))
+                label(measurer, Fmt.mg(lim.toDouble()), xt, y(lim.toDouble()) - 20.sp.toPx(), labelStyle.copy(color = lineColor), Align.CENTER)
+            }
 
-        // date labels: first, middle, today
-        val labelIdx = listOf(0, stats.size / 2, todayIdx).filter { it >= 0 }.distinct()
-        labelIdx.forEach { i ->
-            label(measurer, Fmt.dateShort(stats[i].epochDay), xCenter(i), padT + h + 6.dp.toPx(), labelStyle, Align.CENTER)
+            // The month of the leftmost day stays over the left edge; the next one's name stands over its first
+            // day once that is clear of it.
+            val leftMonth = monthName(LocalDate.ofEpochDay(firstDay + floor(offset).toInt().coerceIn(0, days - 1)))
+            val leftEnd = padL + 2.dp.toPx() + measurer.measure(AnnotatedString(leftMonth), style = labelStyle).size.width + 8.dp.toPx()
+            label(measurer, leftMonth, padL + 2.dp.toPx(), 0f, labelStyle)
+            for (i in from..to) {
+                val date = LocalDate.ofEpochDay(firstDay + i)
+                val style = when {
+                    i == todayIdx -> todayStyle
+                    i > todayIdx -> aheadStyle
+                    else -> labelStyle
+                }
+                val xc = xCenter(i)
+                label(measurer, date.dayOfMonth.toString(), xc, padT + h + 6.dp.toPx(), style, Align.CENTER)
+                label(
+                    measurer, date.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, locale),
+                    xc, padT + h + 20.dp.toPx(), style.copy(fontSize = 10.sp), Align.CENTER,
+                )
+                val monthAt = xc - slot / 2f + 2.dp.toPx()
+                if (date.dayOfMonth == 1 && monthAt >= leftEnd) label(measurer, monthName(date), monthAt, 0f, labelStyle)
+            }
         }
     }
 }

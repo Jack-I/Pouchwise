@@ -17,6 +17,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.pluralStringResource
@@ -200,11 +202,15 @@ fun durationText(ms: Long): String {
     }
 }
 
-fun gardenColor(level: GardenLevel, isDark: Boolean): Color {
+/** A day level's tile colour on [under], the card behind it; a little muted on a dark card. */
+fun gardenColor(level: GardenLevel, under: Color): Color {
     if (level == GardenLevel.EMPTY) return Color.Transparent
     val c = AppColors.garden[(level.ordinal - 1).coerceIn(0, AppColors.garden.lastIndex)]
-    return if (isDark) c.copy(alpha = 0.55f) else c.copy(alpha = 0.75f)
+    return if (under.luminance() < 0.5f) c.copy(alpha = 0.85f).compositeOver(under) else c
 }
+
+/** Near-black or white text, whichever reads better on [tile]. */
+fun onGardenColor(tile: Color): Color = if (tile.luminance() > 0.2f) Color(0xFF111827) else Color.White
 
 @Composable
 fun BigEmoji(text: String, size: Int = 56) {

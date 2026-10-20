@@ -27,13 +27,13 @@ object Fmt {
 
     fun percent(ratio: Double): String = String.format(Locale.getDefault(), "%d%%", (ratio * 100).roundToInt())
 
-    /** "22.5 ₽", "2,480 ₽": whole units from 100 up, otherwise up to two decimals. */
+    /** "22.5 ₽", "2,480 ₽": whole units from 100 up, otherwise up to two decimals; the symbol never wraps alone. */
     fun money(v: Double, symbol: String): String {
         val n = NumberFormat.getNumberInstance(Locale.getDefault()).apply {
             minimumFractionDigits = 0
             maximumFractionDigits = if (abs(v) >= 100) 0 else 2
         }.format(v)
-        return if (symbol.isEmpty()) n else "$n $symbol"
+        return if (symbol.isEmpty()) n else "$n\u00A0$symbol"
     }
 
     /** "08:40" from minutes after midnight. */

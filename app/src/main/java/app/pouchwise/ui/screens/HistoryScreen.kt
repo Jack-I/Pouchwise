@@ -3,7 +3,6 @@ package app.pouchwise.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,7 +54,8 @@ fun HistoryScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         Stats.dailyStats(entries, settings, minOf(firstDay, gridStart, chartStart, today - 30), today, plans, today)
     }
     val byDay = remember(stats) { stats.associateBy { it.epochDay } }
-    val chartStats = remember(stats) { stats.filter { it.epochDay >= chartStart } }
+    // The whole history, and at least two weeks.
+    val chartStats = remember(stats, firstDay, chartStart) { stats.filter { it.epochDay >= minOf(firstDay, chartStart) } }
     val futureLimits = remember(settings, today) { (1..7).map { (today + it) to Limits.limitForDayRounded(settings, today + it) } }
 
     // Finished days only: today is still running.
@@ -170,6 +170,10 @@ fun HistoryScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                     barColor = MaterialTheme.colorScheme.primary,
                     lineColor = MaterialTheme.colorScheme.onSurface,
                 )
+                Row(Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.chart_earlier_days), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                    Text(stringResource(R.string.chart_plan_ahead), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
 
             }
@@ -197,7 +201,7 @@ private fun SpendingCard(summary: SpendingSummary, settings: Settings, onEditPou
             if (summary.saved != null && summary.sinceDay != null) {
                 MiniTile(
                     stringResource(R.string.spending_saved, Fmt.dateShort(summary.sinceDay)),
-                    "≈ " + Fmt.money(summary.saved, currency),
+                    "≈\u00A0" + Fmt.money(summary.saved, currency),
                     Modifier.weight(1f),
                     accent = MaterialTheme.colorScheme.secondary,
                 )
@@ -228,7 +232,7 @@ private fun PatternsCard(p: PatternSummary) {
             return@SoftCard
         }
         Text(stringResource(R.string.patterns_by_hour), style = small, color = muted)
-        SimpleBars(p.byHour.map { it.toDouble() }, (0..23).map { it.toString() }, MaterialTheme.colorScheme.primary, labelEvery = 3)
+        SimpleBars(p.byHour.map { it.toDouble() }, (0..23).map { it.toString() }, MaterialTheme.colorScheme.primary, labelEvery = 2)
         Spacer(Modifier.height(10.dp))
         Text(stringResource(R.string.patterns_by_weekday), style = small, color = muted)
         val locale = Locale.getDefault()
@@ -278,7 +282,7 @@ private fun DayGrid(
     selectedDay: Long?,
     onSelect: (Long) -> Unit,
 ) {
-    val dark = isSystemInDarkTheme()
+    val card = MaterialTheme.colorScheme.surfaceVariant
     val locale = Locale.getDefault()
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row {
@@ -309,6 +313,7 @@ private fun DayGrid(
                     val isToday = day == today
                     val selected = day == selectedDay
                     val showNumbers = stat != null && stat.hasData
+                    val tile = gardenColor(level, card)
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -316,7 +321,7 @@ private fun DayGrid(
                             .clip(RoundedCornerShape(10.dp))
                             .background(
                                 if (level == GardenLevel.EMPTY) MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = if (day > today) 0.35f else 0.8f)
-                                else gardenColor(level, dark),
+                                else tile,
                             )
                             .then(
                                 if (selected) Modifier.border(2.dp, MaterialTheme.colorScheme.onSurface, RoundedCornerShape(10.dp))
@@ -333,13 +338,13 @@ private fun DayGrid(
                                     fontSize = 14.sp,
                                     lineHeight = 16.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    color = onGardenColor(tile),
                                 )
                                 Text(
                                     Fmt.mg(stat.mg),
                                     fontSize = 10.sp,
                                     lineHeight = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = onGardenColor(tile),
                                 )
                             }
                         }
@@ -352,11 +357,11 @@ private fun DayGrid(
 
 @Composable
 private fun ColourLegend() {
-    val dark = isSystemInDarkTheme()
+    val card = MaterialTheme.colorScheme.surfaceVariant
     FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         GardenLevel.entries.filter { it != GardenLevel.EMPTY }.forEach { lvl ->
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(14.dp).clip(RoundedCornerShape(4.dp)).background(gardenColor(lvl, dark)))
+                Box(Modifier.size(14.dp).clip(RoundedCornerShape(4.dp)).background(gardenColor(lvl, card)))
                 Spacer(Modifier.width(4.dp))
                 Text(lvl.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

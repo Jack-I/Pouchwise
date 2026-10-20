@@ -70,10 +70,10 @@ object AppColors {
     val cotinine = Color(0xFF8E24AA)
     /** The interval plan: its level on the chart, the "next" row and the early marker. */
     val plan = Color(0xFFFFB300)
-    /** Tile colours for the seven day levels, best to worst. */
+    /** Tile colours for the seven day levels, best to worst: a hue apart each, so neighbours do not blur. */
     val garden = listOf(
-        Color(0xFF66BB6A), Color(0xFF9CCC65), Color(0xFFC5E1A5), Color(0xFFE6EE9C),
-        Color(0xFFFFE082), Color(0xFFFFAB91), Color(0xFFE57373),
+        Color(0xFF0277BD), Color(0xFF00897B), Color(0xFF7CB342), Color(0xFFFDD835),
+        Color(0xFFFB8C00), Color(0xFFE53935), Color(0xFF8E24AA),
     )
 }
 
