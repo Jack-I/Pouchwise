@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,7 +35,7 @@ import java.util.Locale
 private const val WEEKS = 5
 
 @Composable
-fun HistoryScreen(vm: AppViewModel) {
+fun HistoryScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val entries by vm.entries.collectAsStateWithLifecycle()
     val plans by vm.plans.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
@@ -70,6 +71,7 @@ fun HistoryScreen(vm: AppViewModel) {
     val totalMg = entries.sumOf { it.strengthMg }
 
     var selectedDay by remember { mutableStateOf<Long?>(null) }
+    var section by rememberSaveable { mutableIntStateOf(0) }
 
     Column(
         Modifier
@@ -81,86 +83,102 @@ fun HistoryScreen(vm: AppViewModel) {
     ) {
         ScreenTitle(stringResource(R.string.history_title))
 
-        SoftCard {
-            Text(stringResource(R.string.garden_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(stringResource(R.string.garden_subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(12.dp))
-            DayGrid(
-                gridStart = gridStart,
-                today = today,
-                byDay = byDay,
-                selectedDay = selectedDay,
-                onSelect = { selectedDay = if (selectedDay == it) null else it },
-            )
-            val sel = selectedDay?.let { byDay[it] }
-            Spacer(Modifier.height(10.dp))
-            if (sel != null) {
-                val absorbed = entries
-                    .filter { DayKeys.of(it, settings.dayStartHour) == sel.epochDay }
-                    .sumOf { PouchTiming.absorbedMg(it, settings, now) }
-                Text(
-                    "${Fmt.dateWithWeekday(sel.epochDay)} · ${pluralStringResource(R.plurals.count_pouches, sel.count, sel.count)} · " +
-                        "${Fmt.mg(sel.mg)} ${stringResource(R.string.unit_mg)} · " +
-                        "${stringResource(R.string.absorbed_short, Fmt.oneDecimal(absorbed))} · " +
-                        "${stringResource(R.string.limit_word)}: ${limitAmount(sel.mode, sel.limit.toDouble())}",
-                    style = MaterialTheme.typography.bodyMedium,
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            val sections = listOf(R.string.history_days, R.string.history_patterns, R.string.history_spending)
+            sections.forEachIndexed { i, res ->
+                SegmentedButton(
+                    selected = section == i,
+                    onClick = { section = i },
+                    shape = SegmentedButtonDefaults.itemShape(index = i, count = sections.size),
+                    icon = {},
+                ) { Text(stringResource(res), style = MaterialTheme.typography.labelMedium, maxLines = 1, softWrap = false) }
+            }
+        }
+
+        when (section) {
+            1 -> PatternsCard(remember(entries, settings, today) { Patterns.summary(entries, settings, today, System.currentTimeMillis()) })
+            2 -> SpendingCard(remember(entries, settings, today) { Spending.summary(entries, settings, today) }, settings, onEditPouches)
+            else -> {
+            SoftCard {
+                Text(stringResource(R.string.garden_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.garden_subtitle), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(12.dp))
+                DayGrid(
+                    gridStart = gridStart,
+                    today = today,
+                    byDay = byDay,
+                    selectedDay = selectedDay,
+                    onSelect = { selectedDay = if (selectedDay == it) null else it },
                 )
-            } else {
-                ColourLegend()
+                val sel = selectedDay?.let { byDay[it] }
+                Spacer(Modifier.height(10.dp))
+                if (sel != null) {
+                    val absorbed = entries
+                        .filter { DayKeys.of(it, settings.dayStartHour) == sel.epochDay }
+                        .sumOf { PouchTiming.absorbedMg(it, settings, now) }
+                    Text(
+                        "${Fmt.dateWithWeekday(sel.epochDay)} · ${pluralStringResource(R.plurals.count_pouches, sel.count, sel.count)} · " +
+                            "${Fmt.mg(sel.mg)} ${stringResource(R.string.unit_mg)} · " +
+                            "${stringResource(R.string.absorbed_short, Fmt.oneDecimal(absorbed))} · " +
+                            "${stringResource(R.string.limit_word)}: ${limitAmount(sel.mode, sel.limit.toDouble())}",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                } else {
+                    ColourLegend()
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatTile(stringResource(R.string.stats_streak), streak.toString(), Modifier.weight(1f))
+                StatTile(
+                    stringResource(R.string.stats_over_total), overTotal.toString(), Modifier.weight(1f),
+                    accent = if (overTotal > 0) MaterialTheme.colorScheme.error else null,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatTile(stringResource(R.string.stats_within_30), "$within30 / ${last30.size}", Modifier.weight(1f))
+                StatTile(
+                    if (settings.limitMode == LimitMode.COUNT) stringResource(R.string.stats_avg7_count) else stringResource(R.string.stats_avg7_mg),
+                    Fmt.oneDecimal(avg7),
+                    Modifier.weight(1f),
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatTile(stringResource(R.string.stats_total), entries.size.toString(), Modifier.weight(1f))
+                StatTile(stringResource(R.string.stats_total_mg), Fmt.mg(totalMg), Modifier.weight(1f))
+            }
+
+            SoftCard {
+                Text(stringResource(R.string.daily_usage), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    LegendSwatch(MaterialTheme.colorScheme.primary, stringResource(R.string.legend_usage))
+                    LegendSwatch(MaterialTheme.colorScheme.onSurface, stringResource(R.string.legend_limit))
+                }
+                Text(
+                    if (settings.limitMode == LimitMode.COUNT) "${stringResource(R.string.unit_pouches)} / ${stringResource(R.string.per_day)}"
+                    else "${stringResource(R.string.unit_mg)} / ${stringResource(R.string.per_day)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                DailyBarChart(
+                    stats = chartStats,
+                    futureLimits = futureLimits,
+                    todayDay = today,
+                    mode = settings.limitMode,
+                    barColor = MaterialTheme.colorScheme.primary,
+                    lineColor = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+
             }
         }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile(stringResource(R.string.stats_streak), streak.toString(), Modifier.weight(1f))
-            StatTile(
-                stringResource(R.string.stats_over_total), overTotal.toString(), Modifier.weight(1f),
-                accent = if (overTotal > 0) MaterialTheme.colorScheme.error else null,
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile(stringResource(R.string.stats_within_30), "$within30 / ${last30.size}", Modifier.weight(1f))
-            StatTile(
-                if (settings.limitMode == LimitMode.COUNT) stringResource(R.string.stats_avg7_count) else stringResource(R.string.stats_avg7_mg),
-                Fmt.oneDecimal(avg7),
-                Modifier.weight(1f),
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatTile(stringResource(R.string.stats_total), entries.size.toString(), Modifier.weight(1f))
-            StatTile(stringResource(R.string.stats_total_mg), Fmt.mg(totalMg), Modifier.weight(1f))
-        }
-
-        SoftCard {
-            Text(stringResource(R.string.daily_usage), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(4.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                LegendSwatch(MaterialTheme.colorScheme.primary, stringResource(R.string.legend_usage))
-                LegendSwatch(MaterialTheme.colorScheme.onSurface, stringResource(R.string.legend_limit))
-            }
-            Text(
-                if (settings.limitMode == LimitMode.COUNT) "${stringResource(R.string.unit_pouches)} / ${stringResource(R.string.per_day)}"
-                else "${stringResource(R.string.unit_mg)} / ${stringResource(R.string.per_day)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(8.dp))
-            DailyBarChart(
-                stats = chartStats,
-                futureLimits = futureLimits,
-                todayDay = today,
-                mode = settings.limitMode,
-                barColor = MaterialTheme.colorScheme.primary,
-                lineColor = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-
-        SpendingCard(remember(entries, settings, today) { Spending.summary(entries, settings, today) }, settings)
-        PatternsCard(remember(entries, settings, today) { Patterns.summary(entries, settings, today, System.currentTimeMillis()) })
     }
 }
 
 @Composable
-private fun SpendingCard(summary: SpendingSummary, settings: Settings) {
+private fun SpendingCard(summary: SpendingSummary, settings: Settings, onEditPouches: () -> Unit) {
     val currency = Money.symbol(settings)
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     SoftCard {
@@ -169,6 +187,8 @@ private fun SpendingCard(summary: SpendingSummary, settings: Settings) {
         val perPouch = summary.perPouch
         if (perPouch == null) {
             Text(stringResource(R.string.spending_no_prices), style = MaterialTheme.typography.bodySmall, color = muted)
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = onEditPouches) { Text(stringResource(R.string.spending_set_prices)) }
             return@SoftCard
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

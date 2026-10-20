@@ -147,7 +147,7 @@ private fun MainScaffold(
             when (tabs[tabIndex]) {
                 Tab.TRACK -> TrackScreen(vm = vm, onEditPouches = onEditPouches)
                 Tab.BODY -> BodyScreen(vm = vm)
-                Tab.HISTORY -> HistoryScreen(vm = vm)
+                Tab.HISTORY -> HistoryScreen(vm = vm, onEditPouches = onEditPouches)
                 Tab.PLAN -> PlanScreen(vm = vm)
             }
         }

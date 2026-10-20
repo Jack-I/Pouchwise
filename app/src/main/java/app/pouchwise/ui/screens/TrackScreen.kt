@@ -28,6 +28,7 @@ import app.pouchwise.AppViewModel
 import app.pouchwise.R
 import app.pouchwise.data.LogEntry
 import app.pouchwise.data.PouchType
+import app.pouchwise.data.pricePerPouch
 import app.pouchwise.model.*
 import app.pouchwise.ui.components.*
 import app.pouchwise.ui.theme.AppColors
@@ -82,7 +83,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         val since = wallNow - IntervalPlan.DATA_MS
         IntervalPlan.threshold(entries.filter { it.timestamp >= since }, settings, wallNow)
     }
-    val nextOnPlan = remember(doses, settings, planLevel) {
+    val nextOnPlan = remember(doses, settings, planLevel, now) {
         planLevel?.let { IntervalPlan.nextOnPlanMs(doses, settings.pk, it, System.currentTimeMillis()) }
     }
     val earlyIds = remember(todaysAsc, entries, settings) { IntervalPlan.earlyIds(todaysAsc, entries, settings) }
@@ -146,6 +147,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                 val fits = Limits.remainingPouches(settings, limit, count, mg, type.strengthMg)
                 PouchTypeRow(
                     type = type,
+                    price = type.pricePerPouch()?.let { Fmt.money(it, Money.symbol(settings)) },
                     fits = fits,
                     onLog = { vm.logPouch(type, System.currentTimeMillis()) },
                     onLogAtTime = { timePickFor = type },
@@ -325,15 +327,17 @@ private class PlanInfo(val mode: IntervalMode, val levelMg: Double?, val nextMs:
 @Composable
 private fun PlanRow(plan: PlanInfo, nowMs: Long) {
     val level = plan.levelMg
+    val waiting = level != null && plan.nextMs != null && plan.nextMs > nowMs
+    val lower = plan.mode == IntervalMode.LOWER
     val title = when {
         level == null -> stringResource(R.string.plan_learning)
-        plan.nextMs == null || plan.nextMs <= nowMs -> stringResource(R.string.plan_now)
-        else -> stringResource(R.string.plan_next_at, Fmt.time(plan.nextMs), durationText(plan.nextMs - nowMs))
+        waiting -> stringResource(R.string.plan_next_at, Fmt.time(plan.nextMs!!), durationText(plan.nextMs - nowMs))
+        else -> stringResource(R.string.plan_now)
     }
     val detail = when {
         level == null -> stringResource(R.string.plan_learning_hint)
-        plan.mode == IntervalMode.LOWER -> stringResource(R.string.plan_rule_lower, Fmt.oneDecimal(level))
-        else -> stringResource(R.string.plan_rule_keep, Fmt.oneDecimal(level))
+        waiting -> stringResource(if (lower) R.string.plan_wait_lower else R.string.plan_wait_hold, Fmt.oneDecimal(level))
+        else -> stringResource(if (lower) R.string.plan_kept_lower else R.string.plan_kept_hold, Fmt.oneDecimal(level))
     }
     Row(
         Modifier
@@ -425,7 +429,7 @@ private fun ActivePouchCard(
 }
 
 @Composable
-private fun PouchTypeRow(type: PouchType, fits: Int, onLog: () -> Unit, onLogAtTime: () -> Unit) {
+private fun PouchTypeRow(type: PouchType, price: String?, fits: Int, onLog: () -> Unit, onLogAtTime: () -> Unit) {
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -447,7 +451,7 @@ private fun PouchTypeRow(type: PouchType, fits: Int, onLog: () -> Unit, onLogAtT
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        stringResource(R.string.mg_value, Fmt.mg(type.strengthMg)),
+                        stringResource(R.string.mg_value, Fmt.mg(type.strengthMg)) + (price?.let { " · $it" } ?: ""),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,

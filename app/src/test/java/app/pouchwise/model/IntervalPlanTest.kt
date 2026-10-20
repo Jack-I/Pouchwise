@@ -64,6 +64,18 @@ class IntervalPlanTest {
     }
 
     @Test
+    fun takingAPouchOutEarlyBringsTheNextOneForward() {
+        val start = at(10, 12)
+        val now = start + 10 * 60_000L
+        val stillIn = pouch(start)
+        val out = PouchTiming.finish(stillIn, s, now)
+        val whileIn = IntervalPlan.nextOnPlanMs(listOf(PouchTiming.toDose(stillIn, s)), s.pk, 0.5, now)!!
+        val afterOut = IntervalPlan.nextOnPlanMs(listOf(PouchTiming.toDose(out, s)), s.pk, 0.5, now)!!
+        assertTrue(afterOut > now)
+        assertTrue(afterOut < whileIn)
+    }
+
+    @Test
     fun receptorsRestWhileNicotineIsLow() {
         val from = at(10, 0)
         val to = at(10, 12)

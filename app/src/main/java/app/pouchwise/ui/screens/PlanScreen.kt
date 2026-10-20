@@ -14,7 +14,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
 import app.pouchwise.R
+import app.pouchwise.data.LogEntry
 import app.pouchwise.model.DayKeys
+import app.pouchwise.model.IntervalMode
+import app.pouchwise.model.IntervalPlan
+import app.pouchwise.model.Pharmacokinetics
 import app.pouchwise.model.LimitMode
 import app.pouchwise.model.Limits
 import app.pouchwise.model.Settings
@@ -28,6 +32,7 @@ fun PlanScreen(vm: AppViewModel) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
     val types by vm.types.collectAsStateWithLifecycle()
+    val entries by vm.entries.collectAsStateWithLifecycle()
     // Typical strength for converting between pouches and mg: the average of the visible pouches.
     val typicalStrength = types.orEmpty().filter { !it.archived }.map { it.strengthMg }.average().let { if (it.isNaN()) 8.0 else it }
     // The ticker lags up to 30 s behind midnight; the wall clock does not.
@@ -193,6 +198,13 @@ fun PlanScreen(vm: AppViewModel) {
                 }
             }
         }
+
+        // spacing between pouches
+        SoftCard {
+            Text(stringResource(R.string.tolerance_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(10.dp))
+            ToleranceSettings(settings, entries) { m -> vm.updateSettings { it.copy(intervalMode = m) } }
+        }
     }
 
     if (editLimit) {
@@ -247,4 +259,43 @@ private fun DateRow(label: String, value: String, onClick: () -> Unit) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         TextButton(onClick = onClick) { Text(value) }
     }
+}
+
+/** Off / hold / lower, with the levels they mean for this user right now. */
+@Composable
+private fun ToleranceSettings(settings: Settings, entries: List<LogEntry>, onMode: (IntervalMode) -> Unit) {
+    val recent = remember(entries) { entries.filter { it.timestamp >= System.currentTimeMillis() - IntervalPlan.DATA_MS } }
+    val usual = remember(recent, settings) {
+        val now = System.currentTimeMillis()
+        IntervalPlan.usualLevel(recent, settings, now - IntervalPlan.WINDOW_MS, now)
+    }
+    val lower = remember(recent, settings) {
+        IntervalPlan.threshold(recent, settings.copy(intervalMode = IntervalMode.LOWER), System.currentTimeMillis())
+    }
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        val modes = listOf(IntervalMode.OFF to R.string.interval_off, IntervalMode.KEEP to R.string.interval_keep, IntervalMode.LOWER to R.string.interval_lower)
+        modes.forEachIndexed { i, (m, res) ->
+            SegmentedButton(
+                selected = settings.intervalMode == m,
+                onClick = { onMode(m) },
+                shape = SegmentedButtonDefaults.itemShape(index = i, count = modes.size),
+            ) { Text(stringResource(res)) }
+        }
+    }
+    Spacer(Modifier.height(10.dp))
+    val small = MaterialTheme.typography.bodySmall
+    if (usual == null) {
+        Text(stringResource(R.string.interval_learning), style = small)
+    } else {
+        val ng = Pharmacokinetics.toNgPerMl(usual, settings.bodyWeightKg, Pharmacokinetics.NICOTINE_VD_L_PER_KG)
+        Text(stringResource(R.string.interval_usual, Fmt.oneDecimal(usual), Fmt.ngMl(ng)), style = small)
+        Spacer(Modifier.height(6.dp))
+        Text(stringResource(R.string.interval_keep_rule, Fmt.oneDecimal(usual)), style = small)
+        Spacer(Modifier.height(4.dp))
+        Text(stringResource(R.string.interval_lower_rule, Fmt.oneDecimal(lower ?: usual * IntervalPlan.LOWER_SHARE)), style = small)
+    }
+    Spacer(Modifier.height(6.dp))
+    Text(stringResource(R.string.interval_never_blocks), style = small, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Spacer(Modifier.height(4.dp))
+    Text(stringResource(R.string.tolerance_honest), style = small, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }

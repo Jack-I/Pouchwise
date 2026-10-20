@@ -258,36 +258,25 @@
     <string name="quick_remove_title">Какой вынимаем?</string>
 
     <!-- интервал, траты, закономерности -->
-    <string name="plan_next_at">Следующий по плану в %1$s · через %2$s</string>
-    <string name="plan_now">По плану — можно</string>
-    <string name="plan_learning">План интервала изучает ваш обычный уровень</string>
+    <string name="plan_next_at">Следующий — не раньше %1$s · через %2$s</string>
+    <string name="plan_now">Перерыв выдержан</string>
+    <string name="plan_learning">План толерантности изучает ваш обычный уровень</string>
     <string name="plan_learning_hint">Нужно хотя бы пять паучей за две недели, не считая первого за день.</string>
-    <string name="plan_rule_keep">Держать: следующий, когда никотин опустится ниже %1$s мг</string>
-    <string name="plan_rule_lower">Снижать: следующий, когда никотин опустится ниже %1$s мг</string>
     <string name="early_marker">рано</string>
-    <string name="chart_plan">план %1$s мг</string>
     <string name="receptor_rest">Рецепторы отдыхали сегодня: %1$s</string>
     <string name="receptor_rest_hint">Время, когда никотин был ниже %1$s нг/мл и заняты меньше половины рецепторов.</string>
-    <string name="widget_next">след. %1$s</string>
-    <string name="cover_next">следующий в %1$s</string>
-    <string name="settings_interval">Интервал между паучами</string>
+    <string name="widget_next">после %1$s</string>
+    <string name="cover_next">следующий не раньше %1$s</string>
     <string name="interval_off">Выкл.</string>
     <string name="interval_keep">Держать</string>
     <string name="interval_lower">Снижать</string>
     <string name="interval_usual">Обычно вы берёте следующий пауч примерно при %1$s мг никотина (≈ %2$s нг/мл) — по последним двум неделям.</string>
-    <string name="interval_keep_rule">Держать — следующий, когда никотин опустится ниже %1$s мг: дни остаются как есть.</string>
+    <string name="interval_keep_rule">Держать — следующий не раньше, чем никотин опустится ниже %1$s мг: дни остаются как есть.</string>
     <string name="interval_lower_rule">Снижать — на четверть ниже, сейчас %1$s мг, пересчёт по понедельникам: перерывы растут от недели к неделе.</string>
     <string name="interval_learning">Чтобы узнать ваш обычный уровень, плану нужно хотя бы пять паучей за две недели, не считая первого за день.</string>
     <string name="interval_never_blocks">Пауч раньше плана записывается и помечается, но ничего не запрещается.</string>
     <string name="settings_spending">Траты</string>
-    <string name="baseline_label">До Pouchwise</string>
-    <plurals name="pouches_a_day">
-        <item quantity="one">%d пауч в день</item>
-        <item quantity="few">%d пауча в день</item>
-        <item quantity="many">%d паучей в день</item>
-        <item quantity="other">%d пауча в день</item>
-    </plurals>
-    <string name="baseline_unset">не задано</string>
+    <string name="baseline_label">Паучей в день до Pouchwise</string>
     <string name="baseline_hint">Сколько паучей в день было до начала — от этого считается экономия. Цены задаются в каждом пауче.</string>
     <string name="currency_label">Валюта</string>
     <string name="price_per_can">Цена банки</string>
@@ -310,4 +299,16 @@
     <string name="patterns_gap">Обычный интервал</string>
     <string name="patterns_in_mouth">В среднем во рту</string>
     <string name="patterns_empty">Записей пока мало для закономерностей.</string>
+    <string name="tolerance_title">Толерантность</string>
+    <string name="tolerance_honest">Ни одно исследование не даёт интервала, который держит или снижает толерантность; это правило построено на том, как долго никотин занимает рецепторы.</string>
+    <string name="plan_wait_hold">Держим толерантность: пока никотин не опустится ниже %1$s мг</string>
+    <string name="plan_wait_lower">Снижаем толерантность: пока никотин не опустится ниже %1$s мг</string>
+    <string name="plan_kept_hold">Держим толерантность: никотин ниже %1$s мг</string>
+    <string name="plan_kept_lower">Снижаем толерантность: никотин ниже %1$s мг</string>
+    <string name="chart_hold">держать %1$s мг</string>
+    <string name="chart_lower">снижать %1$s мг</string>
+    <string name="history_days">Дни</string>
+    <string name="history_patterns">Закономерности</string>
+    <string name="history_spending">Траты</string>
+    <string name="spending_set_prices">Указать цены</string>
 </resources>

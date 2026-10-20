@@ -18,6 +18,7 @@ import app.pouchwise.AppViewModel
 import app.pouchwise.R
 import app.pouchwise.model.Clearance
 import app.pouchwise.model.DayKeys
+import app.pouchwise.model.IntervalMode
 import app.pouchwise.model.IntervalPlan
 import app.pouchwise.model.Pharmacokinetics
 import app.pouchwise.model.PouchTiming
@@ -74,7 +75,7 @@ fun BodyScreen(vm: AppViewModel) {
     val planLevel = remember(entries, settings, today) {
         IntervalPlan.threshold(entries.filter { it.timestamp >= clock - IntervalPlan.DATA_MS }, settings, clock)
     }
-    val nextOnPlan = remember(doses, pk, planLevel) { planLevel?.let { IntervalPlan.nextOnPlanMs(doses, pk, it, clock) } }
+    val nextOnPlan = remember(doses, pk, planLevel, clock) { planLevel?.let { IntervalPlan.nextOnPlanMs(doses, pk, it, clock) } }
 
     // The chart can be dragged back to the first pouch (30 days at most) and ahead until both have cleared
     // (7 days at most). One set of points serves every window size; computed off the main thread.
@@ -196,7 +197,12 @@ fun BodyScreen(vm: AppViewModel) {
                         planLevelMg = planLevel,
                         nextOnPlanMs = nextOnPlan?.takeIf { it > clock },
                         planColor = AppColors.plan,
-                        planLabel = planLevel?.let { stringResource(R.string.chart_plan, Fmt.oneDecimal(it)) }.orEmpty(),
+                        planLabel = planLevel?.let {
+                            stringResource(
+                                if (settings.intervalMode == IntervalMode.LOWER) R.string.chart_lower else R.string.chart_hold,
+                                Fmt.oneDecimal(it),
+                            )
+                        }.orEmpty(),
                     )
                 }
                 Row(Modifier.fillMaxWidth()) {

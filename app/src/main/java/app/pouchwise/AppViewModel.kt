@@ -23,6 +23,7 @@ import app.pouchwise.model.PlanHistory
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.model.Settings
 import app.pouchwise.util.Export
+import app.pouchwise.util.Money
 import app.pouchwise.widget.WidgetUpdater
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -57,6 +58,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     for (e in dao.entriesWithoutDay()) dao.setDayIfMissing(e.id, DayKeys.epochDay(e.timestamp, s.dayStartHour))
                 }
                 if (dao.planCount() == 0) dao.upsertPlan(PlanHistory.versionOf(s, fromDay = 0L))
+                if (s.currency.isEmpty()) {
+                    Money.localSymbol(appContext)?.let { sym -> settingsRepo.update { it.copy(currency = it.currency.ifEmpty { sym }) } }
+                }
                 if (s.onboarded && s.baselinePerDay == null) {
                     PlanHistory.baselinePerDay(dao.allPlans().firstOrNull(), dao.allTypes().minByOrNull { it.id })
                         ?.let { base -> settingsRepo.update { it.copy(baselinePerDay = it.baselinePerDay ?: base) } }
