@@ -1,5 +1,6 @@
 package app.pouchwise.widget
 
+import android.app.ActivityOptions
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -18,11 +19,14 @@ import android.text.style.ForegroundColorSpan
 import android.text.style.RelativeSizeSpan
 import android.view.View
 import android.widget.RemoteViews
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.ContextCompat
 import app.pouchwise.MainActivity
 import app.pouchwise.R
 import app.pouchwise.model.LimitMode
+import app.pouchwise.ui.theme.pouchColor
 import app.pouchwise.util.Fmt
+import kotlin.math.roundToInt
 
 /** Draws the ring bitmaps and builds the RemoteViews for both widgets. */
 object WidgetRenderer {
@@ -110,6 +114,132 @@ object WidgetRenderer {
             setContentDescription(R.id.widget_ring_image, context.getString(R.string.app_name) + ": " + countText(context, state))
             setOnClickPendingIntent(R.id.widget_ring_root, openApp(context))
         }
+
+    /** The cover-screen page: ring and today's numbers, the pouch that is in, and three pouch buttons. */
+    fun coverViews(context: Context, state: WidgetState, cover: CoverState): RemoteViews =
+        RemoteViews(context.packageName, R.layout.widget_cover).apply {
+            val now = System.currentTimeMillis()
+            val muted = 0xD9FFFFFF.toInt()
+            setImageViewBitmap(R.id.cover_ring, ring(context, (84 * context.resources.displayMetrics.density).roundToInt(), state))
+            setTextViewText(R.id.cover_count, countText(context, state))
+            setTextColor(R.id.cover_count, if (state.over) RED_TEXT else Color.WHITE)
+            setTextViewText(R.id.cover_left, leftText(context, state))
+            setTextColor(R.id.cover_left, if (state.over) RED_TEXT else muted)
+            setContentDescription(R.id.cover_top, context.getString(R.string.app_name) + ": " + countText(context, state))
+            setOnClickPendingIntent(R.id.cover_top, openApp(context))
+
+            val latest = cover.inNow.lastOrNull()
+            if (latest == null) {
+                setViewVisibility(R.id.cover_status_dot, View.GONE)
+                setChronometer(R.id.cover_status_timer, SystemClock.elapsedRealtime(), null, false)
+                setViewVisibility(R.id.cover_status_timer, View.GONE)
+                setViewVisibility(R.id.cover_check, View.GONE)
+                setTextColor(R.id.cover_status_text, muted)
+                setTextViewText(
+                    R.id.cover_status_text,
+                    cover.lastOutMs?.let { context.getString(R.string.cover_last_out_at, Fmt.timeOrDayTime(it, now)) }
+                        ?: context.getString(R.string.cover_nothing_yet),
+                )
+            } else {
+                val (entry, type) = latest
+                setViewVisibility(R.id.cover_status_dot, View.VISIBLE)
+                setInt(R.id.cover_status_dot, "setColorFilter", pouchColor(type?.colorIndex ?: 0).toArgb())
+                setTextColor(R.id.cover_status_text, Color.WHITE)
+                setTextViewText(
+                    R.id.cover_status_text,
+                    if (cover.inNow.size == 1) context.getString(R.string.cover_in_now, "${widgetLabel(type)} ${mgText(context, entry.strengthMg)}")
+                    else context.resources.getQuantityString(R.plurals.cover_pouches_in, cover.inNow.size, cover.inNow.size),
+                )
+                // The launcher runs the timer itself, on the elapsed-realtime clock.
+                setChronometer(R.id.cover_status_timer, SystemClock.elapsedRealtime() - (now - entry.timestamp).coerceAtLeast(0L), null, true)
+                setViewVisibility(R.id.cover_status_timer, View.VISIBLE)
+                setViewVisibility(R.id.cover_check, View.VISIBLE)
+                setContentDescription(R.id.cover_check, context.getString(R.string.widget_remove))
+                setOnClickPendingIntent(R.id.cover_check, removeOnCover(context))
+            }
+
+            COVER_SLOTS.forEachIndexed { i, slot ->
+                val type = cover.quick.getOrNull(i)
+                if (type == null) {
+                    setViewVisibility(slot.root, View.INVISIBLE)
+                    return@forEachIndexed
+                }
+                val color = pouchColor(type.colorIndex).toArgb()
+                val label = "${widgetLabel(type)} ${mgText(context, type.strengthMg)}"
+                setViewVisibility(slot.root, View.VISIBLE)
+                setInt(slot.bg, "setColorFilter", blend(color, COVER_BUTTON_BASE, 0.3f))
+                setInt(slot.dot, "setColorFilter", color)
+                setTextViewText(slot.name, widgetLabel(type))
+                setTextViewText(slot.mg, mgText(context, type.strengthMg))
+                setContentDescription(slot.root, context.getString(R.string.cover_log, label))
+                setOnClickPendingIntent(slot.root, logFromCover(context, type.id))
+            }
+        }
+
+    private class CoverSlot(val root: Int, val bg: Int, val dot: Int, val name: Int, val mg: Int)
+
+    private val COVER_SLOTS = listOf(
+        CoverSlot(R.id.cover_btn_0, R.id.cover_btn_0_bg, R.id.cover_btn_0_dot, R.id.cover_btn_0_name, R.id.cover_btn_0_mg),
+        CoverSlot(R.id.cover_btn_1, R.id.cover_btn_1_bg, R.id.cover_btn_1_dot, R.id.cover_btn_1_name, R.id.cover_btn_1_mg),
+        CoverSlot(R.id.cover_btn_2, R.id.cover_btn_2_bg, R.id.cover_btn_2_dot, R.id.cover_btn_2_name, R.id.cover_btn_2_mg),
+    )
+
+    private const val RED_TEXT = 0xFFFF8A80.toInt()
+    private const val COVER_BUTTON_BASE = 0xFF121A24.toInt()
+
+    /** Samsung's cover screen is display 1 (checked on a Flip7), so the chooser opens there, not inside. */
+    private const val COVER_DISPLAY_ID = 1
+
+    /** "2 pouches left today", "1 pouch over the limit", "35 mg left today"… */
+    private fun leftText(context: Context, state: WidgetState): String {
+        val res = context.resources
+        return when (state.mode) {
+            LimitMode.COUNT -> {
+                val diff = state.count - state.limit
+                when {
+                    diff > 0 -> res.getQuantityString(R.plurals.over_limit_by_pouches, diff, diff)
+                    diff == 0 -> context.getString(R.string.limit_reached)
+                    else -> res.getQuantityString(R.plurals.pouches_left_today, -diff, -diff)
+                }
+            }
+            LimitMode.MG -> {
+                val diff = state.mg - state.limit
+                when {
+                    diff > 1e-9 -> context.getString(R.string.over_limit_by_mg, Fmt.mg(diff))
+                    diff > -1e-9 -> context.getString(R.string.limit_reached)
+                    else -> context.getString(R.string.mg_left_today, Fmt.mg(-diff))
+                }
+            }
+        }
+    }
+
+    private fun mgText(context: Context, mg: Double): String = context.getString(R.string.mg_value, Fmt.mg(mg))
+
+    private fun blend(color: Int, base: Int, share: Float): Int {
+        fun channel(shift: Int) =
+            (((color shr shift) and 0xFF) * share + ((base shr shift) and 0xFF) * (1 - share)).roundToInt()
+        return Color.rgb(channel(16), channel(8), channel(0))
+    }
+
+    private fun removeOnCover(context: Context): PendingIntent =
+        PendingIntent.getActivity(
+            context, 3,
+            Intent(context, QuickLogActivity::class.java)
+                .setAction(QuickLogActivity.ACTION_REMOVE)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            ActivityOptions.makeBasic().setLaunchDisplayId(COVER_DISPLAY_ID).toBundle(),
+        )
+
+    /** One per pouch: the request code keeps them apart, since extras do not. */
+    private fun logFromCover(context: Context, typeId: Long): PendingIntent =
+        PendingIntent.getBroadcast(
+            context, 1000 + typeId.toInt(),
+            Intent(context, CoverWidgetProvider::class.java)
+                .setAction(CoverWidgetProvider.ACTION_LOG)
+                .putExtra(CoverWidgetProvider.EXTRA_TYPE_ID, typeId),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
 
     fun wideViews(context: Context, state: WidgetState): RemoteViews =
         RemoteViews(context.packageName, R.layout.widget_wide).apply {

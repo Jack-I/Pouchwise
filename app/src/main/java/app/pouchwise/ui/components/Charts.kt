@@ -189,6 +189,7 @@ fun ScrollableBodyChart(
 
         // x ticks on the local clock; midnight shows the day, so a window dragged into the past says which one
         val tickH = when {
+            windowH <= 15 -> 3L
             windowH <= 30 -> 6L
             windowH <= 60 -> 12L
             windowH <= 100 -> 24L

@@ -49,6 +49,21 @@
                 android:resource="@xml/widget_wide_info" />
         </receiver>
 
+        <receiver
+            android:name=".widget.CoverWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_cover_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_cover_info" />
+            <meta-data
+                android:name="com.samsung.android.appwidget.provider"
+                android:resource="@xml/samsung_cover_widget" />
+        </receiver>
+
         <activity
             android:name=".widget.QuickLogActivity"
             android:excludeFromRecents="true"

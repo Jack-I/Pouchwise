@@ -39,6 +39,29 @@ data class WidgetState(
     }
 }
 
+/** What the cover-screen widget shows besides [WidgetState]. */
+data class CoverState(
+    /** The pouches in right now with their types, oldest first. */
+    val inNow: List<Pair<LogEntry, PouchType?>>,
+    /** When the last pouch came out, by hand or by its own time; null when none has. */
+    val lastOutMs: Long?,
+    /** Up to three pouches for one-tap logging. */
+    val quick: List<PouchType>,
+)
+
+/**
+ * The pouches for the cover widget's buttons: the [max] used most in the recent past, shown in the order of
+ * "Your pouches" (which [active] already has) so the buttons do not swap places from one day to the next.
+ */
+fun quickPicks(active: List<PouchType>, uses: Map<Long, Int>, max: Int = 3): List<PouchType> {
+    val chosen = active
+        .sortedWith(compareByDescending<PouchType> { uses[it.id] ?: 0 }.thenBy { it.sortOrder }.thenBy { it.id })
+        .take(max)
+        .map { it.id }
+        .toSet()
+    return active.filter { it.id in chosen }
+}
+
 /** The pouches in right now, oldest first. */
 fun pouchesIn(entries: List<LogEntry>, s: Settings, nowMs: Long): List<LogEntry> =
     entries.filter { PouchTiming.isActive(it, s, nowMs) }.sortedBy { it.timestamp }
@@ -69,6 +92,22 @@ object WidgetData {
             dayEndMs = dayEnd,
         )
     }
+
+    suspend fun loadCover(context: Context): CoverState {
+        val dao = AppDatabase.get(context).dao()
+        val settings = SettingsRepository(context).settings.first()
+        val now = System.currentTimeMillis()
+        val recent = dao.entriesBetween(now - LAST_OUT_LOOKBACK_MS, now + 1)
+        val uses = dao.usageSince(now - QUICK_LOOKBACK_MS).associate { it.pouchTypeId to it.uses }
+        return CoverState(
+            inNow = pouchesInNow(context, settings, now),
+            lastOutMs = PouchTiming.lastOutMs(recent, settings, now),
+            quick = quickPicks(dao.activeTypes(), uses),
+        )
+    }
+
+    private const val LAST_OUT_LOOKBACK_MS = 3L * 24 * 3_600_000L
+    private const val QUICK_LOOKBACK_MS = 14L * 24 * 3_600_000L
 
     /** Pouches in right now with their types, oldest first. Pouches put in before the day boundary count too. */
     suspend fun pouchesInNow(context: Context, settings: Settings, nowMs: Long): List<Pair<LogEntry, PouchType?>> {

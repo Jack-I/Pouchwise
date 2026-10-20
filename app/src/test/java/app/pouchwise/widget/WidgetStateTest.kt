@@ -11,6 +11,19 @@ import org.junit.Test
 
 class WidgetStateTest {
     @Test
+    fun coverButtonsAreTheMostUsedPouchesInTheirOwnOrder() {
+        fun type(id: Long, order: Int) = PouchType(id = id, name = "P$id", strengthMg = 6.0, sortOrder = order)
+        val active = listOf(type(1, 0), type(2, 1), type(3, 2), type(4, 3), type(5, 4))
+        // Five pouches, three in use: the three used, in the order of "Your pouches", not by count.
+        assertEquals(listOf(2L, 4L, 5L), quickPicks(active, mapOf(5L to 9, 2L to 4, 4L to 7, 1L to 1)).map { it.id })
+        // Fewer than three used lately: the rest are filled in from the top of the list.
+        assertEquals(listOf(1L, 2L, 4L), quickPicks(active, mapOf(4L to 3)).map { it.id })
+        // Nothing logged yet, or fewer pouches than buttons.
+        assertEquals(listOf(1L, 2L, 3L), quickPicks(active, emptyMap()).map { it.id })
+        assertEquals(listOf(1L), quickPicks(active.take(1), mapOf(1L to 2)).map { it.id })
+    }
+
+    @Test
     fun ringFillsTowardsTheLimitAndFlagsOveruse() {
         val half = WidgetState(LimitMode.COUNT, count = 5, mg = 40.0, limit = 10, hasTypes = true)
         assertEquals(0.5f, half.ratio, 1e-6f)

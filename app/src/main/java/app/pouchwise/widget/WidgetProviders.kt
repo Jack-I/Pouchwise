@@ -41,6 +41,34 @@ class WideWidgetProvider : AppWidgetProvider() {
     }
 }
 
+/**
+ * Galaxy Z Flip cover screen (Samsung gives such widgets the whole page): today against the limit, the pouch
+ * that is in with ✓, and buttons for the three pouches used most lately.
+ */
+class CoverWidgetProvider : AppWidgetProvider() {
+    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+        refreshAsync(context)
+    }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != ACTION_LOG) return super.onReceive(context, intent)
+        val typeId = intent.getLongExtra(EXTRA_TYPE_ID, -1L)
+        val pending = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                runCatching { QuickLog.logById(context, typeId) }
+            } finally {
+                pending.finish()
+            }
+        }
+    }
+
+    companion object {
+        const val ACTION_LOG = "app.pouchwise.action.COVER_LOG"
+        const val EXTRA_TYPE_ID = "type_id"
+    }
+}
+
 private fun BroadcastReceiver.refreshAsync(context: Context, zoneChanged: Boolean = false) {
     val pending = goAsync()
     CoroutineScope(Dispatchers.IO).launch {

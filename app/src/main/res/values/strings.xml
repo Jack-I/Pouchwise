@@ -108,7 +108,7 @@
     <string name="chart_forecast_hint">forecast →</string>
     <string name="axis_nicotine">Nicotine, mg</string>
     <string name="axis_cotinine">Cotinine, mg</string>
-    <string name="range_24h">24 h</string>
+    <string name="range_12h">12 h</string>
     <string name="range_48h">48 h</string>
     <string name="range_7d">7 d</string>
     <string name="legend_past">so far</string>
@@ -228,6 +228,16 @@
     <string name="widget_ring_label">Pouchwise ring</string>
     <string name="widget_ring_desc">Today against your daily limit</string>
     <string name="widget_wide_label">Pouchwise counter</string>
+    <string name="widget_cover_label">Pouchwise</string>
+    <string name="widget_cover_desc">Today against your limit, the pouch that is in, and buttons for your three most used pouches</string>
+    <string name="cover_in_now">%1$s · in</string>
+    <plurals name="cover_pouches_in">
+        <item quantity="one">%d pouch in</item>
+        <item quantity="other">%d pouches in</item>
+    </plurals>
+    <string name="cover_last_out_at">Last pouch out at %1$s</string>
+    <string name="cover_nothing_yet">No pouches logged yet</string>
+    <string name="cover_log">Log %1$s</string>
     <string name="widget_wide_desc">Today\'s count, the limit and one-tap logging</string>
     <string name="widget_unit_pouches">pouches</string>
     <string name="widget_unit_mg_today">mg today</string>

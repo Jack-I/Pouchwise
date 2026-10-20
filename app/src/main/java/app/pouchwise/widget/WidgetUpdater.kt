@@ -35,15 +35,20 @@ object WidgetUpdater {
             val manager = AppWidgetManager.getInstance(app) ?: return@withContext
             val ringIds = manager.getAppWidgetIds(ComponentName(app, RingWidgetProvider::class.java))
             val wideIds = manager.getAppWidgetIds(ComponentName(app, WideWidgetProvider::class.java))
-            if (ringIds.isEmpty() && wideIds.isEmpty()) {
+            val coverIds = manager.getAppWidgetIds(ComponentName(app, CoverWidgetProvider::class.java))
+            if (ringIds.isEmpty() && wideIds.isEmpty() && coverIds.isEmpty()) {
                 scheduleRefresh(app, null)
                 return@withContext
             }
             val state = WidgetData.load(app)
             ringIds.forEach { id -> updateRing(app, manager, id, state) }
             wideIds.forEach { manager.updateAppWidget(it, WidgetRenderer.wideViews(app, state)) }
-            // Only the wide widget shows the pouch that is in; both show today's numbers.
-            val autoEnd = if (wideIds.isNotEmpty()) state.nextAutoEndMs else null
+            if (coverIds.isNotEmpty()) {
+                val cover = WidgetData.loadCover(app)
+                coverIds.forEach { manager.updateAppWidget(it, WidgetRenderer.coverViews(app, state, cover)) }
+            }
+            // The 1×1 shows only today's numbers; the others also show the pouch that is in.
+            val autoEnd = if (wideIds.isNotEmpty() || coverIds.isNotEmpty()) state.nextAutoEndMs else null
             scheduleRefresh(app, listOfNotNull(autoEnd, state.dayEndMs).minOrNull())
         }
     }

@@ -31,7 +31,9 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 private const val HOUR_MS = 3_600_000L
-private val RANGES_MS = listOf(24L, 48L, 7L * 24).map { it * HOUR_MS }
+private val RANGES_MS = listOf(12L, 48L, 7L * 24).map { it * HOUR_MS }
+/** Chart points every 6 min plus every pouch in and out: smooth at 12 h, light enough for 37 days. */
+private const val SAMPLE_STEP_MS = 6 * 60_000L
 private const val HISTORY_MAX_MS = 30L * 24 * HOUR_MS
 private const val FORECAST_MAX_MS = 7L * 24 * HOUR_MS
 /** Where "now" sits in a freshly opened window: two thirds past, one third forecast. */
@@ -73,7 +75,7 @@ fun BodyScreen(vm: AppViewModel) {
             val widest = RANGES_MS.last()
             val from = min(earliest, clock - (widest * NOW_AT).toLong())
             val to = max(latest, clock + (widest * (1 - NOW_AT)).toLong())
-            val step = RANGES_MS.first() / 240
+            val step = SAMPLE_STEP_MS
             Reach(
                 earliest, latest,
                 BodySpan(
@@ -127,7 +129,7 @@ fun BodyScreen(vm: AppViewModel) {
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SingleChoiceSegmentedButtonRow(Modifier.weight(1f)) {
-                        val labels = listOf(R.string.range_24h, R.string.range_48h, R.string.range_7d)
+                        val labels = listOf(R.string.range_12h, R.string.range_48h, R.string.range_7d)
                         labels.forEachIndexed { i, res ->
                             SegmentedButton(
                                 selected = rangeIdx == i,

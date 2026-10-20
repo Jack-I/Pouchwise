@@ -203,17 +203,31 @@ object QuickLog {
     fun log(context: Context, type: PouchType) {
         val app = context.applicationContext
         val now = System.currentTimeMillis()
-        synchronized(this) {
-            val tap = SystemClock.elapsedRealtime()
-            if (tap - lastLogAt < DOUBLE_TAP_MS) return
-            lastLogAt = tap
-        }
-        scope.launch {
-            val settings = SettingsRepository(app).settings.first()
-            AppDatabase.get(app).dao().insertEntry(PouchTiming.newEntry(type.id, type.strengthMg, type.releaseK, now, settings))
-            toast(app, app.getString(R.string.widget_logged, type.name))
-            runCatching { WidgetUpdater.updateAll(app) }
-        }
+        if (!acceptTap()) return
+        scope.launch { insert(app, type, now) }
+    }
+
+    /** For a broadcast from the cover-screen widget: done before the receiver lets the process go. */
+    suspend fun logById(context: Context, typeId: Long) {
+        val app = context.applicationContext
+        val now = System.currentTimeMillis()
+        if (!acceptTap()) return
+        val type = AppDatabase.get(app).dao().typesByIds(listOf(typeId)).firstOrNull() ?: return
+        insert(app, type, now)
+    }
+
+    private fun acceptTap(): Boolean = synchronized(this) {
+        val tap = SystemClock.elapsedRealtime()
+        if (tap - lastLogAt < DOUBLE_TAP_MS) return false
+        lastLogAt = tap
+        true
+    }
+
+    private suspend fun insert(app: Context, type: PouchType, atMs: Long) {
+        val settings = SettingsRepository(app).settings.first()
+        AppDatabase.get(app).dao().insertEntry(PouchTiming.newEntry(type.id, type.strengthMg, type.releaseK, atMs, settings))
+        toast(app, app.getString(R.string.widget_logged, type.name))
+        runCatching { WidgetUpdater.updateAll(app) }
     }
 
     fun remove(context: Context, entry: LogEntry, type: PouchType?, settings: Settings) {

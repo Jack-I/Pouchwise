@@ -113,7 +113,7 @@
     <string name="chart_forecast_hint">прогноз →</string>
     <string name="axis_nicotine">Никотин, мг</string>
     <string name="axis_cotinine">Котинин, мг</string>
-    <string name="range_24h">24 ч</string>
+    <string name="range_12h">12 ч</string>
     <string name="range_48h">48 ч</string>
     <string name="range_7d">7 д</string>
     <string name="legend_past">было</string>
@@ -234,6 +234,18 @@
     <string name="widget_ring_label">Кольцо Pouchwise</string>
     <string name="widget_ring_desc">Сегодня относительно дневного лимита</string>
     <string name="widget_wide_label">Счётчик Pouchwise</string>
+    <string name="widget_cover_label">Pouchwise</string>
+    <string name="widget_cover_desc">Сегодня против лимита, пауч во рту и кнопки для трёх самых частых паучей</string>
+    <string name="cover_in_now">%1$s · во рту</string>
+    <plurals name="cover_pouches_in">
+        <item quantity="one">%d пауч во рту</item>
+        <item quantity="few">%d пауча во рту</item>
+        <item quantity="many">%d паучей во рту</item>
+        <item quantity="other">%d пауча во рту</item>
+    </plurals>
+    <string name="cover_last_out_at">Последний вынут в %1$s</string>
+    <string name="cover_nothing_yet">Записей пока нет</string>
+    <string name="cover_log">Записать %1$s</string>
     <string name="widget_wide_desc">Счёт за сегодня, лимит и запись в одно касание</string>
     <string name="widget_unit_pouches">паучей</string>
     <string name="widget_unit_mg_today">мг сегодня</string>

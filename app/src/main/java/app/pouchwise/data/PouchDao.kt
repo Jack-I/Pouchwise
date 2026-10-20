@@ -8,6 +8,8 @@ import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
+data class TypeUsage(val pouchTypeId: Long, val uses: Int)
+
 @Dao
 interface PouchDao {
     @Query("SELECT * FROM pouch_types ORDER BY sortOrder, id")
@@ -80,6 +82,9 @@ interface PouchDao {
 
     @Query("SELECT * FROM plan_versions ORDER BY fromDay")
     suspend fun allPlans(): List<PlanVersion>
+
+    @Query("SELECT pouchTypeId, COUNT(*) AS uses FROM log_entries WHERE timestamp >= :fromMs GROUP BY pouchTypeId")
+    suspend fun usageSince(fromMs: Long): List<TypeUsage>
 
     /** One tracking day; rows without a stored day fall back to the time range of that day. */
     @Query("SELECT * FROM log_entries WHERE day = :day OR (day IS NULL AND timestamp >= :fromMs AND timestamp < :toMs) ORDER BY timestamp")

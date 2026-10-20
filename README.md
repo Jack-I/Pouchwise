@@ -14,7 +14,7 @@ No account, no server, no analytics. Everything lives in a local SQLite database
 | Screen | What it does |
 |---|---|
 | **Track** | Today card: pouches or mg left, progress bar, the day's face. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** puts the pouch "in": a card with a timer and a **Remove** button appears; if you never tap Remove, the pouch counts as removed after the pouch time (30 min by default). Today's log shows each pouch with its time in, and you can adjust the time or delete an entry. |
-| **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL) and when 95 % of each will be gone. A chart you can drag: back through up to 30 days of history (solid) and ahead through the forecast if you stop now (dashed). "Now" starts two thirds of the way across, and **Now** brings it back; 24 h / 48 h / 7 d windows. |
+| **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL) and when 95 % of each will be gone. A chart you can drag: back through up to 30 days of history (solid) and ahead through the forecast if you stop now (dashed). "Now" starts two thirds of the way across, and **Now** brings it back; 12 h / 48 h / 7 d windows. |
 | **History** | Five weeks of day tiles: pouches and mg per day, coloured in seven steps by how the day went against the limit that applied on that day. Streak within the limit, days over the limit, the last 30 and 7 finished days, totals. Daily bars against the limit line, projected a week ahead. |
 | **Plan** | Limit counted in whole pouches or whole mg of nicotine. Either a fixed daily limit or a taper: start value → target value by a date, with today's limit interpolated linearly. Switching the unit converts the plan with your typical pouch strength, and switching back restores the values you had. A change applies from today on; past days keep the plan they had. |
 | **Settings** | Manage pouches: brand from a catalogue (or any other), optional flavour, strength in mg, a "fast release" tick for mini / dry-slim lines, colour; hide and restore. Hour at which a new day starts. Body weight and pouch time. Theme and, on Android 13+, language. Export to CSV or JSON through the share sheet; import a JSON export to move everything to another phone. |
@@ -33,7 +33,13 @@ Long-press the home screen → Widgets → Pouchwise. Two sizes:
   away). **✓** takes the pouch out; with two or more in, it asks which one. While a pouch is in, its
   brand and a running timer show under the count, and ✓ turns white; otherwise ✓ is greyed out.
 
-Widgets refresh right after every change made in the app, whenever the app is opened, when a new
+On a Galaxy Z Flip the cover screen gets its own widget: Settings → Cover screen → Widgets → Pouchwise.
+Samsung gives such widgets the whole page. It shows the ring and today's numbers, the pouch that is in
+with a timer and ✓ (with two or more in, it asks which one, right on the cover screen), or when the
+last one came out, and buttons for the three pouches you used most in the last two weeks, in the order
+of your list: a tap logs that pouch. Tapping the ring opens the app on the cover screen.
+
+All widgets refresh right after every change made in the app, whenever the app is opened, when a new
 tracking day starts and when a pouch reaches its pouch time. The last two use an ordinary alarm that
 needs no permission and lands within about ten minutes of the moment. They also refresh when the
 time zone or the system language changes.
