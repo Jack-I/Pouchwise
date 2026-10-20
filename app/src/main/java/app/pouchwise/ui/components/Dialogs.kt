@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -19,7 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -334,16 +338,27 @@ fun EntryDialog(
                         FilledTonalIconButton(onClick = { minutesText = (shown - 1).coerceAtLeast(1).toString() }) {
                             Icon(Icons.Filled.Remove, contentDescription = null)
                         }
-                        OutlinedTextField(
+                        // Not OutlinedTextField: its 16 dp side padding hides two digits at this width.
+                        val frame = if (minutes == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                        BasicTextField(
                             value = minutesText,
                             onValueChange = { v -> minutesText = v.filter { it.isDigit() }.take(2) },
                             singleLine = true,
-                            isError = minutes == null,
-                            textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
+                            textStyle = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                color = if (minutes == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                            ),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.width(56.dp).padding(horizontal = 4.dp),
+                            modifier = Modifier
+                                .padding(horizontal = 6.dp)
+                                .width(44.dp)
+                                .border(1.dp, frame, RoundedCornerShape(8.dp))
+                                .padding(vertical = 8.dp),
                         )
                         Text(stringResource(R.string.unit_min), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.width(4.dp))
                         FilledTonalIconButton(onClick = { minutesText = (shown + 1).coerceAtMost(PouchTiming.MAX_POUCH_MINUTES).toString() }) {
                             Icon(Icons.Filled.Add, contentDescription = null)
                         }
