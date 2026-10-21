@@ -12,6 +12,7 @@
     <string name="cancel">Отмена</string>
     <string name="save">Сохранить</string>
     <string name="delete">Удалить</string>
+    <string name="hide">Скрыть</string>
     <string name="ok">ОК</string>
     <string name="close">Закрыть</string>
     <string name="unit_mg">мг</string>
@@ -100,7 +101,8 @@
     <string name="edit_pouch">Изменить пауч</string>
     <string name="archived">Скрытые</string>
     <string name="restore">Вернуть</string>
-    <string name="delete_type_q">Убрать %1$s?</string>
+    <string name="delete_type_q">Удалить %1$s?</string>
+    <string name="hide_type_q">Скрыть %1$s?</string>
     <string name="delete_type_body">Пауч пропадёт с экрана учёта, история останется. Его можно вернуть.</string>
     <string name="delete_type_body_unused">С этим паучем ещё нет записей, поэтому он удалится насовсем.</string>
     <string name="manage_pouches">Управление паучами</string>

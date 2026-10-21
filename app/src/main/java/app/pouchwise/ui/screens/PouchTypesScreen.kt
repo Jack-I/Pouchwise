@@ -70,7 +70,7 @@ fun PouchTypesScreen(vm: AppViewModel, onBack: () -> Unit) {
                     type = t,
                     trailing = {
                         IconButton(onClick = { editing = t }) { Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.edit_pouch)) }
-                        IconButton(onClick = { removing = t }) { Icon(Icons.Filled.VisibilityOff, contentDescription = stringResource(R.string.delete)) }
+                        IconButton(onClick = { removing = t }) { Icon(Icons.Filled.VisibilityOff, contentDescription = stringResource(R.string.hide)) }
                     },
                 )
             }
@@ -110,13 +110,14 @@ fun PouchTypesScreen(vm: AppViewModel, onBack: () -> Unit) {
     removing?.let { t ->
         // A pouch never logged is deleted outright rather than hidden, so the dialog must not promise a way back.
         val logged by produceState(initialValue = true, t.id) { value = vm.typeHasEntries(t.id) }
+        val name = "${t.name} ${Fmt.mg(t.strengthMg)} ${stringResource(R.string.unit_mg)}"
         ConfirmDialog(
-            title = stringResource(R.string.delete_type_q, "${t.name} ${Fmt.mg(t.strengthMg)} ${stringResource(R.string.unit_mg)}"),
+            title = stringResource(if (logged) R.string.hide_type_q else R.string.delete_type_q, name),
             text = stringResource(if (logged) R.string.delete_type_body else R.string.delete_type_body_unused),
-            confirmLabel = stringResource(R.string.delete),
+            confirmLabel = stringResource(if (logged) R.string.hide else R.string.delete),
             onDismiss = { removing = null },
             onConfirm = { vm.removeType(t); removing = null },
-            destructive = true,
+            destructive = !logged,
         )
     }
 }

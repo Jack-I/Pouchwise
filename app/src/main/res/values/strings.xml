@@ -14,6 +14,7 @@
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
     <string name="delete">Delete</string>
+    <string name="hide">Hide</string>
     <string name="ok">OK</string>
     <string name="close">Close</string>
     <string name="unit_mg">mg</string>
@@ -94,7 +95,8 @@
     <string name="edit_pouch">Edit pouch</string>
     <string name="archived">Hidden</string>
     <string name="restore">Show again</string>
-    <string name="delete_type_q">Remove %1$s?</string>
+    <string name="delete_type_q">Delete %1$s?</string>
+    <string name="hide_type_q">Hide %1$s?</string>
     <string name="delete_type_body">It leaves the Track screen; its history stays. You can bring it back later.</string>
     <string name="delete_type_body_unused">Nothing has been logged with this pouch yet, so it is deleted for good.</string>
     <string name="manage_pouches">Manage pouches</string>
