@@ -1,13 +1,22 @@
 package app.pouchwise.ui.components
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.AnimationState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateDecay
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.MutatorMutex
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,7 +24,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +43,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
@@ -51,11 +65,11 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import kotlinx.coroutines.launch
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlinx.coroutines.launch
 
 private enum class Align { START, CENTER, END }
 
@@ -103,18 +117,83 @@ data class BodySpan(
 )
 
 /**
- * Nicotine (left scale) and cotinine (right scale) in a window [windowMs] wide that the user drags between
- * [startMs] and [endMs]. [endOffsetH] is where the window ends, in hours after [BodySpan.nowMs]. Solid lines
- * show the past, dashed ones the forecast if nothing more is taken. The scales fit the visible part and one
- * window either side of it, so a peak is allowed for before it scrolls into view, and they glide when they change.
+ * The part of the Body chart on screen: a window [windowH] hours wide that ends [endH] hours after "now".
+ * Drags, flings, pinches and the window buttons all move it through one [MutatorMutex], so a new touch stops
+ * a glide still running. The window stays within [reachH] (hours from now to the first and last data) where
+ * its width allows, and "now" stays reachable at [nowAt] of the way across.
+ */
+@Stable
+class BodyChartView(windowH: Float, private val nowAt: Float, private val zoomH: ClosedFloatingPointRange<Float>) {
+    var windowH by mutableFloatStateOf(windowH)
+        private set
+    var endH by mutableFloatStateOf(windowH * (1 - nowAt))
+        private set
+    var reachH by mutableStateOf(0f..0f)
+    private val mutex = MutatorMutex()
+
+    /** Where the window ends with "now" at [nowAt] of the way across. */
+    fun nowEndH(w: Float = windowH) = w * (1 - nowAt)
+
+    private fun endRange(w: Float): ClosedFloatingPointRange<Float> {
+        val lo = min(-w * nowAt, reachH.start) + w
+        return lo..max(max(nowEndH(w), reachH.endInclusive), lo)
+    }
+
+    private fun place(w: Float, end: Float) {
+        windowH = w
+        endH = end.coerceIn(endRange(w))
+    }
+
+    /** Pulls the window back inside the data after the data or "now" moved. */
+    fun settle() {
+        endH = endH.coerceIn(endRange(windowH))
+    }
+
+    suspend fun dragBy(hours: Float) = mutex.mutate { place(windowH, endH + hours) }
+
+    suspend fun fling(hoursPerSecond: Float) = mutex.mutate {
+        var last = 0f
+        AnimationState(0f, hoursPerSecond).animateDecay(exponentialDecay()) {
+            val before = endH
+            place(windowH, endH + (value - last))
+            last = value
+            if (endH == before) cancelAnimation()
+        }
+    }
+
+    /**
+     * Two fingers moved [zoom] times further apart around [focus] (0 = the plot's left edge, 1 = its right) and
+     * together by [pan] plot widths: the time under the fingers stays under them.
+     */
+    suspend fun pinch(focus: Float, zoom: Float, pan: Float) = mutex.mutate {
+        val atFocus = endH - windowH + focus * windowH
+        val w = (windowH / zoom).coerceIn(zoomH)
+        place(w, atFocus + (1 - focus) * w - pan * w)
+    }
+
+    /** To a window [w] hours wide, around the middle of the screen, or with "now" kept at [nowAt] if [aroundNow]. */
+    suspend fun zoomTo(w: Float, aroundNow: Boolean) = glide(w, if (aroundNow) nowEndH(w) else endH - windowH / 2 + w / 2)
+
+    suspend fun goToNow() = glide(windowH, nowEndH())
+
+    private suspend fun glide(w: Float, end: Float) = mutex.mutate {
+        val w0 = windowH
+        val e0 = endH
+        val e1 = end.coerceIn(endRange(w))
+        animate(0f, 1f, animationSpec = tween(350)) { p, _ -> place(w0 + (w - w0) * p, e0 + (e1 - e0) * p) }
+    }
+}
+
+/**
+ * Nicotine (left scale) and cotinine (right scale) in the window that [view] describes, dragged with one finger
+ * and zoomed with two. Solid lines show the past, dashed ones the forecast if nothing more is taken. The scales
+ * fit the visible part and one window either side of it, so a peak is allowed for before it scrolls into view,
+ * and they glide when they change.
  */
 @Composable
 fun ScrollableBodyChart(
     span: BodySpan,
-    startMs: Long,
-    endMs: Long,
-    windowMs: Long,
-    endOffsetH: Animatable<Float, AnimationVector1D>,
+    view: BodyChartView,
     nicotineColor: Color,
     cotinineColor: Color,
     leftAxisTitle: String,
@@ -144,17 +223,11 @@ fun ScrollableBodyChart(
     val padR = with(density) { 48.dp.toPx() }
     var widthPx by remember { mutableIntStateOf(0) }
     val nowMs = span.nowMs
-    val windowH = windowMs / 3_600_000f
-    val hoursPerPx = if (widthPx > padL + padR) windowH / (widthPx - padL - padR) else 0f
+    val windowH = view.windowH
+    val windowMs = (windowH * 3_600_000f).toLong()
+    val plotW = widthPx - padL - padR
 
-    // Bounds clamp the value themselves, and only when no fling is running.
-    LaunchedEffect(startMs, endMs, windowMs, nowMs) {
-        val minEnd = (startMs - nowMs) / 3_600_000f + windowH
-        val maxEnd = max((endMs - nowMs) / 3_600_000f, minEnd)
-        endOffsetH.updateBounds(minEnd, maxEnd)
-    }
-
-    val t1 = nowMs + (endOffsetH.value * 3_600_000f).toLong()
+    val t1 = nowMs + (view.endH * 3_600_000f).toLong()
     val t0 = t1 - windowMs
     val past = slice(span.past, t0, t1)
     val future = slice(span.future, t0, t1)
@@ -175,10 +248,39 @@ fun ScrollableBodyChart(
             .fillMaxWidth()
             .height(272.dp)
             .onSizeChanged { widthPx = it.width }
+            // Two fingers zoom. Taken in the Initial pass, so the one-finger drag below and the page's
+            // vertical scroll see the events consumed and stay out of it.
+            .pointerInput(view) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    var pinched = false
+                    do {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val pressed = event.changes.count { it.pressed }
+                        val width = size.width - padL - padR
+                        if (pressed >= 2 && width > 0f) {
+                            pinched = true
+                            val zoom = event.calculateZoom()
+                            val pan = event.calculatePan().x / width
+                            val focus = ((event.calculateCentroid(useCurrent = true).x - padL) / width).coerceIn(0f, 1f)
+                            if (zoom != 1f || pan != 0f) scope.launch { view.pinch(focus, zoom, pan) }
+                            event.changes.forEach { it.consume() }
+                        } else if (pinched && pressed == 1 && width > 0f) {
+                            // The finger left after a pinch keeps moving the chart.
+                            val change = event.changes.first { it.pressed }
+                            val dx = change.positionChange().x
+                            if (dx != 0f) scope.launch { view.dragBy(-dx / width * view.windowH) }
+                            change.consume()
+                        }
+                    } while (event.changes.any { it.pressed })
+                }
+            }
             .draggable(
-                state = rememberDraggableState { delta -> scope.launch { endOffsetH.snapTo(endOffsetH.value - delta * hoursPerPx) } },
+                state = rememberDraggableState { delta ->
+                    if (plotW > 0f) scope.launch { view.dragBy(-delta / plotW * view.windowH) }
+                },
                 orientation = Orientation.Horizontal,
-                onDragStopped = { velocity -> endOffsetH.animateDecay(-velocity * hoursPerPx, exponentialDecay()) },
+                onDragStopped = { velocity -> if (plotW > 0f) view.fling(-velocity / plotW * view.windowH) },
             ),
     ) {
         val padT = 24.dp.toPx()
@@ -209,7 +311,8 @@ fun ScrollableBodyChart(
 
         // x ticks on the local clock; midnight shows the day, so a window dragged into the past says which one
         val tickH = when {
-            windowH <= 8 -> 2L
+            windowH <= 4.5f -> 1L
+            windowH <= 8.5f -> 2L
             windowH <= 15 -> 3L
             windowH <= 30 -> 6L
             windowH <= 60 -> 12L

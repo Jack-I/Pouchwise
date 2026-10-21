@@ -1,6 +1,5 @@
 package app.pouchwise.ui.screens
 
-import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -34,9 +33,17 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 private const val HOUR_MS = 3_600_000L
-private val RANGES_MS = listOf(8L, 48L, 7L * 24).map { it * HOUR_MS }
-/** Chart points every 6 min plus every pouch in and out: smooth at 8 h, light enough for 37 days. */
+/** The window buttons, in hours; two fingers zoom anywhere in [ZOOM_H]. */
+private val PRESETS_H = listOf(8f, 48f, 7f * 24)
+private val ZOOM_H = 2f..7f * 24
+/**
+ * Chart points every 6 min plus every pouch in and out, light enough for 37 days; every 2 min over the two days
+ * before now and the day after, where the chart is most often zoomed in close.
+ */
 private const val SAMPLE_STEP_MS = 6 * 60_000L
+private const val FINE_STEP_MS = 2 * 60_000L
+private const val FINE_BACK_MS = 48 * HOUR_MS
+private const val FINE_AHEAD_MS = 24 * HOUR_MS
 private const val HISTORY_MAX_MS = 30L * 24 * HOUR_MS
 private const val FORECAST_MAX_MS = 7L * 24 * HOUR_MS
 /** Where "now" sits in a freshly opened window: two thirds past, one third forecast. */
@@ -49,13 +56,11 @@ fun BodyScreen(vm: AppViewModel) {
     val now by vm.now.collectAsStateWithLifecycle()
     val pk = settings.pk
 
-    var rangeIdx by rememberSaveable { mutableIntStateOf(0) }
-    val windowMs = RANGES_MS[rangeIdx]
-    val defaultEndH = (windowMs * (1 - NOW_AT) / HOUR_MS).toFloat()
-    val endOffsetH = remember(rangeIdx) { Animatable(defaultEndH) }
-    val awayFromNow by remember(endOffsetH) {
-        derivedStateOf { abs(endOffsetH.value - defaultEndH) > windowMs / HOUR_MS * 0.02f }
-    }
+    var savedWindowH by rememberSaveable { mutableFloatStateOf(PRESETS_H[0]) }
+    val view = remember { BodyChartView(savedWindowH, NOW_AT.toFloat(), ZOOM_H) }
+    LaunchedEffect(view) { snapshotFlow { view.windowH }.collect { savedWindowH = it } }
+    val preset by remember(view) { derivedStateOf { PRESETS_H.indexOfFirst { abs(view.windowH / it - 1f) < 0.1f } } }
+    val awayFromNow by remember(view) { derivedStateOf { abs(view.endH - view.nowEndH()) > view.windowH * 0.02f } }
     val scope = rememberCoroutineScope()
 
     // The ticker only moves every 30 s; a pouch logged since then is already in.
@@ -86,19 +91,26 @@ fun BodyScreen(vm: AppViewModel) {
             val clearEnd = max(cleared.nicotineClearMs ?: clock, cleared.cotinineClearMs ?: clock)
             val earliest = max(clock - HISTORY_MAX_MS, (firstMs ?: clock) - HOUR_MS)
             val latest = clock + (clearEnd - clock).coerceIn(2 * HOUR_MS, FORECAST_MAX_MS)
-            val widest = RANGES_MS.last()
+            val widest = (ZOOM_H.endInclusive * HOUR_MS).toLong()
             val from = min(earliest, clock - (widest * NOW_AT).toLong())
             val to = max(latest, clock + (widest * (1 - NOW_AT)).toLong())
-            val step = SAMPLE_STEP_MS
+            fun points(a: Long, b: Long, step: Long) = Pharmacokinetics.series(a, b, step, doses, pk)
+            val fineFrom = max(from, clock - FINE_BACK_MS)
+            val fineTo = min(to, clock + FINE_AHEAD_MS)
             Reach(
                 earliest, latest,
                 BodySpan(
                     nowMs = clock,
-                    past = Pharmacokinetics.series(from, clock, step, doses, pk),
-                    future = Pharmacokinetics.series(clock, to, step, doses, pk),
+                    past = points(from, fineFrom, SAMPLE_STEP_MS) + points(fineFrom, clock, FINE_STEP_MS),
+                    future = points(clock, fineTo, FINE_STEP_MS) + points(fineTo, to, SAMPLE_STEP_MS),
                 ),
             )
         }
+    }
+    LaunchedEffect(reach) {
+        val r = reach ?: return@LaunchedEffect
+        view.reachH = (r.earliestMs - r.span.nowMs) / HOUR_MS.toFloat()..(r.latestMs - r.span.nowMs) / HOUR_MS.toFloat()
+        view.settle()
     }
 
     val nicNg = Pharmacokinetics.toNgPerMl(levels.nicotineMg, settings.bodyWeightKg, Pharmacokinetics.NICOTINE_VD_L_PER_KG)
@@ -164,8 +176,9 @@ fun BodyScreen(vm: AppViewModel) {
                         val labels = listOf(R.string.range_8h, R.string.range_48h, R.string.range_7d)
                         labels.forEachIndexed { i, res ->
                             SegmentedButton(
-                                selected = rangeIdx == i,
-                                onClick = { rangeIdx = i },
+                                selected = preset == i,
+                                // At "now" the window keeps it in place; scrolled away, it zooms around the middle.
+                                onClick = { scope.launch { view.zoomTo(PRESETS_H[i], aroundNow = !awayFromNow) } },
                                 shape = SegmentedButtonDefaults.itemShape(index = i, count = labels.size),
                             ) { Text(stringResource(res)) }
                         }
@@ -173,7 +186,7 @@ fun BodyScreen(vm: AppViewModel) {
                     if (awayFromNow) {
                         Spacer(Modifier.width(8.dp))
                         Button(
-                            onClick = { scope.launch { endOffsetH.animateTo(defaultEndH) } },
+                            onClick = { scope.launch { view.goToNow() } },
                             contentPadding = PaddingValues(horizontal = 14.dp),
                         ) { Text(stringResource(R.string.chart_now)) }
                     }
@@ -183,13 +196,9 @@ fun BodyScreen(vm: AppViewModel) {
                 if (r == null) {
                     Spacer(Modifier.height(272.dp))
                 } else {
-                    val at = r.span.nowMs
                     ScrollableBodyChart(
                         span = r.span,
-                        startMs = min(at - (windowMs * NOW_AT).toLong(), r.earliestMs),
-                        endMs = max(at + (windowMs * (1 - NOW_AT)).toLong(), r.latestMs),
-                        windowMs = windowMs,
-                        endOffsetH = endOffsetH,
+                        view = view,
                         nicotineColor = AppColors.nicotine,
                         cotinineColor = AppColors.cotinine,
                         leftAxisTitle = stringResource(R.string.axis_nicotine),
