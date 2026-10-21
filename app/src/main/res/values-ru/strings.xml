@@ -119,7 +119,7 @@
     <string name="chart_forecast_hint">прогноз →</string>
     <string name="axis_nicotine">Никотин, мг</string>
     <string name="axis_cotinine">Котинин, мг</string>
-    <string name="range_6h">6\u00A0ч</string>
+    <string name="range_8h">8\u00A0ч</string>
     <string name="range_48h">48 ч</string>
     <string name="range_7d">7 д</string>
     <string name="legend_future">если больше не брать</string>
