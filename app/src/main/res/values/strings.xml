@@ -55,25 +55,25 @@
     <string name="todays_log">Today\'s log</string>
     <string name="empty_log">Nothing logged today.</string>
     <string name="no_types_title">Add your first pouch</string>
-    <string name="no_types_body">Add the pouches you use, with their strength. Tap + when one goes in and Remove when it comes out; otherwise it counts as out after %1$d\u00A0min. Long-press + to log an earlier time.</string>
-    <string name="log_one">Log one</string>
+    <string name="no_types_body">Add the pouches you use, with their strength. Tap + when you toss one in and Pull out when you take it out; otherwise it counts as out after %1$d\u00A0min. Long-press + for one you tossed in earlier.</string>
+    <string name="log_one">Toss one in</string>
     <plurals name="fits_today">
         <item quantity="one">%d more fits today</item>
         <item quantity="other">%d more fit today</item>
     </plurals>
     <string name="none_fit_today">No more fit today</string>
     <string name="in_mouth">In now</string>
-    <string name="remove_pouch">Remove</string>
-    <string name="auto_remove_in">Counts as removed in %1$s</string>
+    <string name="remove_pouch">Pull out</string>
+    <string name="auto_remove_in">Counts as out in %1$s</string>
     <string name="over_limit_marker">Over the limit</string>
-    <string name="pick_time">Pick a time</string>
+    <string name="pick_time">Tossed in at</string>
     <string name="delete_entry_q">Delete this entry?</string>
     <string name="edit_entry">Edit entry</string>
-    <string name="put_in_at">Put in at</string>
+    <string name="put_in_at">Tossed in at</string>
     <string name="in_the_mouth">In the mouth</string>
     <string name="unit_min">min</string>
     <string name="still_in">still in</string>
-    <string name="taken_out_at">Taken out at %1$s</string>
+    <string name="taken_out_at">Pulled out at %1$s</string>
     <string name="ends_after_now">That\'s later than now</string>
 
     <!-- pouch types -->
@@ -187,7 +187,7 @@
     <string name="weight">Body weight, kg</string>
     <string name="weight_hint">Turns mg in the body into ng/mL in the blood.</string>
     <string name="absorption_minutes">Pouch time, minutes</string>
-    <string name="pouch_time_hint">A pouch counts as out after this long, unless you remove it sooner. Logged pouches keep their own time.</string>
+    <string name="pouch_time_hint">A pouch counts as out after this long, unless you pull it out sooner. Logged pouches keep their own time.</string>
     <string name="model_hint" formatted="false">Assumes about 30% of the label\'s nicotine is absorbed over 30 minutes in the mouth (less if shorter, more if longer), and half-lives of 2 h for nicotine and 16 h for cotinine. The 30% is typical of eight blood studies, most funded by manufacturers, so the levels are rough.</string>
     <string name="settings_appearance">Appearance</string>
     <string name="theme_system">System</string>
@@ -245,17 +245,17 @@
     </plurals>
     <string name="cover_last_out_at">Last pouch out at %1$s</string>
     <string name="cover_nothing_yet">No pouches logged yet</string>
-    <string name="cover_log">Log %1$s</string>
+    <string name="cover_log">Toss in %1$s</string>
     <string name="widget_wide_desc">Today\'s count, the limit and one-tap logging</string>
     <string name="widget_unit_pouches">pouches</string>
     <string name="widget_unit_mg_today">mg today</string>
-    <string name="widget_add">Log a pouch</string>
-    <string name="widget_remove">Take the pouch out</string>
-    <string name="widget_logged">%1$s logged</string>
+    <string name="widget_add">Toss in a pouch</string>
+    <string name="widget_remove">Pull the pouch out</string>
+    <string name="widget_logged">%1$s in</string>
     <string name="widget_removed">%1$s out</string>
     <string name="widget_nothing_in">Nothing is in right now</string>
-    <string name="quick_log_title">Which pouch?</string>
-    <string name="quick_remove_title">Which one comes out?</string>
+    <string name="quick_log_title">Which one to toss in?</string>
+    <string name="quick_remove_title">Which one to pull out?</string>
 
     <!-- interval plan, spending, patterns -->
     <string name="plan_next_at">Next one: better after %1$s</string>

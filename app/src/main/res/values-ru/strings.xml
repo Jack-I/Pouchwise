@@ -60,8 +60,8 @@
     <string name="todays_log">Записи за сегодня</string>
     <string name="empty_log">Сегодня записей нет.</string>
     <string name="no_types_title">Добавьте первый пауч</string>
-    <string name="no_types_body">Добавьте свои паучи с крепостью. Нажимайте +, когда кладёте пауч, и «Убрать», когда вынимаете; иначе он считается вынутым через %1$d\u00A0мин. Долгое нажатие на + — запись задним числом.</string>
-    <string name="log_one">Записать один</string>
+    <string name="no_types_body">Добавьте свои паучи с крепостью. Нажимайте +, когда вкидываете пауч, и «Вынуть», когда вынимаете; иначе он считается вынутым через %1$d\u00A0мин. Долгое нажатие на + — если вкинули раньше.</string>
+    <string name="log_one">Вкинуть один</string>
     <plurals name="fits_today">
         <item quantity="one">Влезет ещё %d</item>
         <item quantity="few">Влезет ещё %d</item>
@@ -70,13 +70,13 @@
     </plurals>
     <string name="none_fit_today">Больше не влезает</string>
     <string name="in_mouth">Сейчас под губой</string>
-    <string name="remove_pouch">Убрать</string>
-    <string name="auto_remove_in">Сам снимется через %1$s</string>
+    <string name="remove_pouch">Вынуть</string>
+    <string name="auto_remove_in">Считается вынутым через %1$s</string>
     <string name="over_limit_marker">Сверх лимита</string>
-    <string name="pick_time">Выберите время</string>
+    <string name="pick_time">Вкинут в</string>
     <string name="delete_entry_q">Удалить эту запись?</string>
     <string name="edit_entry">Изменить запись</string>
-    <string name="put_in_at">Заложен в</string>
+    <string name="put_in_at">Вкинут в</string>
     <string name="in_the_mouth">Во рту</string>
     <string name="unit_min">мин</string>
     <string name="still_in">ещё во рту</string>
@@ -190,7 +190,7 @@
     <string name="weight">Вес тела, кг</string>
     <string name="weight_hint">Нужен, чтобы перевести мг в организме в нг/мл в крови.</string>
     <string name="absorption_minutes">Время пауча под губой, минут</string>
-    <string name="pouch_time_hint">Через столько пауч считается вынутым, если не убрать его раньше. У записанных паучей время своё.</string>
+    <string name="pouch_time_hint">Через столько пауч считается вынутым, если не вынуть его раньше. У записанных паучей время своё.</string>
     <string name="model_hint" formatted="false">Считается, что за 30 минут под губой усваивается около 30% никотина с этикетки (меньше, если короче, больше, если дольше), полувыведение никотина 2 ч, котинина 16 ч. 30% — типичное значение в восьми исследованиях крови, в основном оплаченных производителями, так что уровни примерные.</string>
     <string name="settings_appearance">Оформление</string>
     <string name="theme_system">Как в системе</string>
@@ -253,16 +253,16 @@
     </plurals>
     <string name="cover_last_out_at">Последний вынут в %1$s</string>
     <string name="cover_nothing_yet">Записей пока нет</string>
-    <string name="cover_log">Записать %1$s</string>
+    <string name="cover_log">Вкинуть %1$s</string>
     <string name="widget_wide_desc">Счёт за сегодня, лимит и запись в одно касание</string>
     <string name="widget_unit_pouches">паучей</string>
     <string name="widget_unit_mg_today">мг сегодня</string>
-    <string name="widget_add">Записать пауч</string>
+    <string name="widget_add">Вкинуть пауч</string>
     <string name="widget_remove">Вынуть пауч</string>
-    <string name="widget_logged">%1$s записан</string>
+    <string name="widget_logged">%1$s вкинут</string>
     <string name="widget_removed">%1$s вынут</string>
-    <string name="widget_nothing_in">Сейчас ничего не заложено</string>
-    <string name="quick_log_title">Какой пауч закидываем?</string>
+    <string name="widget_nothing_in">Сейчас ничего не вкинуто</string>
+    <string name="quick_log_title">Какой вкидываем?</string>
     <string name="quick_remove_title">Какой вынимаем?</string>
 
     <!-- интервал, траты, закономерности -->

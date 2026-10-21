@@ -13,7 +13,7 @@ No account, no server, no analytics. Everything lives in a local SQLite database
 
 | Screen | What it does |
 |---|---|
-| **Track** | Today card: pouches or mg left, progress bar, the day's face. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** puts the pouch "in": a card with a timer and a **Remove** button appears; if you never tap Remove, the pouch counts as removed after the pouch time (30 min by default). Today's log shows each pouch with when it went in and how long it stayed; you can correct both or delete an entry. With the tolerance plan on, the Today card says the next pouch is better after a given time, and pouches taken earlier are marked *early*. With prices set, each pouch row shows its price and the Today card what today cost. |
+| **Track** | Today card: pouches or mg left, progress bar, the day's face. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** tosses a pouch in: a card with a timer and a **Pull out** button appears; if you never tap it, the pouch counts as out after the pouch time (30 min by default). Today's log shows each pouch with when it went in and how long it stayed; you can correct both or delete an entry. With the tolerance plan on, the Today card says the next pouch is better after a given time, and pouches taken earlier are marked *early*. With prices set, each pouch row shows its price and the Today card what today cost. |
 | **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL) and when 95 % of each will be gone. A chart you can drag with one finger, back through up to 30 days of history (solid) and ahead through the forecast if you stop now (dashed), and zoom with two, from 2 h to 7 d; the 8 h / 48 h / 7 d buttons jump to those widths. "Now" starts two thirds of the way across, and **Now** brings it back. With the tolerance plan on, the chart draws its level and marks when the forecast drops below it. "Receptors at rest today" counts the time nicotine was low enough to leave most of them free. |
 | **History** | Five weeks of day tiles: pouches and mg per day, coloured in seven clearly different steps (blue for a day without pouches, through green to yellow at the limit, then orange, red and purple) by the share of the limit that applied on that day. Streak within the limit, days over the limit, the last 30 and 7 finished days, totals. Daily bars against the limit line, dragged through the whole history and a week ahead, every day labelled. Two more views behind a switch at the top: patterns over the last 30 days (pouches by hour and by weekday, the time of the first pouch and its trend, the typical gap, the average time in the mouth) and spending (this week and month, and the saving against what you used before). |
 | **Plan** | Limit counted in whole pouches or whole mg of nicotine. Either a fixed daily limit or a taper: start value → target value by a date, with today's limit interpolated linearly. Switching the unit converts the plan with your typical pouch strength, and switching back restores the values you had. A change applies from today on; past days keep the plan they had. Tolerance: off, hold or lower (see below). |
@@ -129,7 +129,7 @@ While a pouch is in, nicotine comes in as the pouch releases it: fast at first, 
 (first-order). Taking the pouch out stops the input. The model is anchored at one point: a pouch kept
 in for 30 minutes delivers 30 % of its labelled nicotine. Any other time in scales that by
 `(1 − e^(−k·t)) / (1 − e^(−k·30))`, with t the minutes actually in, so a shorter time gives less and a
-longer one more. The pouch-time setting only decides when a pouch counts as removed by itself; every
+longer one more. The pouch-time setting only decides when a pouch counts as out by itself; every
 entry keeps the value that was set when it went in, so changing the setting affects new pouches only.
 
 The 30 % is the typical value in eight studies that measured blood nicotine after pouches: fitted to
@@ -209,7 +209,7 @@ future.
   strength, release constant, pouch time (`pouchMinutes`), tracking day (`day`), price (`pricePerPouch`) and
   tolerance plan level (`planLevelMg`) at log time, so
   editing a pouch or the pouch time never rewrites old entries. A new day-start hour or time zone
-  re-files only the pouches of the running day, so they stay in "today"; finished days keep theirs. `endTimestamp` is when the pouch was removed (NULL = stayed in for its full
+  re-files only the pouches of the running day, so they stay in "today"; finished days keep theirs. `endTimestamp` is when the pouch was taken out (NULL = stayed in for its full
   pouch time). `plan_versions` keeps the limit plan from the day each change was made, and every past
   day is judged by the version in force on that day.
 - Export from Settings → Data: CSV
