@@ -197,12 +197,6 @@ fun BodyScreen(vm: AppViewModel) {
                         planLevelMg = planLevel,
                         nextOnPlanMs = nextOnPlan?.takeIf { it > clock },
                         planColor = AppColors.plan,
-                        planLabel = planLevel?.let {
-                            stringResource(
-                                if (settings.intervalMode == IntervalMode.LOWER) R.string.chart_lower else R.string.chart_hold,
-                                Fmt.oneDecimal(it),
-                            )
-                        }.orEmpty(),
                         nowLabel = stringResource(R.string.time_now),
                     )
                 }
@@ -215,6 +209,16 @@ fun BodyScreen(vm: AppViewModel) {
                     LegendSwatch(AppColors.nicotine, stringResource(R.string.nicotine))
                     LegendSwatch(AppColors.cotinine, stringResource(R.string.cotinine))
                     LegendSwatch(MaterialTheme.colorScheme.onSurfaceVariant, stringResource(R.string.legend_future), dashed = true)
+                    if (planLevel != null) {
+                        LegendSwatch(
+                            AppColors.plan,
+                            stringResource(
+                                if (settings.intervalMode == IntervalMode.LOWER) R.string.chart_lower else R.string.chart_hold,
+                                Fmt.oneDecimal(planLevel),
+                            ),
+                            dashed = true,
+                        )
+                    }
                 }
             }
         }

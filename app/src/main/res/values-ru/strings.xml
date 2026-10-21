@@ -311,8 +311,8 @@
     <string name="plan_wait_lower">Через %1$s никотин опустится ниже %2$s\u00A0мг (снижаем толерантность)</string>
     <string name="plan_kept_hold">Никотин ниже %1$s\u00A0мг (держим толерантность)</string>
     <string name="plan_kept_lower">Никотин ниже %1$s\u00A0мг (снижаем толерантность)</string>
-    <string name="chart_hold">держать %1$s мг</string>
-    <string name="chart_lower">снижать %1$s мг</string>
+    <string name="chart_hold">Держим толерантность: %1$s\u00A0мг никотина</string>
+    <string name="chart_lower">Снижаем толерантность: %1$s\u00A0мг никотина</string>
     <string name="history_days">Дни</string>
     <string name="history_patterns">Закономерности</string>
     <string name="history_spending">Траты</string>

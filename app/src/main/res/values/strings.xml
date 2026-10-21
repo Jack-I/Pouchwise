@@ -303,8 +303,8 @@
     <string name="plan_wait_lower">In %1$s nicotine drops below %2$s\u00A0mg (lowering tolerance)</string>
     <string name="plan_kept_hold">Nicotine is below %1$s\u00A0mg (holding tolerance)</string>
     <string name="plan_kept_lower">Nicotine is below %1$s\u00A0mg (lowering tolerance)</string>
-    <string name="chart_hold">hold %1$s mg</string>
-    <string name="chart_lower">lower %1$s mg</string>
+    <string name="chart_hold">Holding tolerance: %1$s\u00A0mg of nicotine</string>
+    <string name="chart_lower">Lowering tolerance: %1$s\u00A0mg of nicotine</string>
     <string name="history_days">Days</string>
     <string name="history_patterns">Patterns</string>
     <string name="history_spending">Spending</string>

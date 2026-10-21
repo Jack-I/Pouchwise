@@ -2,8 +2,10 @@ package app.pouchwise.ui.components
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.exponentialDecay
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
@@ -103,7 +105,8 @@ data class BodySpan(
 /**
  * Nicotine (left scale) and cotinine (right scale) in a window [windowMs] wide that the user drags between
  * [startMs] and [endMs]. [endOffsetH] is where the window ends, in hours after [BodySpan.nowMs]. Solid lines
- * show the past, dashed ones the forecast if nothing more is taken; the scales follow the visible part.
+ * show the past, dashed ones the forecast if nothing more is taken. The scales fit the visible part and one
+ * window either side of it, so a peak is allowed for before it scrolls into view, and they glide when they change.
  */
 @Composable
 fun ScrollableBodyChart(
@@ -117,11 +120,10 @@ fun ScrollableBodyChart(
     leftAxisTitle: String,
     rightAxisTitle: String,
     modifier: Modifier = Modifier,
-    /** The interval plan's level (mg), drawn as a line, and when the forecast drops below it. */
+    /** The tolerance plan's level (mg), drawn as a line, and when the forecast drops below it. */
     planLevelMg: Double? = null,
     nextOnPlanMs: Long? = null,
     planColor: Color = Color.Unspecified,
-    planLabel: String = "",
     /** Written over the "now" line where it does not run into the axis titles. */
     nowLabel: String = "",
 ) {
@@ -156,14 +158,17 @@ fun ScrollableBodyChart(
     val t0 = t1 - windowMs
     val past = slice(span.past, t0, t1)
     val future = slice(span.future, t0, t1)
+    val nearPast = slice(span.past, t0 - windowMs, t1 + windowMs)
+    val nearFuture = slice(span.future, t0 - windowMs, t1 + windowMs)
     fun peak(pick: (BodyLevels) -> Double) =
-        max(past.maxOfOrNull { pick(it.second) } ?: 0.0, future.maxOfOrNull { pick(it.second) } ?: 0.0)
+        max(nearPast.maxOfOrNull { pick(it.second) } ?: 0.0, nearFuture.maxOfOrNull { pick(it.second) } ?: 0.0)
     val nTarget = max(max(peak { it.nicotineMg }, (planLevelMg ?: 0.0) * 1.15), 0.5)
     val cTarget = max(peak { it.cotinineMg }, 2.0)
     val nStep = niceStep(nTarget)
     val cStep = niceStep(cTarget)
-    val nMax by animateFloatAsState((ceil(nTarget / nStep) * nStep).toFloat(), label = "nicotine scale")
-    val cMax by animateFloatAsState((ceil(cTarget / cStep) * cStep).toFloat(), label = "cotinine scale")
+    val glide = spring<Float>(stiffness = Spring.StiffnessLow)
+    val nMax by animateFloatAsState((ceil(nTarget / nStep) * nStep).toFloat(), glide, label = "nicotine scale")
+    val cMax by animateFloatAsState((ceil(cTarget / cStep) * cStep).toFloat(), glide, label = "cotinine scale")
 
     Canvas(
         modifier
@@ -253,7 +258,6 @@ fun ScrollableBodyChart(
                     planColor, Offset(padL, yp), Offset(padL + w, yp), strokeWidth = 2.dp.toPx(),
                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 5.dp.toPx())),
                 )
-                label(measurer, planLabel, padL + w - 4.dp.toPx(), yp - 16.sp.toPx(), planLabelStyle, Align.END)
                 if (nextOnPlanMs != null && nextOnPlanMs in t0..t1) {
                     val xp = x(nextOnPlanMs)
                     drawCircle(planColor, radius = 5.dp.toPx(), center = Offset(xp, yp))
