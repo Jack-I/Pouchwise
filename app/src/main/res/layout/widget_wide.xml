@@ -92,6 +92,6 @@
             android:background="@drawable/widget_btn_bg_off"
             android:contentDescription="@string/widget_remove"
             android:padding="7dp"
-            android:src="@drawable/ic_widget_check_off" />
+            android:src="@drawable/ic_widget_pull_out_off" />
     </LinearLayout>
 </LinearLayout>

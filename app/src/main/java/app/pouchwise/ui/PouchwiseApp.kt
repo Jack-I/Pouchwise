@@ -39,6 +39,7 @@ import app.pouchwise.R
 import app.pouchwise.ui.components.AppLogo
 import app.pouchwise.ui.screens.BodyScreen
 import app.pouchwise.ui.screens.HistoryScreen
+import app.pouchwise.ui.screens.LevelsScreen
 import app.pouchwise.ui.screens.OnboardingScreen
 import app.pouchwise.ui.screens.PlanScreen
 import app.pouchwise.ui.screens.PouchTypesScreen
@@ -55,6 +56,7 @@ private enum class Tab(val labelRes: Int, val icon: ImageVector) {
 private const val SCREEN_MAIN = 0
 private const val SCREEN_SETTINGS = 1
 private const val SCREEN_POUCHES = 2
+private const val SCREEN_LEVELS = 3
 
 @Composable
 fun PouchwiseApp(vm: AppViewModel) {
@@ -89,12 +91,14 @@ fun PouchwiseApp(vm: AppViewModel) {
             vm = vm,
             onBack = { screen = if (pouchesOpenedFromSettings == 1) SCREEN_SETTINGS else SCREEN_MAIN },
         )
+        SCREEN_LEVELS -> LevelsScreen(vm = vm, onBack = { screen = SCREEN_MAIN })
         else -> MainScaffold(
             vm = vm,
             tabIndex = tabIndex,
             onTab = { tabIndex = it },
             onOpenSettings = { screen = SCREEN_SETTINGS },
             onEditPouches = { pouchesOpenedFromSettings = 0; screen = SCREEN_POUCHES },
+            onOpenLevels = { screen = SCREEN_LEVELS },
         )
     }
 }
@@ -106,6 +110,7 @@ private fun MainScaffold(
     onTab: (Int) -> Unit,
     onOpenSettings: () -> Unit,
     onEditPouches: () -> Unit,
+    onOpenLevels: () -> Unit,
 ) {
     val tabs = Tab.entries
     Scaffold(
@@ -146,7 +151,7 @@ private fun MainScaffold(
         Box(Modifier.fillMaxSize().padding(inner)) {
             when (tabs[tabIndex]) {
                 Tab.TRACK -> TrackScreen(vm = vm, onEditPouches = onEditPouches)
-                Tab.BODY -> BodyScreen(vm = vm)
+                Tab.BODY -> BodyScreen(vm = vm, onOpenLevels = onOpenLevels)
                 Tab.HISTORY -> HistoryScreen(vm = vm, onEditPouches = onEditPouches)
                 Tab.PLAN -> PlanScreen(vm = vm)
             }

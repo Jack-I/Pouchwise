@@ -311,4 +311,45 @@
     <string name="history_patterns">Patterns</string>
     <string name="history_spending">Spending</string>
     <string name="spending_set_prices">Set prices</string>
+
+    <!-- levels from studies -->
+    <string name="non_user_in">Non-user level in %1$s</string>
+    <string name="non_user_reached">At non-user level</string>
+    <string name="receptors_busy">Receptors busy now: %1$s</string>
+    <string name="levels_link">What the levels mean</string>
+    <string name="levels_title">What the levels mean</string>
+    <string name="levels_intro">Blood levels measured in studies, next to yours. Yours are estimates from your log, not a blood test.</string>
+    <string name="lv_nicotine">Nicotine</string>
+    <string name="lv_nicotine_unit">ng/mL in the blood</string>
+    <string name="lv_cotinine">Cotinine</string>
+    <string name="lv_cotinine_unit">ng/mL · your dose over the last days</string>
+    <string name="lv_receptors_half">Half of the brain\'s nicotine receptors busy</string>
+    <string name="lv_morning">Smokers in the morning, after a night without</string>
+    <string name="lv_nrt">Nicotine gum or patch</string>
+    <string name="lv_nausea_new">Nausea and dizziness in people new to nicotine</string>
+    <string name="lv_smokers_afternoon">Daily smokers in the afternoon</string>
+    <string name="lv_snus_peak">Regular snus users, daily peak</string>
+    <string name="lv_poisoning">Poisoning; deaths from 1,600</string>
+    <string name="lv_you_peak">You: today\'s peak</string>
+    <string name="lv_non_user">Non-user level</string>
+    <string name="lv_us_smokers">US smokers, average</string>
+    <string name="lv_us_smokeless">US smokeless tobacco users, average</string>
+    <string name="lv_typical_smokers">Typical smokers</string>
+    <string name="lv_snus_users">Swedish snus users</string>
+    <string name="lv_you_now">You: now</string>
+    <string name="lv_harm">What is known about harm</string>
+    <string name="lv_harm_no_safe">No study or health body names a safe level for nicotine users.</string>
+    <string name="lv_harm_no_link">No study links a measured level to disease in people who use nicotine without smoke.</string>
+    <string name="lv_harm_snus_mortality" formatted="false">Swedish men who used snus and never smoked died 28% more often; the risk grew with years of use, not with the amount.</string>
+    <string name="lv_harm_diabetes" formatted="false">Type 2 diabetes grew with the amount: about +8% per can a week.</string>
+    <string name="lv_harm_pulse">A pouch raises the pulse: +12 beats a minute after 20\u00A0mg, +25 after 30\u00A0mg. Nicotine itself stiffens arteries.</string>
+    <string name="lv_care">Take extra care</string>
+    <string name="lv_care_pregnancy_title">Pregnancy</string>
+    <string name="lv_care_pregnancy">no level is considered safe; snus went with more stillbirths and preterm births.</string>
+    <string name="lv_care_young_title">Under 25</string>
+    <string name="lv_care_young">the brain is still developing.</string>
+    <string name="lv_care_heart_title">Heart disease</string>
+    <string name="lv_care_heart">after a heart attack, those who stopped snus had about half the mortality of those who went on.</string>
+    <string name="lv_sources">Sources</string>
+    <string name="levels_checked">Sources checked on 22 October 2026. Tap one to open it.</string>
 </resources>

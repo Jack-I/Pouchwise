@@ -319,4 +319,45 @@
     <string name="history_patterns">Закономерности</string>
     <string name="history_spending">Траты</string>
     <string name="spending_set_prices">Указать цены</string>
+
+    <!-- уровни из исследований -->
+    <string name="non_user_in">Как у некурящего через %1$s</string>
+    <string name="non_user_reached">Уже как у некурящего</string>
+    <string name="receptors_busy">Рецепторы заняты сейчас: %1$s</string>
+    <string name="levels_link">Что значат эти уровни</string>
+    <string name="levels_title">Что значат эти уровни</string>
+    <string name="levels_intro">Уровни в крови из исследований рядом с вашими. Ваши — оценка по записям, а не анализ крови.</string>
+    <string name="lv_nicotine">Никотин</string>
+    <string name="lv_nicotine_unit">нг/мл в крови</string>
+    <string name="lv_cotinine">Котинин</string>
+    <string name="lv_cotinine_unit">нг/мл · ваша доза за последние дни</string>
+    <string name="lv_receptors_half">Занята половина никотиновых рецепторов мозга</string>
+    <string name="lv_morning">Курильщики утром, после ночи без никотина</string>
+    <string name="lv_nrt">Никотиновая жвачка или пластырь</string>
+    <string name="lv_nausea_new">Тошнота и головокружение у тех, кто к никотину не привык</string>
+    <string name="lv_smokers_afternoon">Ежедневные курильщики днём</string>
+    <string name="lv_snus_peak">Постоянные пользователи снюса, дневной пик</string>
+    <string name="lv_poisoning">Отравление; смертельные случаи — с 1\u00A0600</string>
+    <string name="lv_you_peak">Вы: пик за сегодня</string>
+    <string name="lv_non_user">Уровень некурящего</string>
+    <string name="lv_us_smokers">Курильщики в США, в среднем</string>
+    <string name="lv_us_smokeless">Пользователи бездымного табака в США, в среднем</string>
+    <string name="lv_typical_smokers">Обычные курильщики</string>
+    <string name="lv_snus_users">Пользователи снюса в Швеции</string>
+    <string name="lv_you_now">Вы: сейчас</string>
+    <string name="lv_harm">Что известно о вреде</string>
+    <string name="lv_harm_no_safe">Ни одно исследование и ни одна организация здравоохранения не называют безопасного уровня для тех, кто употребляет никотин.</string>
+    <string name="lv_harm_no_link">Ни одно исследование не связывает измеренный уровень с болезнями у тех, кто употребляет никотин без дыма.</string>
+    <string name="lv_harm_snus_mortality" formatted="false">Шведские мужчины, которые употребляли снюс и никогда не курили, умирали на 28% чаще; риск рос с годами употребления, а не с количеством.</string>
+    <string name="lv_harm_diabetes" formatted="false">Диабет 2 типа рос с количеством: примерно +8% на каждую банку в неделю.</string>
+    <string name="lv_harm_pulse">Пауч учащает пульс: на 12 ударов в минуту после 20\u00A0мг, на 25 после 30\u00A0мг. Сам никотин делает артерии жёстче.</string>
+    <string name="lv_care">Особая осторожность</string>
+    <string name="lv_care_pregnancy_title">Беременность</string>
+    <string name="lv_care_pregnancy">безопасного уровня нет; со снюсом чаще бывали мертворождения и преждевременные роды.</string>
+    <string name="lv_care_young_title">До 25 лет</string>
+    <string name="lv_care_young">мозг ещё развивается.</string>
+    <string name="lv_care_heart_title">Болезни сердца</string>
+    <string name="lv_care_heart">после инфаркта у бросивших снюс смертность была примерно вдвое ниже, чем у продолживших.</string>
+    <string name="lv_sources">Источники</string>
+    <string name="levels_checked">Источники проверены 22 октября 2026. Нажмите, чтобы открыть.</string>
 </resources>

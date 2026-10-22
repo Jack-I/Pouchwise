@@ -8,7 +8,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Schedule
@@ -19,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -427,7 +427,7 @@ private fun ActivePouchCard(
                     shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(start = 10.dp, end = 14.dp),
                 ) {
-                    Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(painterResource(R.drawable.ic_widget_pull_out), contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.remove_pouch), style = MaterialTheme.typography.labelLarge)
                 }

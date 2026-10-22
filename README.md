@@ -14,7 +14,7 @@ No account, no server, no analytics. Everything lives in a local SQLite database
 | Screen | What it does |
 |---|---|
 | **Track** | Today card: pouches or mg left, progress bar, the day's face. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** tosses a pouch in: a card with a timer and a **Pull out** button appears; if you never tap it, the pouch counts as out after the pouch time (30 min by default). Today's log shows each pouch with when it went in and how long it stayed; you can correct both or delete an entry. With the tolerance plan on, the Today card says the next pouch is better after a given time, and pouches taken earlier are marked *early*. With prices set, each pouch row shows its price and the Today card what today cost. |
-| **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL) and when 95 % of each will be gone. A chart you can drag with one finger, back through up to 30 days of history (solid) and ahead through the forecast if you stop now (dashed), and zoom with two, from 2 h to 7 d; the 8 h / 48 h / 7 d buttons jump to those widths. "Now" starts two thirds of the way across, and **Now** brings it back. With the tolerance plan on, the chart draws its level and marks when the forecast drops below it. "Receptors at rest today" counts the time nicotine was low enough to leave most of them free. |
+| **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL), when 95 % of the nicotine will be gone, and when cotinine will be back to a non-user's level. A chart you can drag with one finger, back through up to 30 days of history (solid) and ahead through the forecast if you stop now (dashed), and zoom with two, from 2 h to 7 d; the 8 h / 48 h / 7 d buttons jump to those widths. "Now" starts two thirds of the way across, and **Now** brings it back. With the tolerance plan on, the chart draws its level and marks when the forecast drops below it. "Receptors busy now" is the share of the brain's α4β2 receptors taken at the current level, and "Receptors at rest today" counts the time nicotine was low enough to leave most of them free. **What the levels mean** puts your levels next to levels measured in studies (non-users, nicotine gum and patches, smokers, snus users, poisoning), with what is known about harm and links to the sources. |
 | **History** | Five weeks of day tiles: pouches and mg per day, coloured in seven clearly different steps (blue for a day without pouches, through green to yellow at the limit, then orange, red and purple) by the share of the limit that applied on that day. Streak within the limit, days over the limit, the last 30 and 7 finished days, totals. Daily bars against the limit line, dragged through the whole history and a week ahead, every day labelled. Two more views behind a switch at the top: patterns over the last 30 days (pouches by hour and by weekday, the time of the first pouch and its trend, the typical gap, the average time in the mouth) and spending (this week and month, and the saving against what you used before). |
 | **Plan** | Limit counted in whole pouches or whole mg of nicotine. Either a fixed daily limit or a taper: start value → target value by a date, with today's limit interpolated linearly. Switching the unit converts the plan with your typical pouch strength, and switching back restores the values you had. A change applies from today on; past days keep the plan they had. Tolerance: off, hold or lower (see below). |
 | **Settings** | Manage pouches: brand from a catalogue (or any other), optional flavour, strength in mg, a "fast release" tick for mini / dry-slim lines, price per can and pouches in it, colour; hide and restore. Pouches a day before Pouchwise, and the currency. Hour at which a new day starts. Body weight and pouch time. Theme and, on Android 13+, language. Export to CSV or JSON through the share sheet; import a JSON export to move everything to another phone. |
@@ -30,12 +30,13 @@ Long-press the home screen → Widgets → Pouchwise. Two sizes:
   are over it, with the app name underneath. Tap to open the app.
 - **2×1 counter** — the same ring plus "4/10" (or mg), and two buttons. **+** pops up a chooser of
   your pouches over the home screen and logs the one you tap (with a single pouch it logs straight
-  away). **✓** takes the pouch out; with two or more in, it asks which one. While a pouch is in, its
-  brand and a running timer show under the count, and ✓ turns white; otherwise ✓ is greyed out.
+  away). The pull-out button (a mouth with an arrow leaving it) takes the pouch out; with two or more in,
+  it asks which one. While a pouch is in, its brand and a running timer show under the count, and the
+  button turns white; otherwise it is greyed out.
 
 On a Galaxy Z Flip the cover screen gets its own widget: Settings → Cover screen → Widgets → Pouchwise.
 Samsung gives such widgets the whole page. It shows the ring and today's numbers, the pouch that is in
-with a timer and ✓ (with two or more in, it asks which one, right on the cover screen), or when the
+with a timer and the pull-out button (with two or more in, it asks which one, right on the cover screen), or when the
 last one came out, and buttons for the three pouches you used most in the last two weeks, in the order
 of your list: a tap logs that pouch. Tapping the ring opens the app on the cover screen.
 
@@ -169,11 +170,13 @@ From there it is a one-compartment model: nicotine is eliminated with a 2 h half
 becomes cotinine (mass-adjusted), and cotinine is eliminated with a 16 h half-life. The cascade is
 solved in closed form, so any instant is evaluated directly.
 
-The Body screen quotes when 95 % will be gone, counted from the highest level still ahead (now, or the
-peak a pouch that is in will bring): log₂(20) ≈ 4.3 half-lives, about 8 h 40 min for nicotine and
-2 d 21 h for cotinine after each has peaked. Below 0.1 mg of nicotine or 0.5 mg of cotinine, now and
-ahead, it says the substance has cleared. Body weight does not change these times; it only enters the
-ng/mL conversion, through volumes of distribution of 2.6 L/kg (nicotine) and 0.9 L/kg (cotinine).
+For nicotine the Body screen quotes when 95 % will be gone, counted from the highest level still ahead
+(now, or the peak a pouch that is in will bring): log₂(20) ≈ 4.3 half-lives, about 8 h 40 min after the
+peak; below 0.1 mg, now and ahead, it says nicotine has cleared. For cotinine it quotes when the level
+is back below 3 ng/mL, the cut-off that marks someone using no nicotine at all
+([SRNT 2020](https://pmc.ncbi.nlm.nih.gov/articles/PMC7882145/)): from a regular user's 150 ng/mL that
+takes about 90 h, in line with the 80–100 h measured after people stop. mg and ng/mL are converted through
+body weight and volumes of distribution of 2.6 L/kg (nicotine) and 0.9 L/kg (cotinine).
 
 Two numbers live side by side. The daily total and the limit count the labelled mg of each pouch —
 what you put in, independent of how long it stayed. The *absorbed* estimate (labelled × 30 % ×

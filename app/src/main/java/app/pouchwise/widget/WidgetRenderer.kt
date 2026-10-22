@@ -274,7 +274,7 @@ object WidgetRenderer {
                 setOnClickPendingIntent(R.id.widget_wide_add, quickAction(context, QuickLogActivity.ACTION_LOG, 1))
                 val anyIn = since != null
                 setInt(R.id.widget_wide_remove, "setBackgroundResource", if (anyIn) R.drawable.widget_btn_bg else R.drawable.widget_btn_bg_off)
-                setImageViewResource(R.id.widget_wide_remove, if (anyIn) R.drawable.ic_widget_check else R.drawable.ic_widget_check_off)
+                setImageViewResource(R.id.widget_wide_remove, if (anyIn) R.drawable.ic_widget_pull_out else R.drawable.ic_widget_pull_out_off)
                 setOnClickPendingIntent(R.id.widget_wide_remove, quickAction(context, QuickLogActivity.ACTION_REMOVE, 2))
             } else {
                 setViewVisibility(R.id.widget_wide_buttons, View.GONE)

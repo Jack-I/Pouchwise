@@ -3,6 +3,8 @@ package app.pouchwise.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -19,6 +21,7 @@ import app.pouchwise.model.Clearance
 import app.pouchwise.model.DayKeys
 import app.pouchwise.model.IntervalMode
 import app.pouchwise.model.IntervalPlan
+import app.pouchwise.model.Levels
 import app.pouchwise.model.Pharmacokinetics
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.ui.components.*
@@ -50,7 +53,7 @@ private const val FORECAST_MAX_MS = 7L * 24 * HOUR_MS
 private const val NOW_AT = 2.0 / 3.0
 
 @Composable
-fun BodyScreen(vm: AppViewModel) {
+fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
     val entries by vm.entries.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
@@ -70,6 +73,9 @@ fun BodyScreen(vm: AppViewModel) {
     val mostlyGone by produceState<Clearance?>(initialValue = null, doses, pk, clock) {
         value = withContext(Dispatchers.Default) { Pharmacokinetics.mostlyGone(clock, doses, pk) }
     }
+    val nonUserAt by produceState<Long?>(initialValue = null, doses, settings, clock) {
+        value = withContext(Dispatchers.Default) { Levels.nonUserAtMs(clock, doses, pk, settings.bodyWeightKg) ?: CLEARED }
+    }
     // Receptors are more than half free below this level; how long they were today, and the interval plan.
     val today = DayKeys.epochDay(clock, settings.dayStartHour)
     val restMs by produceState<Long?>(initialValue = null, doses, settings, clock) {
@@ -87,7 +93,7 @@ fun BodyScreen(vm: AppViewModel) {
     val firstMs = entries.firstOrNull()?.timestamp
     val reach by produceState<Reach?>(initialValue = null, doses, pk, clock) {
         value = withContext(Dispatchers.Default) {
-            val cleared = Pharmacokinetics.clearance(clock, doses, pk)
+            val cleared = Pharmacokinetics.clearance(clock, doses, pk, cotinineThreshold = Levels.nonUserCotinineMg(settings.bodyWeightKg))
             val clearEnd = max(cleared.nicotineClearMs ?: clock, cleared.cotinineClearMs ?: clock)
             val earliest = max(clock - HISTORY_MAX_MS, (firstMs ?: clock) - HOUR_MS)
             val latest = clock + (clearEnd - clock).coerceIn(2 * HOUR_MS, FORECAST_MAX_MS)
@@ -133,7 +139,9 @@ fun BodyScreen(vm: AppViewModel) {
                     color = AppColors.nicotine,
                     mg = levels.nicotineMg,
                     ngMl = nicNg,
-                    gone = mostlyGone?.let { it.nicotineClearMs ?: CLEARED },
+                    until = mostlyGone?.let { it.nicotineClearMs ?: CLEARED },
+                    untilRes = R.string.gone_95_short,
+                    reachedRes = R.string.cleared_short,
                     nowMs = clock,
                     modifier = Modifier.weight(1f),
                 )
@@ -142,12 +150,18 @@ fun BodyScreen(vm: AppViewModel) {
                     color = AppColors.cotinine,
                     mg = levels.cotinineMg,
                     ngMl = cotNg,
-                    gone = mostlyGone?.let { it.cotinineClearMs ?: CLEARED },
+                    until = nonUserAt,
+                    untilRes = R.string.non_user_in,
+                    reachedRes = R.string.non_user_reached,
                     nowMs = clock,
                     modifier = Modifier.weight(1f),
                 )
             }
             HorizontalDivider(Modifier.padding(vertical = 10.dp))
+            Text(
+                stringResource(R.string.receptors_busy, Fmt.percent(Levels.receptorsBusy(nicNg))),
+                style = MaterialTheme.typography.bodyMedium,
+            )
             val rest = restMs
             Text(
                 stringResource(
@@ -165,6 +179,10 @@ fun BodyScreen(vm: AppViewModel) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            TextButton(onClick = onOpenLevels, contentPadding = PaddingValues(horizontal = 0.dp)) {
+                Text(stringResource(R.string.levels_link))
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+            }
         }
 
         SoftCard(padding = 16.dp) {
@@ -257,8 +275,10 @@ private fun SubstanceSummary(
     color: Color,
     mg: Double,
     ngMl: Double,
-    /** When 95 % will be gone; [CLEARED] when there is next to nothing, null while still being worked out. */
-    gone: Long?,
+    /** When it gets down to the mark [untilRes] names; [CLEARED] when it is there already, null while being worked out. */
+    until: Long?,
+    untilRes: Int,
+    reachedRes: Int,
     nowMs: Long,
     modifier: Modifier = Modifier,
 ) {
@@ -274,10 +294,10 @@ private fun SubstanceSummary(
         Text(stringResource(R.string.approx_ng_ml, Fmt.ngMl(ngMl)), style = small, color = muted)
         // Always two lines, so the card keeps its height whatever they say.
         val (first, second) = when {
-            gone == null -> "" to ""
-            gone == CLEARED || gone <= nowMs -> stringResource(R.string.cleared_short) to ""
-            else -> stringResource(R.string.gone_95_short, durationText(gone - nowMs)) to
-                stringResource(R.string.gone_by, Fmt.timeOrDayTime(gone, nowMs))
+            until == null -> "" to ""
+            until == CLEARED || until <= nowMs -> stringResource(reachedRes) to ""
+            else -> stringResource(untilRes, durationText(until - nowMs)) to
+                stringResource(R.string.gone_by, Fmt.timeOrDayTime(until, nowMs))
         }
         Text(first, style = small, color = muted)
         Text(second, style = small, color = muted)
