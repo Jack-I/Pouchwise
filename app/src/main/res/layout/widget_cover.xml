@@ -149,7 +149,7 @@
                         android:layout_height="match_parent"
                         android:importantForAccessibility="no"
                         android:padding="6dp"
-                        android:src="@drawable/ic_cover_plus" />
+                        android:src="@drawable/ic_cover_toss_in" />
                 </FrameLayout>
 
                 <TextView
@@ -211,7 +211,7 @@
                         android:layout_height="match_parent"
                         android:importantForAccessibility="no"
                         android:padding="6dp"
-                        android:src="@drawable/ic_cover_plus" />
+                        android:src="@drawable/ic_cover_toss_in" />
                 </FrameLayout>
 
                 <TextView
@@ -273,7 +273,7 @@
                         android:layout_height="match_parent"
                         android:importantForAccessibility="no"
                         android:padding="6dp"
-                        android:src="@drawable/ic_cover_plus" />
+                        android:src="@drawable/ic_cover_toss_in" />
                 </FrameLayout>
 
                 <TextView

@@ -336,7 +336,7 @@
     <string name="lv_us_smokeless">US smokeless tobacco users, average</string>
     <string name="lv_typical_smokers">Typical smokers</string>
     <string name="lv_snus_users">Swedish snus users</string>
-    <string name="lv_you_now">You: now</string>
+    <string name="lv_you_day_average">You: average over 24 h</string>
     <string name="lv_harm">What is known about harm</string>
     <string name="lv_harm_no_safe">No study or health body names a safe level for nicotine users.</string>
     <string name="lv_harm_no_link">No study links a measured level to disease in people who use nicotine without smoke.</string>

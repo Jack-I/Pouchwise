@@ -109,20 +109,22 @@ fun LevelsScreen(vm: AppViewModel, onBack: () -> Unit) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
-    // In ng/mL: the highest nicotine since the day began, and cotinine now.
+    // In ng/mL: the highest nicotine since the day began, as most nicotine levels from studies are peaks; and the
+    // cotinine average over the last 24 hours, since it swings by about a third between morning and evening.
     val yours by produceState<Pair<Double, Double>?>(initialValue = null, entries, settings, now) {
         value = withContext(Dispatchers.Default) {
             val clock = maxOf(now, System.currentTimeMillis())
             val doses = entries.map { PouchTiming.toDose(it, settings) }
             val dayStart = DayKeys.startOfDayMs(DayKeys.epochDay(clock, settings.dayStartHour), settings.dayStartHour)
             val peakMg = Pharmacokinetics.series(dayStart, clock, 5 * 60_000L, doses, settings.pk).maxOfOrNull { it.second.nicotineMg } ?: 0.0
-            val cotinineMg = Pharmacokinetics.levelsAt(clock, doses, settings.pk).cotinineMg
+            val dayAgo = clock - 24 * 3_600_000L
+            val cotinineMg = (0..144).map { Pharmacokinetics.levelsAt(dayAgo + it * 600_000L, doses, settings.pk).cotinineMg }.average()
             Pharmacokinetics.toNgPerMl(peakMg, settings.bodyWeightKg, Pharmacokinetics.NICOTINE_VD_L_PER_KG) to
                 Pharmacokinetics.toNgPerMl(cotinineMg, settings.bodyWeightKg, Pharmacokinetics.COTININE_VD_L_PER_KG)
         }
     }
     val nicotine = lines(NICOTINE, yours?.first, R.string.lv_you_peak)
-    val cotinine = lines(COTININE, yours?.second, R.string.lv_you_now)
+    val cotinine = lines(COTININE, yours?.second, R.string.lv_you_day_average)
 
     Scaffold(
         topBar = {

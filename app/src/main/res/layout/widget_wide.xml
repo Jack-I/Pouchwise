@@ -82,7 +82,7 @@
             android:background="@drawable/widget_btn_bg"
             android:contentDescription="@string/widget_add"
             android:padding="6dp"
-            android:src="@drawable/ic_widget_add" />
+            android:src="@drawable/ic_widget_toss_in" />
 
         <ImageView
             android:id="@+id/widget_wide_remove"
