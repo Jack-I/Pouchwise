@@ -138,7 +138,7 @@ fun AppLogo(size: Dp) {
 }
 
 @Composable
-fun StatTile(label: String, value: String, modifier: Modifier = Modifier, sub: String? = null, accent: Color? = null) {
+fun StatTile(label: String, value: String, modifier: Modifier = Modifier, accent: Color? = null) {
     SoftCard(modifier) {
         Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(6.dp))
@@ -148,9 +148,6 @@ fun StatTile(label: String, value: String, modifier: Modifier = Modifier, sub: S
             fontWeight = FontWeight.Bold,
             color = accent ?: MaterialTheme.colorScheme.onSurface,
         )
-        if (sub != null) {
-            Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
     }
 }
 
@@ -161,37 +158,33 @@ fun StepperRow(
     valueText: String,
     onMinus: () -> Unit,
     onPlus: () -> Unit,
-    modifier: Modifier = Modifier,
     onClickValue: (() -> Unit)? = null,
-    enabled: Boolean = true,
     hint: String? = null,
 ) {
-    Column(modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(label, style = MaterialTheme.typography.bodyLarge)
-                if (hint != null) {
-                    Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge)
+            if (hint != null) {
+                Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Spacer(Modifier.width(8.dp))
-            FilledTonalIconButton(onClick = onMinus, enabled = enabled) {
-                Icon(Icons.Filled.Remove, contentDescription = null)
-            }
-            Text(
-                valueText,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .widthIn(min = 56.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .then(if (onClickValue != null && enabled) Modifier.clickable { onClickValue() } else Modifier)
-                    .padding(horizontal = 6.dp, vertical = 8.dp),
-            )
-            FilledTonalIconButton(onClick = onPlus, enabled = enabled) {
-                Icon(Icons.Filled.Add, contentDescription = null)
-            }
+        }
+        Spacer(Modifier.width(8.dp))
+        FilledTonalIconButton(onClick = onMinus) {
+            Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.stepper_less, label))
+        }
+        Text(
+            valueText,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .widthIn(min = 56.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .then(if (onClickValue != null) Modifier.clickable { onClickValue() } else Modifier)
+                .padding(horizontal = 6.dp, vertical = 8.dp),
+        )
+        FilledTonalIconButton(onClick = onPlus) {
+            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.stepper_more, label))
         }
     }
 }
@@ -222,7 +215,7 @@ fun LegendSwatch(color: Color, text: String, dashed: Boolean = false) {
 /** A limit with its unit: "1 pouch", "3 пауча", "40 mg". */
 @Composable
 fun limitAmount(mode: LimitMode, value: Double): String {
-    if (mode == LimitMode.MG) return "${Fmt.mg(value)} ${stringResource(R.string.unit_mg)}"
+    if (mode == LimitMode.MG) return stringResource(R.string.mg_value, Fmt.mg(value))
     val n = Math.round(value).toInt()
     return pluralStringResource(R.plurals.count_pouches, n, n)
 }
@@ -244,6 +237,12 @@ fun durationText(ms: Long): String {
     }
 }
 
+/**
+ * The time now. The view model's [ticker] moves every 30 s and keeps a screen recomposing; the wall clock on
+ * top of it shows a pouch logged since the last tick at once and starts a new day on time.
+ */
+fun wallClock(ticker: Long): Long = maxOf(ticker, System.currentTimeMillis())
+
 /** A day level's tile colour on [under], the card behind it; a little muted on a dark card. */
 fun gardenColor(level: GardenLevel, under: Color): Color {
     if (level == GardenLevel.EMPTY) return Color.Transparent
@@ -255,7 +254,7 @@ fun gardenColor(level: GardenLevel, under: Color): Color {
 fun onGardenColor(tile: Color): Color = if (tile.luminance() > 0.2f) Color(0xFF111827) else Color.White
 
 @Composable
-fun BigEmoji(text: String, size: Int = 56) {
+fun BigEmoji(text: String, size: Int) {
     Text(text, fontSize = size.sp, lineHeight = (size + 8).sp)
 }
 

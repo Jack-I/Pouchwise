@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -28,6 +29,7 @@ import app.pouchwise.util.Money
 fun PouchTypesScreen(vm: AppViewModel, onBack: () -> Unit) {
     val typesOrNull by vm.types.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val types = typesOrNull.orEmpty()
     val active = types.filter { !it.archived }
     val archived = types.filter { it.archived }
@@ -81,7 +83,7 @@ fun PouchTypesScreen(vm: AppViewModel, onBack: () -> Unit) {
         PouchTypeDialog(
             initial = null,
             onDismiss = { adding = false },
-            currency = Money.symbol(settings),
+            currency = Money.symbol(settings, context),
             onSave = { vm.addType(it); adding = false },
         )
     }
@@ -89,7 +91,7 @@ fun PouchTypesScreen(vm: AppViewModel, onBack: () -> Unit) {
         PouchTypeDialog(
             initial = t,
             onDismiss = { editing = null },
-            currency = Money.symbol(settings),
+            currency = Money.symbol(settings, context),
             onSave = {
                 vm.updateType(t, it)
                 editing = null
@@ -99,7 +101,7 @@ fun PouchTypesScreen(vm: AppViewModel, onBack: () -> Unit) {
     removing?.let { t ->
         // A pouch never logged is deleted outright rather than hidden, so the dialog must not promise a way back.
         val logged by produceState(initialValue = true, t.id) { value = vm.typeHasEntries(t.id) }
-        val name = "${t.name} ${Fmt.mg(t.strengthMg)} ${stringResource(R.string.unit_mg)}"
+        val name = "${t.name} ${stringResource(R.string.mg_value, Fmt.mg(t.strengthMg))}"
         ConfirmDialog(
             title = stringResource(if (logged) R.string.hide_type_q else R.string.delete_type_q, name),
             text = stringResource(if (logged) R.string.delete_type_body else R.string.delete_type_body_unused),

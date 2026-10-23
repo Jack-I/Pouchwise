@@ -36,8 +36,7 @@ fun PlanScreen(vm: AppViewModel) {
     val entries by vm.entries.collectAsStateWithLifecycle()
     // Typical strength for converting between pouches and mg: the average of the visible pouches.
     val typicalStrength = types.orEmpty().filter { !it.archived }.map { it.strengthMg }.average().let { if (it.isNaN()) 8.0 else it }
-    // The ticker lags up to 30 s behind midnight; the wall clock does not.
-    val today = DayKeys.epochDay(maxOf(now, System.currentTimeMillis()), settings.dayStartHour)
+    val today = DayKeys.epochDay(wallClock(now), settings.dayStartHour)
     val mode = settings.limitMode
     val unit = if (mode == LimitMode.COUNT) stringResource(R.string.unit_pouches) else stringResource(R.string.unit_mg)
     val limitToday = Limits.limitForDayRounded(settings, today)
@@ -47,9 +46,10 @@ fun PlanScreen(vm: AppViewModel) {
     var pickStartDate by remember { mutableStateOf(false) }
     var pickTargetDate by remember { mutableStateOf(false) }
 
-    fun setBase(v: Double) = vm.updateSettings { s ->
-        val clamped = max(0.0, v)
-        if (s.limitMode == LimitMode.COUNT) s.copy(dailyLimitCount = clamped.roundToInt()) else s.copy(dailyLimitMg = Math.round(clamped).toDouble())
+    // From the settings as they are when the change lands, so quick taps on − and + all count.
+    fun setBase(value: (Settings) -> Double) = vm.updateSettings { s ->
+        val v = max(0.0, value(s))
+        if (s.limitMode == LimitMode.COUNT) s.copy(dailyLimitCount = v.roundToInt()) else s.copy(dailyLimitMg = Math.round(v).toDouble())
     }
 
     Column(
@@ -62,16 +62,15 @@ fun PlanScreen(vm: AppViewModel) {
     ) {
         ScreenTitle(stringResource(R.string.plan_title))
 
-        // headline card
         SoftCard(containerColor = MaterialTheme.colorScheme.secondaryContainer) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     val onSec = MaterialTheme.colorScheme.onSecondaryContainer
                     if (settings.taperEnabled && settings.taperTargetDay > today) {
                         val days = (settings.taperTargetDay - today).toInt()
-                        Text(stringResource(R.string.responsible_usage), style = MaterialTheme.typography.labelLarge, color = onSec, letterSpacing = MaterialTheme.typography.labelLarge.letterSpacing)
+                        Text(stringResource(R.string.responsible_usage), style = MaterialTheme.typography.labelLarge, color = onSec)
                         Text("$days", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold, color = onSec)
-                        Text(pluralStringResource(R.plurals.days_until_target, days, days).substringAfter(' '), style = MaterialTheme.typography.bodyLarge, color = onSec)
+                        Text(pluralStringResource(R.plurals.days_until_target_word, days), style = MaterialTheme.typography.bodyLarge, color = onSec)
                     } else if (settings.taperEnabled) {
                         Text(stringResource(R.string.responsible_usage), style = MaterialTheme.typography.labelLarge, color = onSec)
                         Text("$limitToday", style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Bold, color = onSec)
@@ -86,7 +85,6 @@ fun PlanScreen(vm: AppViewModel) {
             }
         }
 
-        // limit mode
         SoftCard {
             Text(stringResource(R.string.limit_mode), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(10.dp))
@@ -110,7 +108,6 @@ fun PlanScreen(vm: AppViewModel) {
             )
         }
 
-        // fixed limit
         SoftCard {
             if (settings.taperEnabled) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -122,8 +119,8 @@ fun PlanScreen(vm: AppViewModel) {
                 StepperRow(
                     label = stringResource(R.string.daily_limit),
                     valueText = limitAmount(mode, base),
-                    onMinus = { setBase(base - stepValue) },
-                    onPlus = { setBase(base + stepValue) },
+                    onMinus = { setBase { Limits.baseLimit(it) - stepValue } },
+                    onPlus = { setBase { Limits.baseLimit(it) + stepValue } },
                     onClickValue = { editing = LimitEdit.BASE },
                 )
             }
@@ -131,7 +128,6 @@ fun PlanScreen(vm: AppViewModel) {
             Text(stringResource(R.string.warn_over_limit_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
-        // taper
         SoftCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -196,32 +192,28 @@ fun PlanScreen(vm: AppViewModel) {
             }
         }
 
-        // spacing between pouches
         SoftCard {
             Text(stringResource(R.string.tolerance_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(10.dp))
-            ToleranceSettings(settings, entries) { m -> vm.updateSettings { it.copy(intervalMode = m) } }
+            ToleranceSettings(settings, entries, today) { m -> vm.updateSettings { it.copy(intervalMode = m) } }
         }
     }
 
     editing?.let { edit ->
         NumberDialog(
             title = stringResource(edit.title),
-            initial = Fmt.mg(
-                when (edit) {
-                    LimitEdit.BASE -> Limits.baseLimit(settings)
-                    LimitEdit.START -> settings.taperStartValue
-                    LimitEdit.TARGET -> settings.taperTargetValue
-                },
-            ),
-            decimal = false,
+            initial = when (edit) {
+                LimitEdit.BASE -> Limits.baseLimit(settings)
+                LimitEdit.START -> settings.taperStartValue
+                LimitEdit.TARGET -> settings.taperTargetValue
+            }.roundToInt(),
             suffix = unit,
             onDismiss = { editing = null },
             onConfirm = { v ->
                 when (edit) {
-                    LimitEdit.BASE -> setBase(v)
-                    LimitEdit.START -> vm.updateSettings { it.copy(taperStartValue = v) }
-                    LimitEdit.TARGET -> vm.updateSettings { it.copy(taperTargetValue = v) }
+                    LimitEdit.BASE -> setBase { v.toDouble() }
+                    LimitEdit.START -> vm.updateSettings { it.copy(taperStartValue = v.toDouble()) }
+                    LimitEdit.TARGET -> vm.updateSettings { it.copy(taperTargetValue = v.toDouble()) }
                 }
                 editing = null
             },
@@ -260,15 +252,10 @@ private fun DateRow(label: String, value: String, onClick: () -> Unit) {
 
 /** Off / hold / lower, with the levels they mean for this user right now. */
 @Composable
-private fun ToleranceSettings(settings: Settings, entries: List<LogEntry>, onMode: (IntervalMode) -> Unit) {
-    val recent = remember(entries) { entries.filter { it.timestamp >= System.currentTimeMillis() - IntervalPlan.DATA_MS } }
-    val usual = remember(recent, settings) {
-        val now = System.currentTimeMillis()
-        IntervalPlan.usualLevel(recent, settings, now - IntervalPlan.WINDOW_MS, now)
-    }
-    val lower = remember(recent, settings) {
-        IntervalPlan.threshold(recent, settings.copy(intervalMode = IntervalMode.LOWER), System.currentTimeMillis())
-    }
+private fun ToleranceSettings(settings: Settings, entries: List<LogEntry>, today: Long, onMode: (IntervalMode) -> Unit) {
+    fun level(mode: IntervalMode) = IntervalPlan.threshold(entries, settings.copy(intervalMode = mode), System.currentTimeMillis())
+    val usual = remember(entries, settings, today) { level(IntervalMode.KEEP) }
+    val lower = remember(entries, settings, today) { level(IntervalMode.LOWER) }
     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
         val modes = listOf(IntervalMode.OFF to R.string.interval_off, IntervalMode.KEEP to R.string.interval_keep, IntervalMode.LOWER to R.string.interval_lower)
         modes.forEachIndexed { i, (m, res) ->

@@ -54,7 +54,8 @@ class InsightsTest {
         assertEquals(2, p.byHour[10])
         assertEquals(1, p.byHour[13])
         assertEquals(3.0, p.byWeekday[0], 1e-9)
-        assertEquals(2.0, p.byWeekday[1], 1e-9)
+        // Tuesday is today and still running: it counts once it is over.
+        assertEquals(0.0, p.byWeekday[1], 1e-9)
         assertEquals(0.0, p.byWeekday[2], 1e-9)
         assertEquals(listOf(8 * 60, 9 * 60), p.firstPouch)
         assertEquals(8 * 60 + 30, p.firstNow)

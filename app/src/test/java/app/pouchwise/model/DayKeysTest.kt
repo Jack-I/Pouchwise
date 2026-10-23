@@ -95,6 +95,24 @@ class DayKeysTest {
     }
 
     @Test
+    fun aLaterDayStartMovesNoPouchIntoAFinishedDay() {
+        fun e(id: Long, at: Long) = LogEntry(id = id, pouchTypeId = 1, timestamp = at, strengthMg = 6.0, day = DayKeys.epochDay(at, 4, zone))
+        // At 11:00 the day start moves from 04:00 to 10:00: yesterday ended hours ago under either rule.
+        val early = e(1, ms(2026, 10, 19, 5, 0))
+        assertEquals(emptyMap<Long, Long>(), DayKeys.refiled(listOf(early), ms(2026, 10, 19, 11, 0), 4, zone, 10, zone))
+    }
+
+    @Test
+    fun anEarlierDayStartLeavesTheEveningInTheDayBefore() {
+        fun e(id: Long, at: Long) = LogEntry(id = id, pouchTypeId = 1, timestamp = at, strengthMg = 6.0, day = DayKeys.epochDay(at, 10, zone))
+        // At 09:00 the day start moves from 10:00 to 04:00: today began at 04:00, the evening stays with yesterday.
+        val evening = e(1, ms(2026, 10, 18, 23, 0))
+        val morning = e(2, ms(2026, 10, 19, 5, 0))
+        val moved = DayKeys.refiled(listOf(evening, morning), ms(2026, 10, 19, 9, 0), 10, zone, 4, zone)
+        assertEquals(mapOf(2L to DayKeys.epochDay(morning.timestamp, 4, zone)), moved)
+    }
+
+    @Test
     fun startOfDayRoundTrips() {
         val day = DayKeys.epochDay(ms(2026, 3, 29, 12, 0), 4, zone) // DST change day in EU
         val start = DayKeys.startOfDayMs(day, 4, zone)

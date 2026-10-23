@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -40,8 +41,7 @@ fun HistoryScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
 
-    // The ticker lags up to 30 s behind midnight; the wall clock does not.
-    val today = DayKeys.epochDay(maxOf(now, System.currentTimeMillis()), settings.dayStartHour)
+    val today = DayKeys.epochDay(wallClock(now), settings.dayStartHour)
     val todayDow = LocalDate.ofEpochDay(today).dayOfWeek.value // 1 = Monday
     val gridEnd = today + (7 - todayDow)
     val gridStart = gridEnd - WEEKS * 7 + 1
@@ -118,7 +118,7 @@ fun HistoryScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                             .sumOf { PouchTiming.absorbedMg(it, settings, now) }
                         Text(
                             "${Fmt.dateWithWeekday(sel.epochDay)} · ${pluralStringResource(R.plurals.count_pouches, sel.count, sel.count)} · " +
-                                "${Fmt.mg(sel.mg)} ${stringResource(R.string.unit_mg)} · " +
+                                "${stringResource(R.string.mg_value, Fmt.mg(sel.mg))} · " +
                                 "${stringResource(R.string.absorbed_short, Fmt.oneDecimal(absorbed))} · " +
                                 "${stringResource(R.string.limit_word)}: ${limitAmount(sel.mode, sel.limit.toDouble())}",
                             style = MaterialTheme.typography.bodyMedium,
@@ -182,7 +182,7 @@ fun HistoryScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
 
 @Composable
 private fun SpendingCard(summary: SpendingSummary, settings: Settings, onEditPouches: () -> Unit) {
-    val currency = Money.symbol(settings)
+    val currency = Money.symbol(settings, LocalContext.current)
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     SoftCard {
         Text(stringResource(R.string.spending_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
@@ -200,7 +200,7 @@ private fun SpendingCard(summary: SpendingSummary, settings: Settings, onEditPou
             if (summary.saved != null && summary.sinceDay != null) {
                 MiniTile(
                     stringResource(R.string.spending_saved, Fmt.dateShort(summary.sinceDay)),
-                    "≈\u00A0" + Fmt.money(summary.saved, currency),
+                    "≈\u00A0" + Fmt.money(summary.saved.coerceAtLeast(0.0), currency),
                     Modifier.weight(1f),
                     accent = MaterialTheme.colorScheme.secondary,
                 )

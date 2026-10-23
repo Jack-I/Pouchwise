@@ -1,10 +1,15 @@
 package app.pouchwise.util
 
+import android.content.res.Resources
+import app.pouchwise.R
+import app.pouchwise.model.LimitMode
+import app.pouchwise.model.Limits
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
@@ -26,6 +31,18 @@ object Fmt {
         else String.format(Locale.getDefault(), "%.1f", v)
 
     fun percent(ratio: Double): String = String.format(Locale.getDefault(), "%d%%", (ratio * 100).roundToInt())
+
+    /** "2 pouches left today", "1 pouch over the limit", "35 mg left today"… */
+    fun leftToday(res: Resources, mode: LimitMode, limit: Int, count: Int, mg: Double): String {
+        val left = Limits.left(mode, limit, count, mg)
+        return when {
+            left == 0.0 -> res.getString(R.string.limit_reached)
+            mode == LimitMode.COUNT && left > 0 -> res.getQuantityString(R.plurals.pouches_left_today, left.toInt(), left.toInt())
+            mode == LimitMode.COUNT -> res.getQuantityString(R.plurals.over_limit_by_pouches, -left.toInt(), -left.toInt())
+            left > 0 -> res.getString(R.string.mg_left_today, Fmt.mg(left))
+            else -> res.getString(R.string.over_limit_by_mg, Fmt.mg(-left))
+        }
+    }
 
     /** "22.5 ₽", "2,480 ₽": whole units from 100 up, otherwise up to two decimals; the symbol never wraps alone. */
     fun money(v: Double, symbol: String): String {
@@ -49,11 +66,15 @@ object Fmt {
     fun time(ms: Long, zone: ZoneId = ZoneId.systemDefault()): String =
         DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()).format(Instant.ofEpochMilli(ms).atZone(zone))
 
-    /** "14:05" today, otherwise "Tue 14:05". */
+    /** "14:05" today, "Tue 14:05" within a week either way, otherwise "14 Oct 14:05". */
     fun timeOrDayTime(ms: Long, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): String {
         val t = Instant.ofEpochMilli(ms).atZone(zone)
-        val n = Instant.ofEpochMilli(nowMs).atZone(zone)
-        val pattern = if (t.toLocalDate() == n.toLocalDate()) "HH:mm" else "EEE HH:mm"
+        val days = abs(ChronoUnit.DAYS.between(Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate(), t.toLocalDate()))
+        val pattern = when {
+            days == 0L -> "HH:mm"
+            days < 7 -> "EEE HH:mm"
+            else -> "d MMM HH:mm"
+        }
         return DateTimeFormatter.ofPattern(pattern, Locale.getDefault()).format(t)
     }
 

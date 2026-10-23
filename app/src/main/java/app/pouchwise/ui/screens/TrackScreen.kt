@@ -16,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.res.painterResource
@@ -47,6 +48,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val typesOrNull by vm.types.collectAsStateWithLifecycle()
     val entries by vm.entries.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val now by vm.now.collectAsStateWithLifecycle()
     val feltMarks by vm.feltMarks.collectAsStateWithLifecycle()
 
@@ -55,13 +57,13 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val typesById = remember(types) { types.associateBy { it.id } }
 
     // A one-second clock runs only while a pouch is in, for the countdown and the running absorbed amount.
-    // The wall clock is read on every recomposition so a pouch just logged shows at once, not at the next 30-s tick.
-    val wallNow = maxOf(now, System.currentTimeMillis())
+    val wallNow = wallClock(now)
     val anyActive = entries.any { PouchTiming.isActive(it, settings, wallNow) }
     var tick by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(anyActive) {
         while (anyActive) {
-            tick = System.currentTimeMillis()
+            // Paced by frames, so the clock rests while the app is not on screen.
+            tick = withFrameMillis { System.currentTimeMillis() }
             delay(1_000)
         }
     }
@@ -81,16 +83,12 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val pouchInNow = activeEntries.isNotEmpty()
     // The interval plan: the level below which the next pouch is due, and when the forecast gets there.
     val doses = remember(entries, settings) { entries.map { PouchTiming.toDose(it, settings) } }
-    val planLevel = remember(entries, settings, today) {
-        val since = wallNow - IntervalPlan.DATA_MS
-        IntervalPlan.threshold(entries.filter { it.timestamp >= since }, settings, wallNow)
-    }
+    val planLevel = remember(entries, settings, today) { IntervalPlan.threshold(entries, settings, wallNow) }
     val nextOnPlan = remember(doses, settings, planLevel, now) {
         planLevel?.let { IntervalPlan.nextOnPlanMs(doses, settings.pk, it, System.currentTimeMillis()) }
     }
     val earlyIds = remember(todaysAsc, entries, settings) { IntervalPlan.earlyIds(todaysAsc, entries, settings) }
     val spentToday = todaysAsc.mapNotNull { it.pricePerPouch }.takeIf { it.isNotEmpty() }?.sum()
-    // "Last pouch" counts from the moment the most recent one came out, by hand or by its own time.
     val lastOutMs = PouchTiming.lastOutMs(entries, settings, clock)
 
     var timePickFor by remember { mutableStateOf<PouchType?>(null) }
@@ -107,7 +105,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             TodayCard(
                 settings = settings, count = count, mg = mg, absorbedMg = absorbedToday, limit = limit,
                 lastOutMs = lastOutMs, pouchInNow = pouchInNow, nowMs = clock,
-                money = spentToday?.let { Fmt.money(it, Money.symbol(settings)) },
+                money = spentToday?.let { Fmt.money(it, Money.symbol(settings, context)) },
                 plan = if (settings.intervalMode == IntervalMode.OFF) null else PlanInfo(
                     settings.intervalMode, planLevel, nextOnPlan,
                     noneFit = Limits.noneFit(settings, limit, count, mg, active.map { it.strengthMg }),
@@ -120,9 +118,9 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                 entry = e,
                 name = typesById[e.pouchTypeId]?.name ?: "?",
                 colorIndex = typesById[e.pouchTypeId]?.colorIndex ?: 0,
-                nowMs = tick,
+                nowMs = clock,
                 autoMs = PouchTiming.autoMs(e, settings),
-                absorbedMg = PouchTiming.absorbedMg(e, settings, tick),
+                absorbedMg = PouchTiming.absorbedMg(e, settings, clock),
                 onRemove = { vm.finishPouch(e) },
                 marks = feltMarks[e.id].orEmpty(),
                 // Tapping the latest answer again takes it back, for a wrong tap.
@@ -155,7 +153,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                 val fits = Limits.remainingPouches(settings, limit, count, mg, type.strengthMg)
                 PouchTypeRow(
                     type = type,
-                    price = type.pricePerPouch()?.let { Fmt.money(it, Money.symbol(settings)) },
+                    price = type.pricePerPouch()?.let { Fmt.money(it, Money.symbol(settings, context)) },
                     fits = fits,
                     onLog = { vm.logPouch(type, System.currentTimeMillis()) },
                     onLogAtTime = { timePickFor = type },
@@ -238,7 +236,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         PouchTypeDialog(
             initial = null,
             onDismiss = { addDialog = false },
-            currency = Money.symbol(settings),
+            currency = Money.symbol(settings, context),
             onSave = { vm.addType(it); addDialog = false },
         )
     }
@@ -258,19 +256,12 @@ private fun TodayCard(
     plan: PlanInfo?,
 ) {
     val mode = settings.limitMode
-    val used = Limits.usage(mode, count, mg)
-    val over = used > limit + 1e-9
-    val ratio = if (limit > 0) used / limit else if (used > 0) 2.0 else 0.0
-    val level = GardenLevel.of(DayStat(0, count, mg, limit, mode, hasData = true))
+    val stat = DayStat(0, count, mg, limit, mode, hasData = true)
+    val over = !stat.withinLimit
+    val ratio = stat.ratio
+    val level = GardenLevel.of(stat)
 
-    val left = Limits.left(mode, limit, count, mg)
-    val headline = when {
-        left == 0.0 -> stringResource(R.string.limit_reached)
-        mode == LimitMode.COUNT && left > 0 -> pluralStringResource(R.plurals.pouches_left_today, left.toInt(), left.toInt())
-        mode == LimitMode.COUNT -> pluralStringResource(R.plurals.over_limit_by_pouches, -left.toInt(), -left.toInt())
-        left > 0 -> stringResource(R.string.mg_left_today, Fmt.mg(left))
-        else -> stringResource(R.string.over_limit_by_mg, Fmt.mg(-left))
-    }
+    val headline = Fmt.leftToday(LocalContext.current.resources, mode, limit, count, mg)
     val detail = when (mode) {
         LimitMode.COUNT -> pluralStringResource(R.plurals.used_of_limit_count, limit, count, limit, Fmt.mg(mg))
         LimitMode.MG -> pluralStringResource(R.plurals.used_of_limit_mg, count, Fmt.mg(mg), limit.toString(), count)
@@ -291,7 +282,7 @@ private fun TodayCard(
                 )
             }
             Spacer(Modifier.width(12.dp))
-            BigEmoji(level.emoji.ifEmpty { "🌱" }, size = 40)
+            BigEmoji(level.emoji, size = 40)
         }
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -302,8 +293,10 @@ private fun TodayCard(
                 trackColor = MaterialTheme.colorScheme.surface,
                 strokeCap = StrokeCap.Round,
             )
-            Spacer(Modifier.width(10.dp))
-            Text(Fmt.percent(ratio), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (limit > 0) {
+                Spacer(Modifier.width(10.dp))
+                Text(Fmt.percent(ratio), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
         // While a pouch is in, its own card right below says so.
         if (!pouchInNow) {
@@ -347,7 +340,7 @@ private fun PlanRow(plan: PlanInfo, nowMs: Long) {
         level == null -> stringResource(R.string.plan_learning_hint)
         waiting -> stringResource(
             if (lower) R.string.plan_wait_lower else R.string.plan_wait_hold,
-            durationText(plan.nextMs!! - nowMs), Fmt.oneDecimal(level),
+            durationText((plan.nextMs!! - nowMs).coerceAtLeast(60_000L)), Fmt.oneDecimal(level),
         )
         else -> stringResource(if (lower) R.string.plan_kept_lower else R.string.plan_kept_hold, Fmt.oneDecimal(level))
     }
@@ -492,7 +485,7 @@ private fun PouchTypeRow(type: PouchType, price: String?, fits: Int, onLog: () -
                     .size(48.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .background(MaterialTheme.colorScheme.primary)
-                    .combinedClickable(onClick = onLog, onLongClick = onLogAtTime),
+                    .combinedClickable(onClick = onLog, onLongClick = onLogAtTime, onLongClickLabel = stringResource(R.string.log_at_time)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.log_one), tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(28.dp))

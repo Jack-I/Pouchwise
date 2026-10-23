@@ -11,7 +11,8 @@ import kotlin.math.min
  * the user removed it earlier. Changing the setting later affects new pouches only.
  */
 object PouchTiming {
-    private const val MIN_DURATION_MS = 60_000L
+    /** No pouch counts as in for less than this. */
+    const val MIN_DURATION_MS = 60_000L
 
     /** Upper bound of the pouch-time setting; no pouch can stay in longer. */
     const val MAX_POUCH_MINUTES = 90

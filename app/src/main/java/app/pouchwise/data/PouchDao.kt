@@ -36,6 +36,16 @@ interface PouchDao {
     @Query("SELECT * FROM log_entries WHERE timestamp >= :fromMs AND timestamp < :toMs ORDER BY timestamp")
     suspend fun entriesBetween(fromMs: Long, toMs: Long): List<LogEntry>
 
+    @Query("SELECT * FROM log_entries ORDER BY timestamp DESC LIMIT :count")
+    suspend fun latestEntries(count: Int): List<LogEntry>
+
+    @Query("SELECT * FROM log_entries WHERE id = :id")
+    suspend fun entryById(id: Long): LogEntry?
+
+    /** Takes a pouch out unless it already is: a pull-out from the widget and one from the app cannot undo each other. */
+    @Query("UPDATE log_entries SET endTimestamp = :endMs WHERE id = :id AND endTimestamp IS NULL")
+    suspend fun setOut(id: Long, endMs: Long)
+
     @Query("SELECT * FROM pouch_types WHERE archived = 0 ORDER BY sortOrder, id")
     suspend fun activeTypes(): List<PouchType>
 

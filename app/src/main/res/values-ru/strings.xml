@@ -22,6 +22,8 @@
     <string name="duration_h_m">%1$d\u00A0ч\u00A0%2$d\u00A0мин</string>
     <string name="duration_d_h">%1$d\u00A0д\u00A0%2$d\u00A0ч</string>
     <string name="time_now">сейчас</string>
+    <string name="stepper_less">%1$s: меньше</string>
+    <string name="stepper_more">%1$s: больше</string>
 
     <plurals name="pouches_left_today">
         <item quantity="one">Остался %d пауч на сегодня</item>
@@ -61,6 +63,7 @@
     <string name="no_types_title">Добавьте первый пауч</string>
     <string name="no_types_body">Добавьте свои паучи с крепостью. Нажимайте +, когда вкидываете пауч, и «Вынуть», когда вынимаете; иначе он считается вынутым через %1$d\u00A0мин. Долгое нажатие на + — если вкинули раньше.</string>
     <string name="log_one">Вкинуть один</string>
+    <string name="log_at_time">Вкинуть в другое время</string>
     <plurals name="fits_today">
         <item quantity="one">Влезет ещё %d</item>
         <item quantity="few">Влезет ещё %d</item>
@@ -131,8 +134,8 @@
     <string name="axis_nicotine">Никотин, мг</string>
     <string name="axis_cotinine">Котинин, мг</string>
     <string name="range_8h">8\u00A0ч</string>
-    <string name="range_48h">48 ч</string>
-    <string name="range_7d">7 д</string>
+    <string name="range_48h">48\u00A0ч</string>
+    <string name="range_7d">7\u00A0д</string>
     <string name="legend_future">если больше не брать</string>
     <string name="model_summary">t½ никотина %1$s ч · t½ котинина %2$s ч · усваивается %3$d%% вышедшего из пауча</string>
     <string name="no_data_yet">Запишите пауч, чтобы увидеть кривую.</string>
@@ -166,11 +169,11 @@
 
     <string name="plan_title">Мой план</string>
     <string name="responsible_usage">ПОСТЕПЕННОЕ СНИЖЕНИЕ</string>
-    <plurals name="days_until_target">
-        <item quantity="one">%d день до целевой даты</item>
-        <item quantity="few">%d дня до целевой даты</item>
-        <item quantity="many">%d дней до целевой даты</item>
-        <item quantity="other">%d дня до целевой даты</item>
+    <plurals name="days_until_target_word">
+        <item quantity="one">день до целевой даты</item>
+        <item quantity="few">дня до целевой даты</item>
+        <item quantity="many">дней до целевой даты</item>
+        <item quantity="other">дня до целевой даты</item>
     </plurals>
     <string name="target_reached">план вышел на цель</string>
     <string name="daily_limit_caption">ДНЕВНОЙ ЛИМИТ</string>
@@ -222,6 +225,7 @@
     <string name="import_restore">Восстановить</string>
     <string name="import_done">Восстановлено: %1$s, %2$s</string>
     <string name="import_failed">Импорт не удался, данные не изменились.</string>
+    <string name="export_failed">Экспорт не удался.</string>
     <string name="import_cant">Импорт невозможен</string>
     <string name="import_not_export">Это не файл экспорта Pouchwise.</string>
     <string name="import_newer">Файл из более новой версии Pouchwise. Сначала обновите приложение.</string>
@@ -269,6 +273,7 @@
     <string name="widget_unit_mg_today">мг сегодня</string>
     <string name="widget_add">Вкинуть пауч</string>
     <string name="widget_remove">Вынуть пауч</string>
+    <string name="widget_failed">Не получилось, попробуйте ещё раз.</string>
     <string name="widget_logged">%1$s вкинут</string>
     <string name="widget_removed">%1$s вынут</string>
     <string name="widget_nothing_in">Сейчас ничего не вкинуто</string>

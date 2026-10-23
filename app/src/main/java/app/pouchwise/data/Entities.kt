@@ -41,6 +41,13 @@ data class PouchEdit(
     val pouchesPerCan: Int,
 )
 
+/** This kind with what the pouch editor handed back; its id, order and history stay. */
+fun PouchType.edited(e: PouchEdit): PouchType = copy(
+    name = Brands.displayName(e.brand, e.variant), strengthMg = e.strengthMg, colorIndex = e.colorIndex,
+    brand = e.brand.trim(), releaseK = Brands.effectiveK(e.brand, e.fastRelease), fastRelease = e.fastRelease,
+    pricePerCan = e.pricePerCan, pouchesPerCan = e.pouchesPerCan,
+)
+
 /** What one pouch of this kind costs, or null without a price. */
 fun PouchType.pricePerPouch(): Double? = pricePerCan?.takeIf { pouchesPerCan > 0 }?.div(pouchesPerCan)
 

@@ -18,14 +18,13 @@ import app.pouchwise.data.PouchType
 import app.pouchwise.data.pricePerPouch
 import app.pouchwise.data.RunningDay
 import app.pouchwise.data.SettingsRepository
-import app.pouchwise.model.Brands
+import app.pouchwise.data.edited
 import app.pouchwise.model.DayKeys
 import app.pouchwise.model.LimitMode
 import app.pouchwise.model.PlanHistory
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.model.Settings
 import app.pouchwise.util.Export
-import app.pouchwise.util.Money
 import app.pouchwise.widget.WidgetUpdater
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -60,11 +59,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     for (e in dao.entriesWithoutDay()) dao.setDayIfMissing(e.id, DayKeys.epochDay(e.timestamp, s.dayStartHour))
                 }
                 if (dao.planCount() == 0) dao.upsertPlan(PlanHistory.versionOf(s, fromDay = 0L))
-                if (s.currency.isEmpty()) {
-                    Money.localSymbol(appContext)?.let { sym -> settingsRepo.update { it.copy(currency = it.currency.ifEmpty { sym }) } }
-                }
+                // Users from before savings existed: their first own plan says how many a day they started from.
+                // The default plan written before onboarding says nothing, so a skipped onboarding stays without one.
                 if (s.onboarded && s.baselinePerDay == null) {
-                    PlanHistory.baselinePerDay(dao.allPlans().firstOrNull(), dao.allTypes().minByOrNull { it.id })
+                    val firstOwn = dao.allPlans().firstOrNull { it != PlanHistory.versionOf(Settings(), it.fromDay) }
+                    PlanHistory.baselinePerDay(firstOwn, dao.allTypes().minByOrNull { it.id })
                         ?.let { base -> settingsRepo.update { it.copy(baselinePerDay = it.baselinePerDay ?: base) } }
                 }
             }
@@ -105,27 +104,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), System.currentTimeMillis())
 
     fun addType(edit: PouchEdit) = viewModelScope.launch {
-        val order = dao.maxSortOrder() + 1
-        dao.insertType(
-            PouchType(
-                name = Brands.displayName(edit.brand, edit.variant), strengthMg = edit.strengthMg, colorIndex = edit.colorIndex,
-                sortOrder = order, brand = edit.brand.trim(), releaseK = Brands.effectiveK(edit.brand, edit.fastRelease),
-                fastRelease = edit.fastRelease, pricePerCan = edit.pricePerCan, pouchesPerCan = edit.pouchesPerCan,
-            ),
-        )
+        insertType(edit)
         refreshWidgets()
+    }
+
+    private suspend fun insertType(edit: PouchEdit) {
+        dao.insertType(PouchType(name = "", strengthMg = edit.strengthMg, sortOrder = dao.maxSortOrder() + 1).edited(edit))
     }
 
     fun updateType(type: PouchType, edit: PouchEdit) =
         viewModelScope.launch {
-            val updated = type.copy(
-                name = Brands.displayName(edit.brand, edit.variant), strengthMg = edit.strengthMg, colorIndex = edit.colorIndex,
-                brand = edit.brand.trim(), releaseK = Brands.effectiveK(edit.brand, edit.fastRelease), fastRelease = edit.fastRelease,
-                pricePerCan = edit.pricePerCan, pouchesPerCan = edit.pouchesPerCan,
-            )
+            val updated = type.edited(edit)
             dao.updateType(updated)
-            // Pouches logged before the kind had a price take this one; logged prices never change.
-            updated.pricePerPouch()?.let { dao.fillMissingPrices(type.id, it) }
+            // Pouches logged before the kind had any price take its first one; logged prices never change.
+            if (type.pricePerCan == null) updated.pricePerPouch()?.let { dao.fillMissingPrices(type.id, it) }
             refreshWidgets()
         }
 
@@ -152,7 +144,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Takes the pouch out now; absorption stops here. */
     fun finishPouch(entry: LogEntry) = viewModelScope.launch {
-        dao.updateEntry(PouchTiming.finish(entry, settingsRepo.settings.first(), System.currentTimeMillis()))
+        PouchTiming.finish(entry, settingsRepo.settings.first(), System.currentTimeMillis()).endTimestamp?.let { dao.setOut(entry.id, it) }
         refreshWidgets()
     }
 
@@ -170,9 +162,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun editEntry(entry: LogEntry, newStartMs: Long, durationMs: Long?, marks: List<FeltMark>) = viewModelScope.launch {
         val s = settingsRepo.settings.first()
-        val moved = if (durationMs == null) PouchTiming.withNewStart(entry, newStartMs, s)
-                    else PouchTiming.withTimes(entry, newStartMs, durationMs, s)
         db.withTransaction {
+            // The row as it is now: the pouch may have been pulled out from a widget while the dialog was open.
+            val current = dao.entryById(entry.id) ?: return@withTransaction
+            val moved = if (durationMs == null) PouchTiming.withNewStart(current, newStartMs, s)
+                        else PouchTiming.withTimes(current, newStartMs, durationMs, s)
             dao.updateEntry(moved)
             dao.deleteFeltMarksOf(entry.id)
             dao.insertFeltMarks(marks.map { PouchTiming.placeAnswer(it.copy(id = 0, entryId = entry.id), moved, s) })
@@ -213,13 +207,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun completeOnboarding(brand: String, strengthNow: Double, perDayNow: Int, perDayTarget: Int, strengthTarget: Double) =
         viewModelScope.launch {
-            val order = dao.maxSortOrder() + 1
-            dao.insertType(
-                PouchType(
-                    name = brand.trim(), strengthMg = strengthNow, colorIndex = 0, sortOrder = order,
-                    brand = brand.trim(), releaseK = Brands.kFor(brand),
-                ),
-            )
+            insertType(PouchEdit(brand, variant = "", strengthNow, colorIndex = 0, fastRelease = false, pricePerCan = null, pouchesPerCan = 20))
             val (before, after) = settingsRepo.update { s ->
                 val today = DayKeys.epochDay(System.currentTimeMillis(), s.dayStartHour)
                 val targetDay = DayKeys.localDate(today).plusMonths(2).toEpochDay()
@@ -246,17 +234,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun skipOnboarding() = updateSettings { it.copy(onboarded = true) }
 
-    /** Read straight from the database: the screen-bound flows can be stale or empty on the Settings screen. */
-    fun exportCsv(context: Context) = viewModelScope.launch {
-        Export.shareCsv(context, dao.allEntries(), dao.allTypes(), settingsRepo.settings.first(), dao.allFeltMarks())
-    }
+    fun exportCsv(context: Context) = export { d, s -> Export.shareCsv(context, d.entries, d.types, s, d.marks) }
 
-    fun exportFeltCsv(context: Context) = viewModelScope.launch {
-        Export.shareFeltCsv(context, dao.allEntries(), dao.allTypes(), settingsRepo.settings.first(), dao.allFeltMarks())
-    }
+    fun exportFeltCsv(context: Context) = export { d, s -> Export.shareFeltCsv(context, d.entries, d.types, s, d.marks) }
 
-    fun exportJson(context: Context) = viewModelScope.launch {
-        Export.shareJson(context, dao.allEntries(), dao.allTypes(), settingsRepo.settings.first(), dao.allPlans(), dao.allFeltMarks())
+    fun exportJson(context: Context) = export { d, s -> Export.shareJson(context, d.entries, d.types, s, d.plans, d.marks) }
+
+    private class Everything(val entries: List<LogEntry>, val types: List<PouchType>, val plans: List<PlanVersion>, val marks: List<FeltMark>)
+
+    /** Read straight from the database in one go: the screen-bound flows can be stale or empty on the Settings screen. */
+    private fun export(share: (Everything, Settings) -> Unit) = viewModelScope.launch {
+        runCatching {
+            val data = db.withTransaction { Everything(dao.allEntries(), dao.allTypes(), dao.allPlans(), dao.allFeltMarks()) }
+            share(data, settingsRepo.settings.first())
+        }.onFailure { Toast.makeText(appContext, R.string.export_failed, Toast.LENGTH_LONG).show() }
     }
 
     /** Replaces pouches, entries and plan history with the file's in one transaction, then takes over its settings. */
@@ -273,7 +264,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         val plans = contents.plans.ifEmpty { listOf(PlanHistory.versionOf(imported, fromDay = 0L)) }
         val entriesById = entries.associateBy { it.id }
-        val marks = contents.feltMarks.map { m -> entriesById[m.entryId]?.let { PouchTiming.placeAnswer(m, it, imported) } ?: m }
+        val marks = contents.feltMarks.map { PouchTiming.placeAnswer(it, entriesById.getValue(it.entryId), imported) }
         val ok = runCatching {
             db.withTransaction {
                 dao.deleteAllFeltMarks()
@@ -287,7 +278,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             }
         }.isSuccess
         if (ok) {
-            settingsRepo.update { imported }
+            runCatching { settingsRepo.update { contents.settingsOver(it).copy(onboarded = true, taperStartAlt = null, taperTargetAlt = null) } }
             refreshWidgets()
         }
         val res = appContext.resources

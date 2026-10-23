@@ -98,7 +98,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
                         vm.updateSettings { it.copy(currency = v.take(8)) }
                     },
                     label = { Text(stringResource(R.string.currency_label)) },
-                    placeholder = { Text(Money.regionSymbol()) },
+                    placeholder = { Text(Money.phoneSymbol(context)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth().onFocusChanged { typing = it.isFocused },
                 )

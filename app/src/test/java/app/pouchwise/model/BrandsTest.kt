@@ -1,8 +1,7 @@
 package app.pouchwise.model
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class BrandsTest {
@@ -19,8 +18,8 @@ class BrandsTest {
     @Test
     fun lookupIsCaseInsensitiveAndFallsBackToAverage() {
         assertEquals(Brands.kFor("ZYN"), Brands.kFor(" zyn "), 1e-12)
-        assertTrue(Brands.isKnown("velo"))
-        assertFalse(Brands.isKnown("Zeus"))
+        assertEquals("Velo", Brands.find("velo")?.name)
+        assertNull(Brands.find("Zeus"))
         assertEquals(Brands.averageK, Brands.kFor("Zeus"), 1e-12)
         assertEquals(Brands.averageK, Brands.kFor(""), 1e-12)
     }

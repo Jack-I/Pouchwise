@@ -79,6 +79,8 @@ object Backup {
             val entryObjects = (0 until entriesJson.length()).map { i -> entriesJson.getJSONObject(i) }
             val entries = entryObjects.map { entry(it) }
             val plans = if (plansJson == null) emptyList() else (0 until plansJson.length()).map { i -> plan(plansJson.getJSONObject(i)) }
+            // Room would give a 0 id a new number, cutting the entry off from its answers.
+            if (types.any { it.id <= 0 } || entries.any { it.id <= 0 }) throw NotAnExport("ids must be positive")
             if (types.distinctBy { it.id }.size != types.size) throw NotAnExport("repeated pouch ids")
             if (entries.distinctBy { it.id }.size != entries.size) throw NotAnExport("repeated entry ids")
             if (plans.distinctBy { it.fromDay }.size != plans.size) throw NotAnExport("repeated plan days")

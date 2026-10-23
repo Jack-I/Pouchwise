@@ -27,6 +27,7 @@ import app.pouchwise.model.DayKeys
 import app.pouchwise.model.Pharmacokinetics
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.ui.components.BackTopBar
+import app.pouchwise.ui.components.wallClock
 import app.pouchwise.ui.theme.AppColors
 import app.pouchwise.util.Fmt
 import kotlinx.coroutines.Dispatchers
@@ -112,7 +113,7 @@ fun LevelsScreen(vm: AppViewModel, onBack: () -> Unit) {
     // cotinine average over the last 24 hours, since it swings by about a third between morning and evening.
     val yours by produceState<Pair<Double, Double>?>(initialValue = null, entries, settings, now) {
         value = withContext(Dispatchers.Default) {
-            val clock = maxOf(now, System.currentTimeMillis())
+            val clock = wallClock(now)
             val doses = entries.map { PouchTiming.toDose(it, settings) }
             val dayStart = DayKeys.startOfDayMs(DayKeys.epochDay(clock, settings.dayStartHour), settings.dayStartHour)
             val peakMg = Pharmacokinetics.series(dayStart, clock, 5 * 60_000L, doses, settings.pk).maxOfOrNull { it.second.nicotineMg } ?: 0.0

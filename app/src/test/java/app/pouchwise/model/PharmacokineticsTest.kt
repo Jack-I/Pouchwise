@@ -203,27 +203,33 @@ class PharmacokineticsTest {
     fun mostlyGoneCountsFromThePeakStillAhead() {
         // A pouch put in a minute ago after a long break: hardly anything in yet, but the curve is about to rise.
         val now = 10 * h
-        val gone = Pharmacokinetics.mostlyGone(now, listOf(Dose(now - min, 6.0, full)), p)
-        assertTrue(gone.nicotineClearMs!! > now + 8 * h)
-        assertTrue(gone.cotinineClearMs!! > now + 2 * 24 * h)
-        // Nothing taken: both have cleared.
-        val none = Pharmacokinetics.mostlyGone(now, emptyList(), p)
-        assertNull(none.nicotineClearMs)
-        assertNull(none.cotinineClearMs)
+        assertTrue(Pharmacokinetics.nicotineMostlyGoneMs(now, listOf(Dose(now - min, 6.0, full)), p)!! > now + 8 * h)
+        assertNull(Pharmacokinetics.nicotineMostlyGoneMs(now, emptyList(), p))
     }
 
     @Test
     fun mostlyGoneIsATwentiethOfTheLevelEvenWhenItIsLow() {
-        // A day of pouches that ended a day ago: nicotine is gone, cotinine is a few mg and falling.
-        val now = 48 * h
-        val doses = (0 until 8).map { Dose(now - 24 * h - (2 * it) * h - 30 * min, 8.0, full) }
-        val levels = Pharmacokinetics.levelsAt(now, doses, p)
-        assertTrue(levels.nicotineMg < Pharmacokinetics.NICOTINE_CLEARED_MG)
-        assertTrue(levels.cotinineMg > 1.0)
-        val gone = Pharmacokinetics.mostlyGone(now, doses, p)
-        assertNull(gone.nicotineClearMs)
-        // log2(20) ≈ 4.32 cotinine half-lives ≈ 69 h, not the earlier moment it drops below 0.5 mg.
-        assertEquals(69.1, (gone.cotinineClearMs!! - now) / h.toDouble(), 0.5)
+        // One pouch, out four hours ago: a little nicotine is left and falling.
+        val now = 10 * h
+        val doses = listOf(Dose(now - 4 * h - full, 8.0, full))
+        assertTrue(Pharmacokinetics.levelsAt(now, doses, p).nicotineMg > Pharmacokinetics.NICOTINE_CLEARED_MG)
+        // log2(20) ≈ 4.32 half-lives ≈ 8.6 h with a 2 h half-life, however little is left.
+        assertEquals(8.64, (Pharmacokinetics.nicotineMostlyGoneMs(now, doses, p)!! - now) / h.toDouble(), 0.2)
+        // A day later it has cleared.
+        assertNull(Pharmacokinetics.nicotineMostlyGoneMs(now + 24 * h, doses, p))
+    }
+
+    @Test
+    fun cotininesVerdictWaitsForItsPeak() {
+        // A pouch just put in: two hours on, cotinine is still far below the peak it reaches hours later.
+        val now = 10 * h
+        val doses = listOf(Dose(now, 8.0, full))
+        fun cot(t: Long) = Pharmacokinetics.levelsAt(t, doses, p).cotinineMg
+        val peakAt = (0..24 * 12).map { now + it * 5 * min }.maxBy { cot(it) }
+        val line = (cot(now + 2 * h) + cot(peakAt)) / 2
+        // A nicotine line it never reaches leaves the verdict to cotinine alone.
+        val clear = Pharmacokinetics.clearance(now, doses, p, nicotineThreshold = 100.0, cotinineThreshold = line)
+        assertTrue(clear.cotinineClearMs!! > peakAt)
     }
 
     @Test

@@ -30,16 +30,26 @@ class IntervalPlanTest {
     }
 
     @Test
-    fun keepUsesTheLastTwoWeeksAndLowerAQuarterLessFromBeforeMonday() {
+    fun keepUsesTheTwoWeeksBeforeTodayAndLowerAQuarterLessFromBeforeMonday() {
         val entries = (5..21).flatMap { d -> listOf(8, 10, 12, 14).map { h -> pouch(at(d, h)) } }
         val now = at(21, 15)
         val keep = IntervalPlan.threshold(entries, s.copy(intervalMode = IntervalMode.KEEP), now)!!
-        assertEquals(IntervalPlan.usualLevel(entries, s, now - IntervalPlan.WINDOW_MS, now)!!, keep, 1e-12)
+        val dayStart = DayKeys.startOfDayMs(DayKeys.epochDay(now, s.dayStartHour), s.dayStartHour)
+        assertEquals(IntervalPlan.usualLevel(entries, s, dayStart - IntervalPlan.WINDOW_MS, dayStart)!!, keep, 1e-12)
         val monday = at(19, 0)
         assertEquals(monday, IntervalPlan.weekStartMs(now, 0))
         val lower = IntervalPlan.threshold(entries, s.copy(intervalMode = IntervalMode.LOWER), now)!!
         assertEquals(IntervalPlan.usualLevel(entries, s, monday - IntervalPlan.WINDOW_MS, monday)!! * 0.85, lower, 1e-12)
         assertNull(IntervalPlan.threshold(entries, s, now))
+    }
+
+    @Test
+    fun theLevelHoldsForTheWholeDay() {
+        // Two days of a pouch every four hours, then a morning of one an hour: today's pouches do not move today's level.
+        val before = (19..20).flatMap { d -> listOf(8, 12, 16, 20).map { h -> pouch(at(d, h)) } }
+        val today = listOf(9, 10, 11, 12).map { h -> pouch(at(21, h)) }
+        val keep = s.copy(intervalMode = IntervalMode.KEEP)
+        assertEquals(IntervalPlan.threshold(before, keep, at(21, 8))!!, IntervalPlan.threshold(before + today, keep, at(21, 22))!!, 1e-12)
     }
 
     @Test

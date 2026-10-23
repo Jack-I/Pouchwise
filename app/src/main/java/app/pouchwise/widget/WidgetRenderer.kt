@@ -11,6 +11,7 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.os.Bundle
 import android.os.SystemClock
 import android.util.TypedValue
 import android.text.SpannableStringBuilder
@@ -24,7 +25,6 @@ import androidx.core.content.ContextCompat
 import app.pouchwise.MainActivity
 import app.pouchwise.R
 import app.pouchwise.model.LimitMode
-import app.pouchwise.model.Limits
 import app.pouchwise.ui.theme.pouchColor
 import app.pouchwise.util.Fmt
 import kotlin.math.roundToInt
@@ -33,7 +33,9 @@ import kotlin.math.roundToInt
 object WidgetRenderer {
     private const val BLUE = 0xFF1E88E5.toInt()
     private const val RED_DISC = 0xFFB71C1C.toInt()
-    private const val RED_RING = 0xFFFF8A80.toInt()
+    /** The ring and the texts beyond the limit. */
+    private const val SOFT_RED = 0xFFFF8A80.toInt()
+    private const val MUTED = 0xD9FFFFFF.toInt()
 
     /** Share of the 108 dp foreground canvas the drawing occupies (see design/make_icon.py). */
     private const val ART_SHARE = 56f / 108f
@@ -58,7 +60,7 @@ object WidgetRenderer {
         c.drawArc(rect, 0f, 360f, false, paint)
         val sweep = if (state.over) 360f else state.ratio * 360f
         if (sweep > 0f) {
-            paint.color = if (state.over) RED_RING else Color.WHITE
+            paint.color = if (state.over) SOFT_RED else Color.WHITE
             c.drawArc(rect, -90f, sweep, false, paint)
         }
 
@@ -119,22 +121,20 @@ object WidgetRenderer {
     fun coverViews(context: Context, state: WidgetState, cover: CoverState): RemoteViews =
         RemoteViews(context.packageName, R.layout.widget_cover).apply {
             val now = System.currentTimeMillis()
-            val muted = 0xD9FFFFFF.toInt()
             setImageViewBitmap(R.id.cover_ring, ring(context, (84 * context.resources.displayMetrics.density).roundToInt(), state))
             setTextViewText(R.id.cover_count, countText(context, state))
-            setTextColor(R.id.cover_count, if (state.over) RED_TEXT else Color.WHITE)
-            setTextViewText(R.id.cover_left, leftText(context, state))
-            setTextColor(R.id.cover_left, if (state.over) RED_TEXT else muted)
+            setTextColor(R.id.cover_count, if (state.over) SOFT_RED else Color.WHITE)
+            setTextViewText(R.id.cover_left, Fmt.leftToday(context.resources, state.mode, state.limit, state.count, state.mg))
+            setTextColor(R.id.cover_left, if (state.over) SOFT_RED else MUTED)
             setContentDescription(R.id.cover_top, context.getString(R.string.app_name) + ": " + countText(context, state))
             setOnClickPendingIntent(R.id.cover_top, openApp(context))
 
             val latest = cover.inNow.lastOrNull()
+            timer(R.id.cover_status_timer, latest?.first?.timestamp, now)
             if (latest == null) {
                 setViewVisibility(R.id.cover_status_dot, View.GONE)
-                setChronometer(R.id.cover_status_timer, SystemClock.elapsedRealtime(), null, false)
-                setViewVisibility(R.id.cover_status_timer, View.GONE)
                 setViewVisibility(R.id.cover_check, View.GONE)
-                setTextColor(R.id.cover_status_text, muted)
+                setTextColor(R.id.cover_status_text, MUTED)
                 val last = cover.lastOutMs?.let { context.getString(R.string.cover_last_out_at, Fmt.timeOrDayTime(it, now)) }
                     ?: context.getString(R.string.cover_nothing_yet)
                 val next = when {
@@ -152,12 +152,12 @@ object WidgetRenderer {
                     if (cover.inNow.size == 1) context.getString(R.string.cover_in_now, "${widgetLabel(type)} ${mgText(context, entry.strengthMg)}")
                     else context.resources.getQuantityString(R.plurals.cover_pouches_in, cover.inNow.size, cover.inNow.size),
                 )
-                // The launcher runs the timer itself, on the elapsed-realtime clock.
-                setChronometer(R.id.cover_status_timer, SystemClock.elapsedRealtime() - (now - entry.timestamp).coerceAtLeast(0L), null, true)
-                setViewVisibility(R.id.cover_status_timer, View.VISIBLE)
                 setViewVisibility(R.id.cover_check, View.VISIBLE)
                 setContentDescription(R.id.cover_check, context.getString(R.string.widget_remove))
-                setOnClickPendingIntent(R.id.cover_check, removeOnCover(context))
+                setOnClickPendingIntent(
+                    R.id.cover_check,
+                    quickAction(context, QuickLogActivity.ACTION_REMOVE, 3, ActivityOptions.makeBasic().setLaunchDisplayId(COVER_DISPLAY_ID).toBundle()),
+                )
             }
 
             COVER_SLOTS.forEachIndexed { i, slot ->
@@ -186,23 +186,16 @@ object WidgetRenderer {
         CoverSlot(R.id.cover_btn_2, R.id.cover_btn_2_bg, R.id.cover_btn_2_dot, R.id.cover_btn_2_name, R.id.cover_btn_2_mg),
     )
 
-    private const val RED_TEXT = 0xFFFF8A80.toInt()
     private const val COVER_BUTTON_BASE = 0xFF121A24.toInt()
 
     /** Samsung's cover screen is display 1 (checked on a Flip7), so the chooser opens there, not inside. */
     private const val COVER_DISPLAY_ID = 1
 
-    /** "2 pouches left today", "1 pouch over the limit", "35 mg left today"… */
-    private fun leftText(context: Context, state: WidgetState): String {
-        val res = context.resources
-        val left = Limits.left(state.mode, state.limit, state.count, state.mg)
-        return when {
-            left == 0.0 -> context.getString(R.string.limit_reached)
-            state.mode == LimitMode.COUNT && left > 0 -> res.getQuantityString(R.plurals.pouches_left_today, left.toInt(), left.toInt())
-            state.mode == LimitMode.COUNT -> res.getQuantityString(R.plurals.over_limit_by_pouches, -left.toInt(), -left.toInt())
-            left > 0 -> context.getString(R.string.mg_left_today, Fmt.mg(left))
-            else -> context.getString(R.string.over_limit_by_mg, Fmt.mg(-left))
-        }
+    /** The pouch timer counting from [sinceMs], hidden without one. The launcher runs it on the elapsed-realtime clock. */
+    private fun RemoteViews.timer(id: Int, sinceMs: Long?, nowMs: Long) {
+        val elapsed = sinceMs?.let { (nowMs - it).coerceAtLeast(0L) }
+        setChronometer(id, SystemClock.elapsedRealtime() - (elapsed ?: 0L), null, elapsed != null)
+        setViewVisibility(id, if (elapsed != null) View.VISIBLE else View.GONE)
     }
 
     private fun mgText(context: Context, mg: Double): String = context.getString(R.string.mg_value, Fmt.mg(mg))
@@ -212,16 +205,6 @@ object WidgetRenderer {
             (((color shr shift) and 0xFF) * share + ((base shr shift) and 0xFF) * (1 - share)).roundToInt()
         return Color.rgb(channel(16), channel(8), channel(0))
     }
-
-    private fun removeOnCover(context: Context): PendingIntent =
-        PendingIntent.getActivity(
-            context, 3,
-            Intent(context, QuickLogActivity::class.java)
-                .setAction(QuickLogActivity.ACTION_REMOVE)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            ActivityOptions.makeBasic().setLaunchDisplayId(COVER_DISPLAY_ID).toBundle(),
-        )
 
     /** One per pouch: the request code keeps them apart, since extras do not. */
     private fun logFromCover(context: Context, typeId: Long): PendingIntent =
@@ -242,24 +225,16 @@ object WidgetRenderer {
             setOnClickPendingIntent(R.id.widget_wide_root, openApp(context))
 
             val since = state.inSinceMs
-            if (since != null) {
-                setTextViewText(R.id.widget_wide_sub, state.inLabel.orEmpty())
-                // The launcher runs the chronometer itself, on the elapsed-realtime clock.
-                val base = SystemClock.elapsedRealtime() - (System.currentTimeMillis() - since).coerceAtLeast(0L)
-                setChronometer(R.id.widget_wide_timer, base, null, true)
-                setViewVisibility(R.id.widget_wide_timer, View.VISIBLE)
-            } else {
-                setTextViewText(
-                    R.id.widget_wide_sub,
-                    when {
-                        state.nextTomorrow -> context.getString(R.string.widget_tomorrow)
-                        state.nextOnPlanMs != null -> context.getString(R.string.widget_next, Fmt.time(state.nextOnPlanMs))
-                        else -> context.getString(if (state.mode == LimitMode.COUNT) R.string.widget_unit_pouches else R.string.widget_unit_mg_today)
-                    },
-                )
-                setChronometer(R.id.widget_wide_timer, SystemClock.elapsedRealtime(), null, false)
-                setViewVisibility(R.id.widget_wide_timer, View.GONE)
-            }
+            timer(R.id.widget_wide_timer, since, System.currentTimeMillis())
+            setTextViewText(
+                R.id.widget_wide_sub,
+                when {
+                    since != null -> state.inLabel.orEmpty()
+                    state.nextTomorrow -> context.getString(R.string.widget_tomorrow)
+                    state.nextOnPlanMs != null -> context.getString(R.string.widget_next, Fmt.time(state.nextOnPlanMs))
+                    else -> context.getString(if (state.mode == LimitMode.COUNT) R.string.widget_unit_pouches else R.string.widget_unit_mg_today)
+                },
+            )
 
             // With every pouch hidden, "+" opens the app; "✓" must stay while one is still in.
             if (state.hasTypes || since != null) {
@@ -268,8 +243,7 @@ object WidgetRenderer {
                 setContentDescription(R.id.widget_wide_add, context.getString(R.string.widget_add))
                 setContentDescription(R.id.widget_wide_remove, context.getString(R.string.widget_remove))
                 setOnClickPendingIntent(R.id.widget_wide_add, quickAction(context, QuickLogActivity.ACTION_LOG, 1))
-                val anyIn = since != null
-                setImageViewResource(R.id.widget_wide_remove, if (anyIn) R.drawable.widget_btn_pull_out else R.drawable.widget_btn_pull_out_off)
+                setImageViewResource(R.id.widget_wide_remove, if (since != null) R.drawable.widget_btn_pull_out else R.drawable.widget_btn_pull_out_off)
                 setOnClickPendingIntent(R.id.widget_wide_remove, quickAction(context, QuickLogActivity.ACTION_REMOVE, 2))
             } else {
                 setViewVisibility(R.id.widget_wide_buttons, View.GONE)
@@ -277,13 +251,14 @@ object WidgetRenderer {
         }
 
     /** "+" and "✓" open a small chooser over the home screen, or act straight away when there is nothing to choose. */
-    private fun quickAction(context: Context, action: String, requestCode: Int): PendingIntent =
+    private fun quickAction(context: Context, action: String, requestCode: Int, options: Bundle? = null): PendingIntent =
         PendingIntent.getActivity(
             context, requestCode,
             Intent(context, QuickLogActivity::class.java)
                 .setAction(action)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            options,
         )
 
     /** "39/60": today's amount large, the limit small; the unit goes on the line below. */
@@ -296,7 +271,7 @@ object WidgetRenderer {
         val start = text.length
         text.append("/${state.limit}")
         text.setSpan(RelativeSizeSpan(0.6f), start, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        text.setSpan(ForegroundColorSpan(0xD9FFFFFF.toInt()), start, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        text.setSpan(ForegroundColorSpan(MUTED), start, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         return text
     }
 

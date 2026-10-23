@@ -67,7 +67,12 @@ class ExportTest {
         fun cell(row: Int, name: String) = rows[row].split(',')[names.indexOf(name)]
         assertEquals("a_bit", cell(1, "felt"))
         assertEquals("40", cell(1, "felt_after_min"))
+        assertEquals("0", cell(1, "felt_recalled"))
         assertEquals("overwhelm", cell(2, "felt"))
         assertEquals("20", cell(2, "felt_after_min"))
+        // An answer given long after the pull-out says so.
+        val late = marks + FeltMark(entryId = 2, level = Felt.HIT.level, atMs = t0 + 95 * min, recalled = true)
+        val lateRows = Export.csv(entries, types, Settings(), late).trim().lines()
+        assertEquals("1", lateRows[2].split(',')[names.indexOf("felt_recalled")])
     }
 }

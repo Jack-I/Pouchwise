@@ -14,7 +14,7 @@ data class DayStat(
 ) {
     val used: Double get() = Limits.usage(mode, count, mg)
     val ratio: Double get() = if (limit <= 0) (if (used > 0) 2.0 else 0.0) else used / limit
-    val withinLimit: Boolean get() = used <= limit + 1e-9
+    val withinLimit: Boolean get() = !Limits.isOver(used, limit)
 }
 
 /** Face for a day: three steps within the limit, three beyond it, sunglasses for a pouch-free day. */
@@ -36,7 +36,7 @@ enum class GardenLevel(val emoji: String, val label: String) {
             return when {
                 r <= 1.0 / 3 + 1e-9 -> GOOD
                 r <= 2.0 / 3 + 1e-9 -> OK
-                r <= 1.0 + 1e-9 -> AT_LIMIT
+                stat.withinLimit -> AT_LIMIT
                 r <= 1.25 + 1e-9 -> OVER
                 r <= 1.5 + 1e-9 -> SAD
                 else -> FAR_OVER

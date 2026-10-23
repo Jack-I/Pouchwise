@@ -36,7 +36,7 @@ data class WidgetState(
     val nextTomorrow: Boolean = false,
 ) {
     val used: Double get() = Limits.usage(mode, count, mg)
-    val over: Boolean get() = used > limit + 1e-9
+    val over: Boolean get() = Limits.isOver(used, limit)
     /** Share of the limit used, capped at 1; a day with no limit counts as full once anything is logged. */
     val ratio: Float get() = when {
         limit > 0 -> (used / limit).coerceIn(0.0, 1.0).toFloat()
@@ -90,7 +90,6 @@ object WidgetData {
             val recent = dao.entriesBetween(now - IntervalPlan.DATA_MS, now + 1)
             IntervalPlan.threshold(recent, settings, now)
                 ?.let { IntervalPlan.nextOnPlanMs(recent.map { PouchTiming.toDose(it, settings) }, settings.pk, it, now) }
-                ?.takeIf { it > now }
         }
         val count = entries.size
         val mg = entries.sumOf { it.strengthMg }
@@ -116,16 +115,15 @@ object WidgetData {
         val dao = AppDatabase.get(context).dao()
         val settings = SettingsRepository(context).settings.first()
         val now = System.currentTimeMillis()
-        val recent = dao.entriesBetween(now - LAST_OUT_LOOKBACK_MS, now + 1)
         val uses = dao.usageSince(now - QUICK_LOOKBACK_MS).associate { it.pouchTypeId to it.uses }
         return CoverState(
             inNow = pouchesInNow(context, settings, now),
-            lastOutMs = PouchTiming.lastOutMs(recent, settings, now),
+            // The last few are enough: a pouch that came out last went in among them, however long ago that was.
+            lastOutMs = PouchTiming.lastOutMs(dao.latestEntries(10), settings, now),
             quick = quickPicks(dao.activeTypes(), uses),
         )
     }
 
-    private const val LAST_OUT_LOOKBACK_MS = 3L * 24 * 3_600_000L
     private const val QUICK_LOOKBACK_MS = 14L * 24 * 3_600_000L
 
     /** Pouches in right now with their types, oldest first. Pouches put in before the day boundary count too. */

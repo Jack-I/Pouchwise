@@ -85,4 +85,17 @@ class LimitsTest {
         // 8, 16, 24, 32, 40 mg cumulative against a 24 mg limit: the 4th and 5th are over.
         assertEquals(setOf(4L, 5L), Limits.overLimitEntryIds(entries, byMg, 24))
     }
+
+    @Test
+    fun aRoundingHairIsAtTheLimitEverywhere() {
+        // Three 3.34 mg pouches make 10.02 mg: "10 of 10 mg" on every screen, and the third one fits.
+        val mg = Settings(limitMode = LimitMode.MG)
+        val three = (1..3).map { LogEntry(id = it.toLong(), pouchTypeId = 1, timestamp = it * 1000L, strengthMg = 3.34) }
+        assertTrue(!Limits.isOver(10.02, 10) && Limits.isOver(10.1, 10))
+        assertEquals(1, Limits.remainingPouches(mg, 10, 2, 6.68, 3.34))
+        assertEquals(emptySet<Long>(), Limits.overLimitEntryIds(three, mg, 10))
+        val day = DayStat(0, 3, 10.02, 10, LimitMode.MG, hasData = true)
+        assertTrue(day.withinLimit)
+        assertEquals(GardenLevel.AT_LIMIT, GardenLevel.of(day))
+    }
 }

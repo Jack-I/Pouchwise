@@ -22,8 +22,8 @@ android {
         applicationId = "app.pouchwise"
         minSdk = 26
         targetSdk = 35
-        versionCode = 29
-        versionName = "0.9.5"
+        versionCode = 30
+        versionName = "0.9.6"
     }
 
     signingConfigs {
@@ -58,6 +58,11 @@ android {
     androidResources {
         generateLocaleConfig = true
     }
+}
+
+// Room writes each schema version here; the migration tests check the migrations against it.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 kotlin {
@@ -95,4 +100,6 @@ dependencies {
     testImplementation(libs.junit)
     // Android's own org.json is a stub in local unit tests.
     testImplementation(libs.org.json)
+    // A real SQLite for the migration tests; Robolectric's has no Windows ARM64 build.
+    testImplementation(libs.sqlite.jdbc)
 }

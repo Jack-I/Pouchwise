@@ -91,7 +91,8 @@ private fun DrawScope.label(
     drawText(layout, topLeft = Offset(left, y))
 }
 
-private fun niceStep(maxValue: Double, targetTicks: Int = 4): Double {
+/** A round step that splits [maxValue] into about [targetTicks] parts; a whole number when [whole]. */
+private fun niceStep(maxValue: Double, targetTicks: Int = 4, whole: Boolean = false): Double {
     if (maxValue <= 0) return 1.0
     val raw = maxValue / targetTicks
     val mag = Math.pow(10.0, Math.floor(Math.log10(raw)))
@@ -99,11 +100,17 @@ private fun niceStep(maxValue: Double, targetTicks: Int = 4): Double {
     val nice = when {
         norm <= 1 -> 1.0
         norm <= 2 -> 2.0
-        norm <= 2.5 -> 2.5
+        norm <= 2.5 && (!whole || mag >= 10) -> 2.5
         norm <= 5 -> 5.0
         else -> 10.0
     }
-    return nice * mag
+    return if (whole) max(1.0, nice * mag) else nice * mag
+}
+
+/** A tick value as precise as its step: steps of 0.25 read "0.25", not "0.3". */
+private fun tickLabel(v: Double): String {
+    val cents = Math.round(v * 100)
+    return if (cents % 10 == 0L) Fmt.mg(cents / 100.0) else String.format(Locale.getDefault(), "%.2f", cents / 100.0)
 }
 
 /** Body levels around [nowMs], sorted by time: [past] ends and [future] starts at [nowMs]. */
@@ -203,7 +210,7 @@ fun ScrollableBodyChart(
     /** Written over the "now" line where it does not run into the axis titles. */
     nowLabel: String = "",
 ) {
-    val measurer = rememberTextMeasurer()
+    val measurer = rememberTextMeasurer(cacheSize = 64)
     val labelStyle = TextStyle(fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     val nicLabelStyle = labelStyle.copy(color = nicotineColor)
     val cotLabelStyle = labelStyle.copy(color = cotinineColor)
@@ -297,12 +304,12 @@ fun ScrollableBodyChart(
         while (v <= nMax + 1e-6) {
             val yy = yN(v)
             drawLine(gridColor, Offset(padL, yy), Offset(padL + w, yy), strokeWidth = 1f)
-            label(measurer, Fmt.mg(v), padL - 6.dp.toPx(), yy - 7.sp.toPx(), nicLabelStyle, Align.END)
+            label(measurer, tickLabel(v), padL - 6.dp.toPx(), yy - 7.sp.toPx(), nicLabelStyle, Align.END)
             v += nStep
         }
         var c = 0.0
         while (c <= cMax + 1e-6) {
-            label(measurer, Fmt.mg(c), padL + w + 6.dp.toPx(), yC(c) - 7.sp.toPx(), cotLabelStyle, Align.START)
+            label(measurer, tickLabel(c), padL + w + 6.dp.toPx(), yC(c) - 7.sp.toPx(), cotLabelStyle, Align.START)
             c += cStep
         }
 
@@ -391,7 +398,7 @@ fun ScrollableBodyChart(
 /** Plain bars, labelled under every [labelEvery]th one. */
 @Composable
 fun SimpleBars(values: List<Double>, labels: List<String>, color: Color, modifier: Modifier = Modifier, labelEvery: Int = 1) {
-    val measurer = rememberTextMeasurer()
+    val measurer = rememberTextMeasurer(cacheSize = 64)
     val style = TextStyle(fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Canvas(modifier.fillMaxWidth().height(96.dp)) {
         if (values.isEmpty()) return@Canvas
@@ -458,7 +465,7 @@ fun DailyBarChart(
     modifier: Modifier = Modifier,
 ) {
     fun value(st: DayStat): Double = if (mode == LimitMode.COUNT) st.count.toDouble() else st.mg
-    val measurer = rememberTextMeasurer()
+    val measurer = rememberTextMeasurer(cacheSize = 64)
     val labelStyle = TextStyle(fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     val todayStyle = labelStyle.copy(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
     val aheadStyle = labelStyle.copy(color = labelStyle.color.copy(alpha = 0.6f))
@@ -480,7 +487,7 @@ fun DailyBarChart(
         val maxUsed = stats.maxOfOrNull { value(it) } ?: 0.0
         val maxLimit = max(stats.filter { it.mode == mode }.maxOfOrNull { it.limit } ?: 0, futureLimits.maxOfOrNull { it.second } ?: 0)
         val rawMax = max(max(maxUsed, maxLimit.toDouble()), 1.0)
-        val step = niceStep(rawMax)
+        val step = niceStep(rawMax, whole = mode == LimitMode.COUNT)
         step to ceil(rawMax * 1.1 / step) * step
     }
 
@@ -525,7 +532,7 @@ fun DailyBarChart(
         while (v <= yMax + 1e-9) {
             val yy = y(v)
             drawLine(gridColor, Offset(padL, yy), Offset(size.width, yy), strokeWidth = 1f)
-            label(measurer, Fmt.mg(v), padL - 6.dp.toPx(), yy - 7.sp.toPx(), labelStyle, Align.END)
+            label(measurer, tickLabel(v), padL - 6.dp.toPx(), yy - 7.sp.toPx(), labelStyle, Align.END)
             v += step
         }
 

@@ -1,0 +1,340 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 11,
+    "identityHash": "04f2679e924b70753b9d4bcda529498d",
+    "entities": [
+      {
+        "tableName": "pouch_types",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `strengthMg` REAL NOT NULL, `colorIndex` INTEGER NOT NULL, `sortOrder` INTEGER NOT NULL, `archived` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `releaseSpeed` INTEGER NOT NULL, `brand` TEXT NOT NULL, `releaseK` REAL NOT NULL, `fastRelease` INTEGER NOT NULL, `pricePerCan` REAL, `pouchesPerCan` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "strengthMg",
+            "columnName": "strengthMg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "colorIndex",
+            "columnName": "colorIndex",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "archived",
+            "columnName": "archived",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "releaseSpeed",
+            "columnName": "releaseSpeed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "brand",
+            "columnName": "brand",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "releaseK",
+            "columnName": "releaseK",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fastRelease",
+            "columnName": "fastRelease",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pricePerCan",
+            "columnName": "pricePerCan",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "pouchesPerCan",
+            "columnName": "pouchesPerCan",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "log_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `pouchTypeId` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `strengthMg` REAL NOT NULL, `endTimestamp` INTEGER, `releaseSpeed` INTEGER NOT NULL, `releaseK` REAL NOT NULL, `pouchMinutes` INTEGER, `day` INTEGER, `pricePerPouch` REAL, `planLevelMg` REAL, `felt` INTEGER, `feltAt` INTEGER)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pouchTypeId",
+            "columnName": "pouchTypeId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "strengthMg",
+            "columnName": "strengthMg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endTimestamp",
+            "columnName": "endTimestamp",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "releaseSpeed",
+            "columnName": "releaseSpeed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "releaseK",
+            "columnName": "releaseK",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pouchMinutes",
+            "columnName": "pouchMinutes",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "day",
+            "columnName": "day",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "pricePerPouch",
+            "columnName": "pricePerPouch",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "planLevelMg",
+            "columnName": "planLevelMg",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "felt",
+            "columnName": "felt",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "feltAt",
+            "columnName": "feltAt",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_log_entries_timestamp",
+            "unique": false,
+            "columnNames": [
+              "timestamp"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_log_entries_timestamp` ON `${TABLE_NAME}` (`timestamp`)"
+          },
+          {
+            "name": "index_log_entries_pouchTypeId",
+            "unique": false,
+            "columnNames": [
+              "pouchTypeId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_log_entries_pouchTypeId` ON `${TABLE_NAME}` (`pouchTypeId`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "plan_versions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`fromDay` INTEGER NOT NULL, `limitMode` TEXT NOT NULL, `dailyLimitCount` INTEGER NOT NULL, `dailyLimitMg` REAL NOT NULL, `taperEnabled` INTEGER NOT NULL, `taperStartDay` INTEGER NOT NULL, `taperStartValue` REAL NOT NULL, `taperTargetDay` INTEGER NOT NULL, `taperTargetValue` REAL NOT NULL, PRIMARY KEY(`fromDay`))",
+        "fields": [
+          {
+            "fieldPath": "fromDay",
+            "columnName": "fromDay",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "limitMode",
+            "columnName": "limitMode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dailyLimitCount",
+            "columnName": "dailyLimitCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dailyLimitMg",
+            "columnName": "dailyLimitMg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taperEnabled",
+            "columnName": "taperEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taperStartDay",
+            "columnName": "taperStartDay",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taperStartValue",
+            "columnName": "taperStartValue",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taperTargetDay",
+            "columnName": "taperTargetDay",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taperTargetValue",
+            "columnName": "taperTargetValue",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "fromDay"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "felt_marks",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `entryId` INTEGER NOT NULL, `level` INTEGER NOT NULL, `atMs` INTEGER NOT NULL, `recalled` INTEGER NOT NULL DEFAULT 0)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryId",
+            "columnName": "entryId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "level",
+            "columnName": "level",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "atMs",
+            "columnName": "atMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "recalled",
+            "columnName": "recalled",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_felt_marks_entryId",
+            "unique": false,
+            "columnNames": [
+              "entryId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_felt_marks_entryId` ON `${TABLE_NAME}` (`entryId`)"
+          }
+        ],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '04f2679e924b70753b9d4bcda529498d')"
+    ]
+  }
+}

@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
 import app.pouchwise.R
-import app.pouchwise.model.Clearance
 import app.pouchwise.model.DayKeys
 import app.pouchwise.model.IntervalMode
 import app.pouchwise.model.IntervalPlan
@@ -66,12 +65,11 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
     val awayFromNow by remember(view) { derivedStateOf { abs(view.endH - view.nowEndH()) > view.windowH * 0.02f } }
     val scope = rememberCoroutineScope()
 
-    // The ticker only moves every 30 s; a pouch logged since then is already in.
-    val clock = remember(now, entries) { maxOf(now, System.currentTimeMillis()) }
+    val clock = remember(now, entries) { wallClock(now) }
     val doses = remember(entries, settings) { entries.map { PouchTiming.toDose(it, settings) } }
     val levels = remember(doses, pk, clock) { Pharmacokinetics.levelsAt(clock, doses, pk) }
-    val mostlyGone by produceState<Clearance?>(initialValue = null, doses, pk, clock) {
-        value = withContext(Dispatchers.Default) { Pharmacokinetics.mostlyGone(clock, doses, pk, withCotinine = false) }
+    val mostlyGone by produceState<Long?>(initialValue = null, doses, pk, clock) {
+        value = withContext(Dispatchers.Default) { Pharmacokinetics.nicotineMostlyGoneMs(clock, doses, pk) ?: CLEARED }
     }
     val nonUserAt by produceState<Long?>(initialValue = null, doses, settings, clock) {
         value = withContext(Dispatchers.Default) { Levels.nonUserAtMs(clock, doses, pk, settings.bodyWeightKg) ?: CLEARED }
@@ -83,13 +81,11 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
             IntervalPlan.restMs(doses, pk, IntervalPlan.restLevelMg(settings), DayKeys.startOfDayMs(today, settings.dayStartHour), clock)
         }
     }
-    val planLevel = remember(entries, settings, today) {
-        IntervalPlan.threshold(entries.filter { it.timestamp >= clock - IntervalPlan.DATA_MS }, settings, clock)
-    }
+    val planLevel = remember(entries, settings, today) { IntervalPlan.threshold(entries, settings, clock) }
     val nextOnPlan = remember(doses, pk, planLevel, clock) { planLevel?.let { IntervalPlan.nextOnPlanMs(doses, pk, it, clock) } }
 
-    // The chart can be dragged back to the first pouch (30 days at most) and ahead until both have cleared
-    // (7 days at most). One set of points serves every window size; computed off the main thread.
+    // The chart can be dragged back to the first pouch and ahead until both have cleared; one set of points
+    // serves every window size.
     val firstMs = entries.firstOrNull()?.timestamp
     val reach by produceState<Reach?>(initialValue = null, doses, pk, clock) {
         value = withContext(Dispatchers.Default) {
@@ -139,7 +135,7 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
                     color = AppColors.nicotine,
                     mg = levels.nicotineMg,
                     ngMl = nicNg,
-                    until = mostlyGone?.let { it.nicotineClearMs ?: CLEARED },
+                    until = mostlyGone,
                     untilRes = R.string.gone_95_short,
                     reachedRes = R.string.cleared_short,
                     nowMs = clock,
@@ -222,7 +218,7 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
                         leftAxisTitle = stringResource(R.string.axis_nicotine),
                         rightAxisTitle = stringResource(R.string.axis_cotinine),
                         planLevelMg = planLevel,
-                        nextOnPlanMs = nextOnPlan?.takeIf { it > clock },
+                        nextOnPlanMs = nextOnPlan,
                         planColor = AppColors.plan,
                         nowLabel = stringResource(R.string.time_now),
                     )
@@ -296,7 +292,7 @@ private fun SubstanceSummary(
         val (first, second) = when {
             until == null -> "" to ""
             until == CLEARED || until <= nowMs -> stringResource(reachedRes) to ""
-            else -> stringResource(untilRes, durationText(until - nowMs)) to
+            else -> stringResource(untilRes, durationText((until - nowMs).coerceAtLeast(60_000L))) to
                 stringResource(R.string.gone_by, Fmt.timeOrDayTime(until, nowMs))
         }
         Text(first, style = small, color = muted)

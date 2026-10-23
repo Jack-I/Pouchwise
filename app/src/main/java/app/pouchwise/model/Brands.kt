@@ -30,8 +30,6 @@ object Brands {
 
     fun find(brand: String): BrandInfo? = known.firstOrNull { it.name.equals(brand.trim(), ignoreCase = true) }
 
-    fun isKnown(brand: String): Boolean = find(brand) != null
-
     fun kFor(brand: String): Double = find(brand)?.kPerMin ?: averageK
 
     fun effectiveK(brand: String, fastRelease: Boolean): Double =

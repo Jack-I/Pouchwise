@@ -26,7 +26,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.SaveableStateHolder
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,6 +66,8 @@ fun PouchwiseApp(vm: AppViewModel) {
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
     var screen by rememberSaveable { mutableIntStateOf(SCREEN_MAIN) }
     var pouchesFromSettings by rememberSaveable { mutableStateOf(false) }
+    // Each tab keeps its scroll position and choices while another tab or screen is shown.
+    val tabStates = rememberSaveableStateHolder()
 
     val settings by vm.settings.collectAsStateWithLifecycle()
     val settingsLoaded by vm.settingsLoaded.collectAsStateWithLifecycle()
@@ -96,6 +100,7 @@ fun PouchwiseApp(vm: AppViewModel) {
         else -> MainScaffold(
             vm = vm,
             tabIndex = tabIndex,
+            tabStates = tabStates,
             onTab = { tabIndex = it },
             onOpenSettings = { screen = SCREEN_SETTINGS },
             onEditPouches = { pouchesFromSettings = false; screen = SCREEN_POUCHES },
@@ -108,6 +113,7 @@ fun PouchwiseApp(vm: AppViewModel) {
 private fun MainScaffold(
     vm: AppViewModel,
     tabIndex: Int,
+    tabStates: SaveableStateHolder,
     onTab: (Int) -> Unit,
     onOpenSettings: () -> Unit,
     onEditPouches: () -> Unit,
@@ -150,11 +156,14 @@ private fun MainScaffold(
         },
     ) { inner ->
         Box(Modifier.fillMaxSize().padding(inner)) {
-            when (tabs[tabIndex]) {
-                Tab.TRACK -> TrackScreen(vm = vm, onEditPouches = onEditPouches)
-                Tab.BODY -> BodyScreen(vm = vm, onOpenLevels = onOpenLevels)
-                Tab.HISTORY -> HistoryScreen(vm = vm, onEditPouches = onEditPouches)
-                Tab.PLAN -> PlanScreen(vm = vm)
+            val tab = tabs[tabIndex]
+            tabStates.SaveableStateProvider(tab.name) {
+                when (tab) {
+                    Tab.TRACK -> TrackScreen(vm = vm, onEditPouches = onEditPouches)
+                    Tab.BODY -> BodyScreen(vm = vm, onOpenLevels = onOpenLevels)
+                    Tab.HISTORY -> HistoryScreen(vm = vm, onEditPouches = onEditPouches)
+                    Tab.PLAN -> PlanScreen(vm = vm)
+                }
             }
         }
     }

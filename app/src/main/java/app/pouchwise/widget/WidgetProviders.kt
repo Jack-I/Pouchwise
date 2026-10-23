@@ -34,8 +34,8 @@ class WideWidgetProvider : AppWidgetProvider() {
             // Our alarm, and system changes that move "today" or the language of the texts.
             WidgetUpdater.ACTION_REFRESH,
             Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED,
             Intent.ACTION_LOCALE_CHANGED -> refreshAsync(context)
-            Intent.ACTION_TIMEZONE_CHANGED -> refreshAsync(context, zoneChanged = true)
             else -> super.onReceive(context, intent)
         }
     }
@@ -69,12 +69,13 @@ class CoverWidgetProvider : AppWidgetProvider() {
     }
 }
 
-private fun BroadcastReceiver.refreshAsync(context: Context, zoneChanged: Boolean = false) {
+private fun BroadcastReceiver.refreshAsync(context: Context) {
     val pending = goAsync()
     CoroutineScope(Dispatchers.IO).launch {
         try {
-            // A failure must not crash the app from a background broadcast; the next one will retry.
-            if (zoneChanged) runCatching { RunningDay.checkZone(context) }
+            // A failure must not crash the app from a background broadcast; the next one will retry. The zone is
+            // checked every time, as its own broadcast never reaches a stopped app.
+            runCatching { RunningDay.checkZone(context) }
             runCatching { WidgetUpdater.updateAll(context) }
         } finally {
             pending.finish()

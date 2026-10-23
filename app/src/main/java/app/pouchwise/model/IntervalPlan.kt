@@ -19,6 +19,7 @@ object IntervalPlan {
     /** Entries a plan needs loaded: the week so far, two weeks before it, and the model's lookback. */
     const val DATA_MS = 28L * 24 * 3_600_000L
     private const val MIN_SAMPLES = 5
+    private const val MINUTE_MS = 60_000L
 
     /** Nicotine in the body (mg) at which the receptors are half free, for this body weight. */
     fun restLevelMg(s: Settings): Double =
@@ -43,18 +44,22 @@ object IntervalPlan {
         return if (levels.size < MIN_SAMPLES) null else Stats.median(levels)
     }
 
-    /** Level (mg) below which the next pouch is due at [nowMs]; null with the plan off or too little data yet. */
-    fun threshold(entries: List<LogEntry>, s: Settings, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Double? =
-        when (s.intervalMode) {
+    /**
+     * Level (mg) below which the next pouch is due at [nowMs]; null with the plan off or too little data yet. It is fixed
+     * for the whole tracking day (the two weeks before it), so the time shown and the level a pouch records agree.
+     */
+    fun threshold(entries: List<LogEntry>, s: Settings, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Double? {
+        if (s.intervalMode == IntervalMode.OFF) return null
+        val recent = entries.filter { it.timestamp in nowMs - DATA_MS..nowMs }
+        val dayStart = DayKeys.startOfDayMs(DayKeys.epochDay(nowMs, s.dayStartHour, zone), s.dayStartHour, zone)
+        val usual = { end: Long -> usualLevel(recent, s, end - WINDOW_MS, end) }
+        return when (s.intervalMode) {
             IntervalMode.OFF -> null
-            IntervalMode.KEEP -> usualLevel(entries, s, nowMs - WINDOW_MS, nowMs)
-            IntervalMode.LOWER -> {
-                val monday = weekStartMs(nowMs, s.dayStartHour, zone)
-                // In the first weeks there is nothing before Monday yet; the last two weeks stand in.
-                val usual = usualLevel(entries, s, monday - WINDOW_MS, monday) ?: usualLevel(entries, s, nowMs - WINDOW_MS, nowMs)
-                usual?.let { max(it * LOWER_SHARE, restLevelMg(s)) }
-            }
+            IntervalMode.KEEP -> usual(dayStart)
+            // In the first weeks there is nothing before Monday yet; the two weeks before today stand in.
+            IntervalMode.LOWER -> (usual(weekStartMs(nowMs, s.dayStartHour, zone)) ?: usual(dayStart))?.let { max(it * LOWER_SHARE, restLevelMg(s)) }
         }
+    }
 
     /** Start of the tracking day that is the Monday of [nowMs]'s week. */
     fun weekStartMs(nowMs: Long, dayStartHour: Int, zone: ZoneId = ZoneId.systemDefault()): Long {
@@ -63,14 +68,17 @@ object IntervalPlan {
         return DayKeys.startOfDayMs(monday, dayStartHour, zone)
     }
 
-    /** When nicotine, with no more pouches, drops below [levelMg] for good; null when it already is and stays there. */
+    /**
+     * When nicotine, with no more pouches, drops below [levelMg] for good: a whole minute, so a pouch put in at the
+     * minute shown is not early. Null when it already is below, and stays there.
+     */
     fun nextOnPlanMs(doses: List<Dose>, p: PkParams, levelMg: Double, nowMs: Long): Long? =
         Pharmacokinetics.clearance(
-            nowMs, doses, p,
+            Math.floorDiv(nowMs, MINUTE_MS) * MINUTE_MS, doses, p,
             nicotineThreshold = levelMg,
             cotinineThreshold = Double.POSITIVE_INFINITY,
-            stepMs = 60_000L,
-        ).nicotineClearMs
+            stepMs = MINUTE_MS,
+        ).nicotineClearMs?.takeIf { it > nowMs }
 
     /** Pouches that went in while nicotine was still at or above their plan level; the day's first never counts. */
     fun earlyIds(dayEntries: List<LogEntry>, allEntries: List<LogEntry>, s: Settings): Set<Long> {

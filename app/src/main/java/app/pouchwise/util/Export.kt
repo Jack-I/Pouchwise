@@ -30,83 +30,64 @@ object Export {
     fun csv(entries: List<LogEntry>, types: List<PouchType>, settings: Settings, marks: List<FeltMark> = emptyList()): String {
         val byId = types.associateBy { it.id }
         val latest = marks.groupBy { it.entryId }.mapValues { (_, own) -> own.maxWith(compareBy({ it.atMs }, { it.id })) }
-        val zone = ZoneId.systemDefault()
         val now = System.currentTimeMillis()
-        val sb = StringBuilder("id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg,pouch_min,day,price,plan_level_mg,felt,felt_after_min\n")
-        for (e in entries) {
-            val iso = isoFormatter.format(Instant.ofEpochMilli(e.timestamp).atZone(zone))
+        val header = "id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg,pouch_min,day," +
+            "price,plan_level_mg,felt,felt_after_min,felt_recalled"
+        return table(header, entries.map { e ->
             val type = byId[e.pouchTypeId]
             val last = latest[e.id]
-            val durationMin = PouchTiming.effectiveDurationMs(e, settings) / 60_000.0
-            sb.append(e.id).append(',')
-                .append(iso).append(',')
-                .append(e.timestamp).append(',')
-                .append(e.endTimestamp?.toString() ?: "").append(',')
-                .append(String.format(Locale.ROOT, "%.1f", durationMin)).append(',')
-                .append(quote(type?.name ?: "")).append(',')
-                .append(quote(type?.brand ?: "")).append(',')
-                .append(String.format(Locale.ROOT, "%.2f", e.strengthMg)).append(',')
-                .append(String.format(Locale.ROOT, "%.4f", e.releaseK)).append(',')
-                .append(String.format(Locale.ROOT, "%.3f", PouchTiming.absorbedMg(e, settings, now))).append(',')
-                .append(PouchTiming.pouchMinutes(e, settings)).append(',')
-                .append(DayKeys.localDate(DayKeys.of(e, settings.dayStartHour))).append(',')
-                .append(e.pricePerPouch?.let { String.format(Locale.ROOT, "%.2f", it) } ?: "").append(',')
-                .append(e.planLevelMg?.let { String.format(Locale.ROOT, "%.3f", it) } ?: "").append(',')
-                .append(last?.let { Felt.of(it.level)?.code } ?: "").append(',')
-                .append(last?.let { minutesAfter(e.timestamp, it.atMs).toString() } ?: "").append('\n')
-        }
-        return sb.toString()
+            listOf(
+                e.id, iso(e.timestamp), e.timestamp, e.endTimestamp ?: "", dec(PouchTiming.effectiveDurationMs(e, settings) / 60_000.0, 1),
+                quote(type?.name ?: ""), quote(type?.brand ?: ""), dec(e.strengthMg, 2), dec(e.releaseK, 4),
+                dec(PouchTiming.absorbedMg(e, settings, now), 3), PouchTiming.pouchMinutes(e, settings),
+                DayKeys.localDate(DayKeys.of(e, settings.dayStartHour)),
+                e.pricePerPouch?.let { dec(it, 2) } ?: "", e.planLevelMg?.let { dec(it, 3) } ?: "",
+                last?.let { Felt.of(it.level)?.code } ?: "", last?.let { minutesAfter(e.timestamp, it.atMs) } ?: "",
+                last?.let { if (it.recalled) 1 else 0 } ?: "",
+            )
+        })
     }
 
     /** One row per felt answer, with the model's levels at that moment, when the pouch went in and when it came out. */
     fun feltCsv(entries: List<LogEntry>, types: List<PouchType>, settings: Settings, marks: List<FeltMark>): String {
         val byId = types.associateBy { it.id }
-        val zone = ZoneId.systemDefault()
         val sorted = entries.sortedWith(compareBy({ it.timestamp }, { it.id }))
         val entryById = sorted.associateBy { it.id }
         val previous = sorted.zipWithNext().associate { (before, e) -> e.id to before }
         val firsts = IntervalPlan.firstOfDayIds(sorted, settings)
         val doses = sorted.map { PouchTiming.toDose(it, settings) }
         fun ng(mg: Double, vd: Double) = Pharmacokinetics.toNgPerMl(mg, settings.bodyWeightKg, vd)
-        fun freePct(nicotineNg: Double) = 100.0 * (1.0 - Levels.receptorsBusy(nicotineNg))
-        val sb = StringBuilder(
-            "entry_id,pouch,brand,strength_mg,release_k,toss_in_iso,mark_iso,min_after_toss_in,in_mouth,felt,recalled,nicotine_ng_ml," +
-                "cotinine_ng_ml,receptors_free_pct,nicotine_at_toss_in_ng_ml,receptors_free_at_toss_in_pct,nicotine_at_pull_out_ng_ml," +
-                "receptors_free_at_pull_out_pct,min_since_prev_pouch,first_of_day\n",
-        )
-        for (m in marks.sortedWith(compareBy({ it.atMs }, { it.id }))) {
-            val e = entryById[m.entryId] ?: continue
-            val felt = Felt.of(m.level) ?: continue
+        fun nicotineAt(ms: Long) = ng(Pharmacokinetics.levelsAt(ms, doses, settings.pk).nicotineMg, Pharmacokinetics.NICOTINE_VD_L_PER_KG)
+        fun freePct(nicotineNg: Double) = dec(100.0 * (1.0 - Levels.receptorsBusy(nicotineNg)), 0)
+        val header = "entry_id,pouch,brand,strength_mg,release_k,toss_in_iso,mark_iso,min_after_toss_in,in_mouth,felt,recalled," +
+            "nicotine_ng_ml,cotinine_ng_ml,receptors_free_pct,nicotine_at_toss_in_ng_ml,receptors_free_at_toss_in_pct," +
+            "nicotine_at_pull_out_ng_ml,receptors_free_at_pull_out_pct,min_since_prev_pouch,first_of_day"
+        return table(header, marks.sortedWith(compareBy({ it.atMs }, { it.id })).mapNotNull { m ->
+            val e = entryById[m.entryId] ?: return@mapNotNull null
+            val felt = Felt.of(m.level) ?: return@mapNotNull null
             val type = byId[e.pouchTypeId]
             val atMark = Pharmacokinetics.levelsAt(m.atMs, doses, settings.pk)
             val nicotine = ng(atMark.nicotineMg, Pharmacokinetics.NICOTINE_VD_L_PER_KG)
-            val nicotineAtStart = ng(Pharmacokinetics.levelsAt(e.timestamp, doses, settings.pk).nicotineMg, Pharmacokinetics.NICOTINE_VD_L_PER_KG)
+            val atStart = nicotineAt(e.timestamp)
             val out = PouchTiming.outMs(e, settings)
-            val nicotineAtOut = ng(Pharmacokinetics.levelsAt(out, doses, settings.pk).nicotineMg, Pharmacokinetics.NICOTINE_VD_L_PER_KG)
-            val inMouth = m.atMs < out
-            sb.append(e.id).append(',')
-                .append(quote(type?.name ?: "")).append(',')
-                .append(quote(type?.brand ?: "")).append(',')
-                .append(String.format(Locale.ROOT, "%.2f", e.strengthMg)).append(',')
-                .append(String.format(Locale.ROOT, "%.4f", e.releaseK)).append(',')
-                .append(isoFormatter.format(Instant.ofEpochMilli(e.timestamp).atZone(zone))).append(',')
-                .append(isoFormatter.format(Instant.ofEpochMilli(m.atMs).atZone(zone))).append(',')
-                .append(minutesAfter(e.timestamp, m.atMs)).append(',')
-                .append(if (inMouth) 1 else 0).append(',')
-                .append(felt.code).append(',')
-                .append(if (m.recalled) 1 else 0).append(',')
-                .append(String.format(Locale.ROOT, "%.1f", nicotine)).append(',')
-                .append(String.format(Locale.ROOT, "%.1f", ng(atMark.cotinineMg, Pharmacokinetics.COTININE_VD_L_PER_KG))).append(',')
-                .append(String.format(Locale.ROOT, "%.0f", freePct(nicotine))).append(',')
-                .append(String.format(Locale.ROOT, "%.1f", nicotineAtStart)).append(',')
-                .append(String.format(Locale.ROOT, "%.0f", freePct(nicotineAtStart))).append(',')
-                .append(String.format(Locale.ROOT, "%.1f", nicotineAtOut)).append(',')
-                .append(String.format(Locale.ROOT, "%.0f", freePct(nicotineAtOut))).append(',')
-                .append(previous[e.id]?.let { minutesAfter(it.timestamp, e.timestamp).toString() } ?: "").append(',')
-                .append(if (e.id in firsts) 1 else 0).append('\n')
-        }
-        return sb.toString()
+            val atOut = nicotineAt(out)
+            listOf(
+                e.id, quote(type?.name ?: ""), quote(type?.brand ?: ""), dec(e.strengthMg, 2), dec(e.releaseK, 4),
+                iso(e.timestamp), iso(m.atMs), minutesAfter(e.timestamp, m.atMs), if (m.atMs < out) 1 else 0,
+                felt.code, if (m.recalled) 1 else 0,
+                dec(nicotine, 1), dec(ng(atMark.cotinineMg, Pharmacokinetics.COTININE_VD_L_PER_KG), 1), freePct(nicotine),
+                dec(atStart, 1), freePct(atStart), dec(atOut, 1), freePct(atOut),
+                previous[e.id]?.let { minutesAfter(it.timestamp, e.timestamp) } ?: "", if (e.id in firsts) 1 else 0,
+            )
+        })
     }
+
+    private fun table(header: String, rows: List<List<Any>>): String =
+        (listOf(header) + rows.map { it.joinToString(",") }).joinToString("\n", postfix = "\n")
+
+    private fun dec(v: Double, places: Int): String = String.format(Locale.ROOT, "%.${places}f", v)
+
+    private fun iso(ms: Long): String = isoFormatter.format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()))
 
     private fun minutesAfter(fromMs: Long, atMs: Long): Long = Math.round((atMs - fromMs) / 60_000.0)
 
@@ -226,5 +207,5 @@ object Export {
         DateTimeFormatter.ofPattern("yyyyMMdd-HHmm", Locale.ROOT).format(Instant.now().atZone(ZoneId.systemDefault()))
 
     private fun quote(s: String): String =
-        if (s.any { it == ',' || it == '"' || it == '\n' }) "\"" + s.replace("\"", "\"\"") + "\"" else s
+        if (s.any { it == ',' || it == '"' || it == '\n' || it == '\r' }) "\"" + s.replace("\"", "\"\"") + "\"" else s
 }

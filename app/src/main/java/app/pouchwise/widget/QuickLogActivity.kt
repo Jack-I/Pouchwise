@@ -67,7 +67,6 @@ class QuickLogActivity : ComponentActivity() {
         val removing = intent?.action == ACTION_REMOVE
         val settingsFlow = SettingsRepository(applicationContext).settings
         setContent {
-            // Follow the app's own theme setting, like the app does.
             val settings by settingsFlow.collectAsState(initial = null)
             val mode = settings?.themeMode ?: return@setContent
             PouchwiseTheme(mode) {
@@ -191,14 +190,14 @@ object QuickLog {
 
     /** A second tap on "+" within this time is taken as a double tap, not as a second pouch. */
     private const val DOUBLE_TAP_MS = 500L
-    /** On the uptime clock, which a change of the wall clock cannot move. */
+    /** On the elapsed-realtime clock, which a change of the wall clock cannot move. */
     private var lastLogAt = -DOUBLE_TAP_MS
 
     fun log(context: Context, type: PouchType) {
         val app = context.applicationContext
         val now = System.currentTimeMillis()
         if (!acceptTap()) return
-        scope.launch { insert(app, type, now) }
+        launch(app) { insert(app, type, now) }
     }
 
     /** For a broadcast from the cover-screen widget: done before the receiver lets the process go. */
@@ -221,14 +220,16 @@ object QuickLog {
         val settings = SettingsRepository(app).settings.first()
         val dao = AppDatabase.get(app).dao()
         dao.insertEntry(PouchLog.entry(dao, type, atMs, settings))
+        // A slow first log (a cold start) must not let the second tap of a double tap through.
+        synchronized(this) { lastLogAt = SystemClock.elapsedRealtime() }
         toast(app, app.getString(R.string.widget_logged, type.name))
         runCatching { WidgetUpdater.updateAll(app) }
     }
 
     fun remove(context: Context, entry: LogEntry, type: PouchType?, settings: Settings) {
         val app = context.applicationContext
-        scope.launch {
-            AppDatabase.get(app).dao().updateEntry(PouchTiming.finish(entry, settings, System.currentTimeMillis()))
+        launch(app) {
+            PouchTiming.finish(entry, settings, System.currentTimeMillis()).endTimestamp?.let { AppDatabase.get(app).dao().setOut(entry.id, it) }
             toast(app, app.getString(R.string.widget_removed, type?.name ?: "?"))
             runCatching { WidgetUpdater.updateAll(app) }
         }
@@ -237,10 +238,14 @@ object QuickLog {
     /** The widget still showed a pouch that has meanwhile come out by itself. */
     fun nothingIn(context: Context) {
         val app = context.applicationContext
-        scope.launch {
+        launch(app) {
             toast(app, app.getString(R.string.widget_nothing_in))
             runCatching { WidgetUpdater.updateAll(app) }
         }
+    }
+
+    private fun launch(app: Context, work: suspend () -> Unit) = scope.launch {
+        runCatching { work() }.onFailure { toast(app, app.getString(R.string.widget_failed)) }
     }
 
     private suspend fun toast(app: Context, text: String) = withContext(Dispatchers.Main) {

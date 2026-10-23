@@ -26,17 +26,22 @@ object Limits {
     fun usage(mode: LimitMode, count: Int, mg: Double): Double =
         if (mode == LimitMode.COUNT) count.toDouble() else mg
 
-    /** What is left of today's limit in its unit, negative when over; within a rounding hair of it counts as 0. */
+    /** Usage this close to the limit counts as at it: three 3.34 mg pouches are "10 of 10 mg", not over. */
+    private const val HAIR = 0.05
+
+    fun isOver(used: Double, limit: Int): Boolean = used > limit + HAIR
+
+    /** What is left of today's limit in its unit, negative when over, 0 within a [HAIR] of it. */
     fun left(mode: LimitMode, limit: Int, count: Int, mg: Double): Double {
         val left = limit - usage(mode, count, mg)
-        return if (abs(left) < 0.05) 0.0 else left
+        return if (abs(left) < HAIR) 0.0 else left
     }
 
     /** How many more pouches of [strengthMg] fit under the limit today (never negative). */
     fun remainingPouches(s: Settings, limit: Int, countSoFar: Int, mgSoFar: Double, strengthMg: Double): Int =
         when (s.limitMode) {
             LimitMode.COUNT -> (limit - countSoFar).coerceAtLeast(0)
-            LimitMode.MG -> if (strengthMg <= 0) 0 else ((limit - mgSoFar + 1e-9) / strengthMg).toInt().coerceAtLeast(0)
+            LimitMode.MG -> if (strengthMg <= 0) 0 else ((limit - mgSoFar + HAIR) / strengthMg).toInt().coerceAtLeast(0)
         }
 
     /** True when not one of the pouches of [strengthsMg] fits under the limit today; false with no pouches at all. */
@@ -75,11 +80,11 @@ object Limits {
         for (e in dayEntriesAsc) {
             count++
             mg += e.strengthMg
-            val isOver = when (s.limitMode) {
+            val beyond = when (s.limitMode) {
                 LimitMode.COUNT -> count > limit
-                LimitMode.MG -> mg > limit + 1e-9
+                LimitMode.MG -> isOver(mg, limit)
             }
-            if (isOver) over.add(e.id)
+            if (beyond) over.add(e.id)
         }
         return over
     }

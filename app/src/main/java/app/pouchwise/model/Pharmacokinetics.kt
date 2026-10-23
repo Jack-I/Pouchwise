@@ -43,7 +43,6 @@ object Pharmacokinetics {
     private const val NICOTINE_MW = 162.23
     private const val COTININE_MW = 176.22
     private const val HOUR_MS = 3_600_000.0
-    private const val MIN_DURATION_MS = 60_000L
 
     /** Below these amounts the substance counts as "cleared" (roughly below usual detection in blood). */
     const val NICOTINE_CLEARED_MG = 0.1
@@ -123,7 +122,7 @@ object Pharmacokinetics {
 
     private fun durationMs(d: Dose, p: PkParams): Long {
         val fullMs = max(d.fullMinutes ?: p.absorptionMinutes, 1) * 60_000L
-        return d.durationMs.coerceIn(MIN_DURATION_MS, fullMs)
+        return d.durationMs.coerceIn(PouchTiming.MIN_DURATION_MS, fullMs)
     }
 
     /**
@@ -172,7 +171,9 @@ object Pharmacokinetics {
         var lastCotAbove: Long? = null
         var t = nowMs
         val end = nowMs + MAX_FORECAST_MS
-        val settle = nowMs + 2 * HOUR_MS.toLong()
+        // Cotinine goes on forming for hours after the last pouch is out, so its verdict waits for its peak.
+        val lastOut = recent.maxOfOrNull { it.timeMs + durationMs(it, p) } ?: nowMs
+        val settle = if (cotinineThreshold.isFinite()) max(nowMs, lastOut) + PEAK_SEARCH_MS else nowMs + 2 * HOUR_MS.toLong()
         while (t <= end) {
             val l = levelsAt(t, recent, p)
             if (l.nicotineMg >= nicotineThreshold) lastNicAbove = t
@@ -184,32 +185,20 @@ object Pharmacokinetics {
     }
 
     /**
-     * When each substance will be 95 % gone if nothing more is taken: the moment it stays below a twentieth
-     * of the highest level still ahead (now, or the peak that a pouch still in or cotinine still forming
-     * will bring). Null when even that level is below the "cleared" amount, and for cotinine without [withCotinine].
+     * When nicotine will be 95 % gone if nothing more is taken: the moment it stays below a twentieth of the highest
+     * level still ahead (now, or the peak at the pull-out of a pouch still in). Null when even that has cleared.
      */
-    fun mostlyGone(nowMs: Long, doses: List<Dose>, p: PkParams, withCotinine: Boolean = true): Clearance {
+    fun nicotineMostlyGoneMs(nowMs: Long, doses: List<Dose>, p: PkParams): Long? {
         val recent = doses.filter { nowMs - it.timeMs <= LOOKBACK_MS }
         val lastOut = recent.maxOfOrNull { it.timeMs + durationMs(it, p) } ?: nowMs
-        var nPeak = 0.0
-        var cPeak = 0.0
+        var peak = 0.0
         var t = nowMs
-        val until = max(nowMs, lastOut) + PEAK_SEARCH_MS
-        while (t <= until) {
-            val l = levelsAt(t, recent, p)
-            nPeak = max(nPeak, l.nicotineMg)
-            cPeak = max(cPeak, l.cotinineMg)
+        while (t <= max(nowMs, lastOut) + SCAN_STEP_MS) {
+            peak = max(peak, levelsAt(t, recent, p).nicotineMg)
             t += SCAN_STEP_MS
         }
-        val nicotine = nPeak >= NICOTINE_CLEARED_MG
-        val cotinine = withCotinine && cPeak >= COTININE_CLEARED_MG
-        if (!nicotine && !cotinine) return Clearance(null, null)
-        val gone = clearance(
-            nowMs, recent, p,
-            nicotineThreshold = if (nicotine) GONE_SHARE * nPeak else Double.POSITIVE_INFINITY,
-            cotinineThreshold = if (cotinine) GONE_SHARE * cPeak else Double.POSITIVE_INFINITY,
-        )
-        return Clearance(gone.nicotineClearMs, gone.cotinineClearMs)
+        if (peak < NICOTINE_CLEARED_MG) return null
+        return clearance(nowMs, recent, p, nicotineThreshold = GONE_SHARE * peak, cotinineThreshold = Double.POSITIVE_INFINITY).nicotineClearMs
     }
 
     /** mg in the body to an approximate plasma concentration in ng/mL. */

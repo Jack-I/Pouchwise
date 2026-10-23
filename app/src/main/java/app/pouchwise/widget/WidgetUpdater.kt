@@ -22,6 +22,7 @@ object WidgetUpdater {
     const val ACTION_REFRESH = "app.pouchwise.action.REFRESH_WIDGETS"
 
     private const val ALARM_WINDOW_MS = 10 * 60_000L
+    private const val RETRY_MS = 15 * 60_000L
     private const val MAX_BITMAP_PX = 720
     /** Pictures for several sizes travel in one call to the launcher; past this it sends just one. */
     private const val MAX_PICTURES_BYTES = 800 * 1024L
@@ -40,17 +41,22 @@ object WidgetUpdater {
                 scheduleRefresh(app, null)
                 return@withContext
             }
-            val state = WidgetData.load(app)
-            ringIds.forEach { id -> updateRing(app, manager, id, state) }
-            wideIds.forEach { manager.updateAppWidget(it, WidgetRenderer.wideViews(app, state)) }
-            if (coverIds.isNotEmpty()) {
-                val cover = WidgetData.loadCover(app)
-                coverIds.forEach { manager.updateAppWidget(it, WidgetRenderer.coverViews(app, state, cover)) }
+            // Until the update has gone through, the alarm is a retry: a failure must not leave yesterday's numbers up.
+            var next: Long? = System.currentTimeMillis() + RETRY_MS
+            try {
+                val state = WidgetData.load(app)
+                ringIds.forEach { id -> updateRing(app, manager, id, state) }
+                wideIds.forEach { manager.updateAppWidget(it, WidgetRenderer.wideViews(app, state)) }
+                if (coverIds.isNotEmpty()) {
+                    val cover = WidgetData.loadCover(app)
+                    coverIds.forEach { manager.updateAppWidget(it, WidgetRenderer.coverViews(app, state, cover)) }
+                }
+                // The 1×1 shows only today's numbers; the others also show the pouch that is in and the next one on the plan.
+                val detailed = wideIds.isNotEmpty() || coverIds.isNotEmpty()
+                next = listOfNotNull(state.dayEndMs, state.nextAutoEndMs.takeIf { detailed }, state.nextOnPlanMs.takeIf { detailed }).minOrNull()
+            } finally {
+                scheduleRefresh(app, next)
             }
-            // The 1×1 shows only today's numbers; the others also show the pouch that is in.
-            val autoEnd = if (wideIds.isNotEmpty() || coverIds.isNotEmpty()) state.nextAutoEndMs else null
-            // The "next" time on the plan goes when it passes.
-            scheduleRefresh(app, listOfNotNull(autoEnd, state.dayEndMs, state.nextOnPlanMs).minOrNull())
         }
     }
 
@@ -87,13 +93,13 @@ object WidgetUpdater {
 
     private fun scheduleRefresh(context: Context, atMs: Long?) {
         val alarms = context.getSystemService(AlarmManager::class.java) ?: return
-        val pending = PendingIntent.getBroadcast(
-            context, 0,
-            Intent(context, WideWidgetProvider::class.java).setAction(ACTION_REFRESH),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
+        val intent = Intent(context, WideWidgetProvider::class.java).setAction(ACTION_REFRESH)
+        if (atMs == null) {
+            PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE)?.let(alarms::cancel)
+            return
+        }
+        val pending = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         // Non-waking, no alarm permission needed; the window keeps it within ten minutes of the moment.
-        if (atMs == null) alarms.cancel(pending)
-        else alarms.setWindow(AlarmManager.RTC, atMs + 1_000L, ALARM_WINDOW_MS, pending)
+        alarms.setWindow(AlarmManager.RTC, atMs + 1_000L, ALARM_WINDOW_MS, pending)
     }
 }

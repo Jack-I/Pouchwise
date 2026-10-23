@@ -53,7 +53,7 @@ object DayKeys {
 
     /**
      * New days for the pouches of the day running at [nowMs] when what "today" means changes from
-     * ([oldHour], [oldZone]) to ([newHour], [newZone]). Finished days keep their pouches.
+     * ([oldHour], [oldZone]) to ([newHour], [newZone]). Finished days keep their pouches and take in none.
      */
     fun refiled(
         entries: List<LogEntry>,
@@ -64,9 +64,10 @@ object DayKeys {
         newZone: ZoneId,
     ): Map<Long, Long> {
         val running = epochDay(nowMs, oldHour, oldZone)
+        val earliest = min(running, epochDay(nowMs, newHour, newZone))
         return entries
             .filter { of(it, oldHour, oldZone) >= running }
-            .mapNotNull { e -> epochDay(e.timestamp, newHour, newZone).takeIf { it != e.day }?.let { e.id to it } }
+            .mapNotNull { e -> epochDay(e.timestamp, newHour, newZone).coerceAtLeast(earliest).takeIf { it != e.day }?.let { e.id to it } }
             .toMap()
     }
 }

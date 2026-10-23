@@ -431,18 +431,17 @@ fun EntryDialog(
     }
 }
 
+/** A whole number typed in, 0 or more. */
 @Composable
 fun NumberDialog(
     title: String,
-    initial: String,
-    decimal: Boolean,
+    initial: Int,
+    suffix: String,
     onDismiss: () -> Unit,
-    onConfirm: (Double) -> Unit,
-    suffix: String? = null,
+    onConfirm: (Int) -> Unit,
 ) {
-    var text by rememberSaveable { mutableStateOf(initial) }
-    val value = parseDecimal(text)
-    val valid = value != null && value >= 0
+    var text by rememberSaveable { mutableStateOf(initial.toString()) }
+    val value = text.trim().toIntOrNull()?.takeIf { it >= 0 }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
@@ -451,13 +450,13 @@ fun NumberDialog(
                 value = text,
                 onValueChange = { text = it },
                 singleLine = true,
-                suffix = if (suffix != null) ({ Text(suffix) }) else null,
-                keyboardOptions = KeyboardOptions(keyboardType = if (decimal) KeyboardType.Decimal else KeyboardType.Number),
+                suffix = { Text(suffix) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
             )
         },
         confirmButton = {
-            TextButton(enabled = valid, onClick = { onConfirm(value ?: 0.0) }) { Text(stringResource(R.string.ok)) }
+            TextButton(enabled = value != null, onClick = { value?.let(onConfirm) }) { Text(stringResource(R.string.ok)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )

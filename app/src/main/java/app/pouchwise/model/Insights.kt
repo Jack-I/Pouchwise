@@ -57,7 +57,7 @@ object Spending {
 data class PatternSummary(
     /** Pouches by clock hour, 0 to 23. */
     val byHour: List<Int>,
-    /** Average pouches a day by weekday, Monday first. */
+    /** Average pouches a day by weekday over the finished days, Monday first. */
     val byWeekday: List<Double>,
     /** Minutes after the start of each tracking day at which its first pouch went in, oldest day first. */
     val firstPouch: List<Int>,
@@ -84,7 +84,7 @@ object Patterns {
         inWindow.forEach { byHour[Instant.ofEpochMilli(it.timestamp).atZone(zone).hour]++ }
 
         val firstLogged = entries.minOfOrNull { DayKeys.of(it, s.dayStartHour) } ?: today
-        val days = max(fromDay, firstLogged)..today
+        val days = max(fromDay, firstLogged) until today
         val byWeekday = (1..7).map { dow ->
             val same = days.filter { LocalDate.ofEpochDay(it).dayOfWeek.value == dow }
             if (same.isEmpty()) 0.0 else same.sumOf { perDay[it]?.size ?: 0 }.toDouble() / same.size
