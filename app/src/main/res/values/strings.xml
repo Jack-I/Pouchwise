@@ -82,6 +82,8 @@
     <string name="felt_overwhelm">Overwhelm</string>
     <string name="felt_mark_at">%1$s · %2$d\u00A0min</string>
     <string name="felt_add_now">Add now</string>
+    <string name="felt_mark_recalled_at">%1$s · ~%2$d\u00A0min</string>
+    <string name="felt_add_recalled">Add, counted at the pull-out</string>
     <string name="felt_remove">Remove this answer</string>
 
     <!-- pouch types -->
@@ -268,6 +270,7 @@
 
     <!-- interval plan, spending, patterns -->
     <string name="plan_next_at">Next one: better after %1$s</string>
+    <string name="plan_next_tomorrow">Next one: tomorrow</string>
     <string name="plan_now">Gap kept</string>
     <string name="plan_learning">The tolerance plan is learning your usual level</string>
     <string name="plan_learning_hint">It needs at least five pouches over two weeks, not counting each day\'s first.</string>
@@ -275,7 +278,9 @@
     <string name="receptor_rest">Receptors at rest today: %1$s</string>
     <string name="receptor_rest_hint">Time with nicotine below %1$s\u00A0ng/mL, when most of them are free.</string>
     <string name="widget_next">after %1$s</string>
+    <string name="widget_tomorrow">tomorrow</string>
     <string name="cover_next">next one better after %1$s</string>
+    <string name="cover_next_tomorrow">next one tomorrow</string>
     <string name="interval_off">Off</string>
     <string name="interval_keep">Hold</string>
     <string name="interval_lower">Lower</string>

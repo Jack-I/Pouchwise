@@ -32,6 +32,8 @@ data class WidgetState(
     val dayEndMs: Long? = null,
     /** When the interval plan has the next pouch due, if that is still ahead. */
     val nextOnPlanMs: Long? = null,
+    /** With the interval plan on: none of the pouches fits under today's limit, so the next one is tomorrow. */
+    val nextTomorrow: Boolean = false,
 ) {
     val used: Double get() = Limits.usage(mode, count, mg)
     val over: Boolean get() = used > limit + 1e-9
@@ -90,17 +92,23 @@ object WidgetData {
                 ?.let { IntervalPlan.nextOnPlanMs(recent.map { PouchTiming.toDose(it, settings) }, settings.pk, it, now) }
                 ?.takeIf { it > now }
         }
+        val count = entries.size
+        val mg = entries.sumOf { it.strengthMg }
+        val limit = Limits.limitForDayRounded(settings, day)
+        val types = dao.activeTypes()
         return WidgetState(
             mode = settings.limitMode,
-            count = entries.size,
-            mg = entries.sumOf { it.strengthMg },
-            limit = Limits.limitForDayRounded(settings, day),
-            hasTypes = dao.activeTypes().isNotEmpty(),
+            count = count,
+            mg = mg,
+            limit = limit,
+            hasTypes = types.isNotEmpty(),
             inLabel = latest?.let { widgetLabel(it.second) },
             inSinceMs = latest?.first?.timestamp,
             nextAutoEndMs = inNow.minOfOrNull { it.first.timestamp + PouchTiming.autoMs(it.first, settings) },
             dayEndMs = dayEnd,
             nextOnPlanMs = nextOnPlan,
+            nextTomorrow = settings.intervalMode != IntervalMode.OFF &&
+                Limits.noneFit(settings, limit, count, mg, types.map { it.strengthMg }),
         )
     }
 

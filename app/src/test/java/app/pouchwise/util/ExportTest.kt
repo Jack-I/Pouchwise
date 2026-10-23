@@ -48,6 +48,19 @@ class ExportTest {
     }
 
     @Test
+    fun aRecalledAnswerSitsAtThePullOut() {
+        val recalled = FeltMark(entryId = 1, level = Felt.OVERWHELM.level, atMs = t0 + 30 * min, recalled = true)
+        val rows = Export.feltCsv(entries, types, Settings(bodyWeightKg = 72.0), listOf(recalled)).trim().lines()
+        val names = rows[0].split(',')
+        fun cell(name: String) = rows[1].split(',')[names.indexOf(name)]
+        assertEquals("1", cell("recalled"))
+        assertEquals("30", cell("min_after_toss_in"))
+        assertEquals("0", cell("in_mouth"))
+        assertEquals(cell("nicotine_at_pull_out_ng_ml"), cell("nicotine_ng_ml"))
+        assertTrue(cell("nicotine_at_pull_out_ng_ml").toDouble() > cell("nicotine_at_toss_in_ng_ml").toDouble())
+    }
+
+    @Test
     fun thePouchCsvShowsTheLatestAnswer() {
         val rows = Export.csv(entries, types, Settings(), marks).trim().lines()
         val names = rows[0].split(',')

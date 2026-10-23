@@ -1,5 +1,6 @@
 package app.pouchwise.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -101,6 +102,8 @@ data class FeltMark(
     /** A [Felt] level. */
     val level: Int,
     val atMs: Long,
+    /** Given long after the pouch came out: it describes the pouch, and [atMs] is its pull-out, not when it was given. */
+    @ColumnInfo(defaultValue = "0") val recalled: Boolean = false,
 )
 
 /** The limit plan from [fromDay] on, until the next version; past days are judged by the version of their day. */

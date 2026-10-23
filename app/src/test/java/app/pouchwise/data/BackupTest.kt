@@ -81,10 +81,10 @@ class BackupTest {
         val marks = listOf(
             FeltMark(entryId = 10, level = Felt.HIT.level, atMs = 1_760_000_180_000L),
             FeltMark(entryId = 10, level = Felt.OVERWHELM.level, atMs = 1_760_001_200_000L),
-            FeltMark(entryId = 11, level = Felt.NOTHING.level, atMs = 1_760_001_300_000L),
+            FeltMark(entryId = 11, level = Felt.NOTHING.level, atMs = 1_760_001_300_000L, recalled = true),
         )
         val back = Backup.parse(Export.json(entries, types, settings, marks = marks)).feltMarks
-        assertEquals(marks.map { Triple(it.entryId, it.level, it.atMs) }, back.map { Triple(it.entryId, it.level, it.atMs) })
+        assertEquals(marks.map { listOf(it.entryId, it.level, it.atMs, it.recalled) }, back.map { listOf(it.entryId, it.level, it.atMs, it.recalled) })
 
         // Unknown answers and answers for pouches that are not in the file are left out.
         val odd = Backup.parse("""{"types":[],"entries":[{"id":1,"pouchTypeId":1,"timestamp":1000,"strengthMg":6}],"feltMarks":[

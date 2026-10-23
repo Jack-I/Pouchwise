@@ -89,6 +89,8 @@
     <string name="felt_overwhelm">Перекрыло</string>
     <string name="felt_mark_at">%1$s · %2$d\u00A0мин</string>
     <string name="felt_add_now">Добавить сейчас</string>
+    <string name="felt_mark_recalled_at">%1$s · ~%2$d\u00A0мин</string>
+    <string name="felt_add_recalled">Добавить — на момент вынимания</string>
     <string name="felt_remove">Убрать этот ответ</string>
 
     <string name="brand">Бренд</string>
@@ -276,6 +278,7 @@
 
     <!-- интервал, траты, закономерности -->
     <string name="plan_next_at">Следующий — лучше после %1$s</string>
+    <string name="plan_next_tomorrow">Следующий — завтра</string>
     <string name="plan_now">Перерыв выдержан</string>
     <string name="plan_learning">План толерантности изучает ваш обычный уровень</string>
     <string name="plan_learning_hint">Нужно хотя бы пять паучей за две недели, не считая первого за день.</string>
@@ -283,7 +286,9 @@
     <string name="receptor_rest">Рецепторы отдыхали сегодня: %1$s</string>
     <string name="receptor_rest_hint">Время, когда никотин ниже %1$s\u00A0нг/мл и большинство рецепторов свободны.</string>
     <string name="widget_next">после %1$s</string>
+    <string name="widget_tomorrow">завтра</string>
     <string name="cover_next">следующий лучше после %1$s</string>
+    <string name="cover_next_tomorrow">следующий завтра</string>
     <string name="interval_off">Выкл.</string>
     <string name="interval_keep">Держать</string>
     <string name="interval_lower">Снижать</string>

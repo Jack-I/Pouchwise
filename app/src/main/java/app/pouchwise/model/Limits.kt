@@ -36,6 +36,10 @@ object Limits {
             LimitMode.MG -> if (strengthMg <= 0) 0 else ((limit - mgSoFar + 1e-9) / strengthMg).toInt().coerceAtLeast(0)
         }
 
+    /** True when not one of the pouches of [strengthsMg] fits under the limit today; false with no pouches at all. */
+    fun noneFit(s: Settings, limit: Int, countSoFar: Int, mgSoFar: Double, strengthsMg: List<Double>): Boolean =
+        strengthsMg.isNotEmpty() && strengthsMg.all { remainingPouches(s, limit, countSoFar, mgSoFar, it) == 0 }
+
     /**
      * Switches the limit unit, converting the fixed limit and the taper values with a typical pouch
      * strength so that a plan survives the switch instead of being reset. Values left alone since the last

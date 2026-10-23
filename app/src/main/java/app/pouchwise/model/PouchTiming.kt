@@ -1,5 +1,6 @@
 package app.pouchwise.model
 
+import app.pouchwise.data.FeltMark
 import app.pouchwise.data.LogEntry
 import kotlin.math.max
 import kotlin.math.min
@@ -67,6 +68,18 @@ object PouchTiming {
         val soFar = min(planned, max(nowMs - e.timestamp, 0L))
         if (soFar <= 0L) return 0.0
         return e.strengthMg * Pharmacokinetics.uptake(s.pk) * Pharmacokinetics.released(soFar / 60_000.0, e.releaseK)
+    }
+
+    /** Felt answers given more than this after the pouch came out describe the pouch rather than that moment. */
+    const val RECALL_AFTER_MS = 30 * 60_000L
+
+    /** When the pouch came out, or will by itself. */
+    fun outMs(e: LogEntry, s: Settings): Long = e.timestamp + effectiveDurationMs(e, s)
+
+    /** A felt answer as it is kept: one given long after the pouch came out counts at its pull-out, marked as recalled. */
+    fun placeAnswer(mark: FeltMark, e: LogEntry, s: Settings): FeltMark {
+        val out = outMs(e, s)
+        return if (mark.recalled || mark.atMs > out + RECALL_AFTER_MS) mark.copy(atMs = out, recalled = true) else mark
     }
 
     /** Marks the pouch as taken out now. */

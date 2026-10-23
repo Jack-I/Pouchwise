@@ -1,5 +1,7 @@
 package app.pouchwise.model
 
+import app.pouchwise.data.Felt
+import app.pouchwise.data.FeltMark
 import app.pouchwise.data.LogEntry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -125,6 +127,23 @@ class PouchTimingTest {
         assertEquals(45, longer.pouchMinutes)
         assertEquals(45 * min, PouchTiming.effectiveDurationMs(longer, s))
         assertEquals(PouchTiming.MAX_POUCH_MINUTES * min, PouchTiming.effectiveDurationMs(PouchTiming.withTimes(e, start, 500 * min, s), s))
+    }
+
+    @Test
+    fun anAnswerGivenLongAfterThePullOutCountsAtThePullOut() {
+        // In for 38 minutes.
+        val e = PouchTiming.withTimes(LogEntry(pouchTypeId = 1, timestamp = start, strengthMg = 6.0, pouchMinutes = 30), start, 38 * min, s)
+        val live = FeltMark(entryId = 1, level = Felt.HIT.level, atMs = start + 20 * min)
+        assertEquals(live, PouchTiming.placeAnswer(live, e, s))
+        // Shortly after the pull-out it is still how it feels then.
+        val soonAfter = live.copy(atMs = start + 60 * min)
+        assertEquals(soonAfter, PouchTiming.placeAnswer(soonAfter, e, s))
+        // The next day it is about the pouch.
+        val pulledOut = live.copy(atMs = start + 38 * min, recalled = true)
+        assertEquals(pulledOut, PouchTiming.placeAnswer(live.copy(atMs = start + 26 * 60 * min), e, s))
+        // A recalled answer follows the pouch when its time in the mouth is corrected.
+        val shorter = PouchTiming.withTimes(e, start, 25 * min, s)
+        assertEquals(start + 25 * min, PouchTiming.placeAnswer(pulledOut, shorter, s).atMs)
     }
 
     @Test

@@ -140,7 +140,7 @@ object Backup {
     private fun mark(o: JSONObject): FeltMark? {
         val felt = Felt.ofCode(o.optString("felt")) ?: return null
         val at = o.optLong("atMs").takeIf { it > 0L } ?: return null
-        return FeltMark(entryId = o.optLong("entryId", -1L), level = felt.level, atMs = at)
+        return FeltMark(entryId = o.optLong("entryId", -1L), level = felt.level, atMs = at, recalled = o.optBoolean("recalled", false))
     }
 
     /** Files from the first 0.9.4 builds kept a single answer on the entry itself. */

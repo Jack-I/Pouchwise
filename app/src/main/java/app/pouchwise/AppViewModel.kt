@@ -175,7 +175,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         db.withTransaction {
             dao.updateEntry(moved)
             dao.deleteFeltMarksOf(entry.id)
-            dao.insertFeltMarks(marks.map { it.copy(id = 0, entryId = entry.id) })
+            dao.insertFeltMarks(marks.map { PouchTiming.placeAnswer(it.copy(id = 0, entryId = entry.id), moved, s) })
         }
         refreshWidgets()
     }
@@ -272,6 +272,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
         val plans = contents.plans.ifEmpty { listOf(PlanHistory.versionOf(imported, fromDay = 0L)) }
+        val entriesById = entries.associateBy { it.id }
+        val marks = contents.feltMarks.map { m -> entriesById[m.entryId]?.let { PouchTiming.placeAnswer(m, it, imported) } ?: m }
         val ok = runCatching {
             db.withTransaction {
                 dao.deleteAllFeltMarks()
@@ -281,7 +283,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 dao.insertTypes(contents.types)
                 dao.insertEntries(entries)
                 dao.insertPlans(plans)
-                dao.insertFeltMarks(contents.feltMarks)
+                dao.insertFeltMarks(marks)
             }
         }.isSuccess
         if (ok) {

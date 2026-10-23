@@ -281,11 +281,14 @@ private fun FittingText(text: String, style: TextStyle, color: Color) {
     )
 }
 
-/** The answers in order, e.g. "Hit · 3 min → Overwhelm · 20 min". */
+/** The answers in order, e.g. "Hit · 3 min → Overwhelm · 20 min"; a recalled one shows its pull-out as "~30 min". */
 @Composable
 fun feltHistory(marks: List<FeltMark>, startMs: Long): String =
-    marks.mapNotNull { m -> Felt.of(m.level)?.let { stringResource(R.string.felt_mark_at, stringResource(feltLabel(it)), feltMinutes(startMs, m.atMs)) } }
-        .joinToString(" → ")
+    marks.mapNotNull { m ->
+        Felt.of(m.level)?.let {
+            stringResource(if (m.recalled) R.string.felt_mark_recalled_at else R.string.felt_mark_at, stringResource(feltLabel(it)), feltMinutes(startMs, m.atMs))
+        }
+    }.joinToString(" → ")
 
 /** The answers as a short tag, e.g. "hit → overwhelm"; a long run keeps its first and last. */
 @Composable

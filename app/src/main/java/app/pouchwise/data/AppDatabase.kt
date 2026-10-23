@@ -6,8 +6,9 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import app.pouchwise.model.PouchTiming
 
-@Database(entities = [PouchType::class, LogEntry::class, PlanVersion::class, FeltMark::class], version = 10, exportSchema = false)
+@Database(entities = [PouchType::class, LogEntry::class, PlanVersion::class, FeltMark::class], version = 11, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun dao(): PouchDao
 
@@ -91,11 +92,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE felt_marks ADD COLUMN recalled INTEGER NOT NULL DEFAULT 0")
+                // Answers already given long after their pouch came out move to its pull-out, as new ones do.
+                val out = "(SELECT MIN(MAX(COALESCE(e.endTimestamp, e.timestamp + COALESCE(e.pouchMinutes, 30) * 60000), e.timestamp + 60000), " +
+                    "e.timestamp + COALESCE(e.pouchMinutes, 30) * 60000) FROM log_entries e WHERE e.id = felt_marks.entryId)"
+                db.execSQL("UPDATE felt_marks SET recalled = 1, atMs = $out WHERE atMs > $out + ${PouchTiming.RECALL_AFTER_MS}")
+            }
+        }
+
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "pouchwise.db")
                 .addMigrations(
                     MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
-                    MIGRATION_9_10,
+                    MIGRATION_9_10, MIGRATION_10_11,
                 )
                 .build()
                 .also { instance = it }

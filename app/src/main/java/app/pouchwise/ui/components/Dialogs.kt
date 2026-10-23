@@ -304,8 +304,8 @@ fun EntryDialog(
     onSave: (startMs: Long, durationMs: Long?, marks: List<FeltMark>) -> Unit,
 ) {
     var start by rememberSaveable { mutableLongStateOf(startMs) }
-    // Level and time of each answer; plain pairs so they survive rotation.
-    var answers by rememberSaveable { mutableStateOf(marks.map { it.level to it.atMs }) }
+    // Level, time and recalled flag of each answer; plain triples so they survive rotation.
+    var answers by rememberSaveable { mutableStateOf(marks.map { Triple(it.level, it.atMs, it.recalled) }) }
     val initialMinutes = durationMs?.let { (it / 60_000L).toInt() }
     var minutesText by rememberSaveable { mutableStateOf(initialMinutes?.toString().orEmpty()) }
     var pickTime by rememberSaveable { mutableStateOf(false) }
@@ -318,6 +318,9 @@ fun EntryDialog(
     }
     val endsAfterNow = newDurationMs != null && start + newDurationMs > System.currentTimeMillis()
     val valid = (durationMs == null || newDurationMs != null) && !endsAfterNow
+    val outAt = newDurationMs?.let { start + it }
+    // Once the pouch has been out for a while, an answer counts at its pull-out, as PouchTiming.placeAnswer keeps it.
+    fun countsAt(at: Long, recalled: Boolean): Long? = outAt?.takeIf { recalled || at > it + PouchTiming.RECALL_AFTER_MS }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -380,11 +383,14 @@ fun EntryDialog(
                 }
                 Spacer(Modifier.height(14.dp))
                 Text(stringResource(R.string.felt_label), style = MaterialTheme.typography.bodyLarge)
-                for (answer in answers.sortedBy { it.second }) {
-                    val felt = Felt.of(answer.first) ?: continue
+                for (answer in answers.sortedBy { (_, at, recalled) -> countsAt(at, recalled) ?: at }) {
+                    val (level, at, recalled) = answer
+                    val felt = Felt.of(level) ?: continue
+                    val pulledOutAt = countsAt(at, recalled)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            stringResource(R.string.felt_mark_at, stringResource(feltLabel(felt)), feltMinutes(start, answer.second)),
+                            if (pulledOutAt != null) stringResource(R.string.felt_mark_recalled_at, stringResource(feltLabel(felt)), feltMinutes(start, pulledOutAt))
+                            else stringResource(R.string.felt_mark_at, stringResource(feltLabel(felt)), feltMinutes(start, at)),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f),
                         )
@@ -394,15 +400,21 @@ fun EntryDialog(
                     }
                 }
                 Spacer(Modifier.height(6.dp))
-                Text(stringResource(R.string.felt_add_now), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(if (countsAt(System.currentTimeMillis(), false) != null) R.string.felt_add_recalled else R.string.felt_add_now),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Spacer(Modifier.height(2.dp))
-                FeltChips(null, { f -> answers = answers + (f.level to System.currentTimeMillis()) })
+                FeltChips(null, { f -> answers = answers + Triple(f.level, System.currentTimeMillis(), false) })
             }
         },
         confirmButton = {
             TextButton(
                 enabled = valid,
-                onClick = { onSave(start, newDurationMs, answers.map { (level, at) -> FeltMark(entryId = 0, level = level, atMs = at) }) },
+                onClick = {
+                    onSave(start, newDurationMs, answers.map { (level, at, recalled) -> FeltMark(entryId = 0, level = level, atMs = at, recalled = recalled) })
+                },
             ) { Text(stringResource(R.string.save)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },

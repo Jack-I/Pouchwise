@@ -110,7 +110,10 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                 settings = settings, count = count, mg = mg, absorbedMg = absorbedToday, limit = limit,
                 lastOutMs = lastOutMs, pouchInNow = pouchInNow, nowMs = clock,
                 money = spentToday?.let { Fmt.money(it, Money.symbol(settings)) },
-                plan = if (settings.intervalMode == IntervalMode.OFF) null else PlanInfo(settings.intervalMode, planLevel, nextOnPlan),
+                plan = if (settings.intervalMode == IntervalMode.OFF) null else PlanInfo(
+                    settings.intervalMode, planLevel, nextOnPlan,
+                    noneFit = Limits.noneFit(settings, limit, count, mg, active.map { it.strengthMg }),
+                ),
             )
         }
 
@@ -334,8 +337,11 @@ private fun TodayCard(
     }
 }
 
-/** What the interval plan says now: its mode, its level (null while it is still learning) and when the next is due. */
-private class PlanInfo(val mode: IntervalMode, val levelMg: Double?, val nextMs: Long?)
+/**
+ * What the interval plan says now: its mode, its level (null while it is still learning), when the next is due,
+ * and whether the day's limit leaves room for none of the pouches.
+ */
+private class PlanInfo(val mode: IntervalMode, val levelMg: Double?, val nextMs: Long?, val noneFit: Boolean)
 
 @Composable
 private fun PlanRow(plan: PlanInfo, nowMs: Long) {
@@ -343,11 +349,13 @@ private fun PlanRow(plan: PlanInfo, nowMs: Long) {
     val waiting = level != null && plan.nextMs != null && plan.nextMs > nowMs
     val lower = plan.mode == IntervalMode.LOWER
     val title = when {
+        plan.noneFit -> stringResource(R.string.plan_next_tomorrow)
         level == null -> stringResource(R.string.plan_learning)
         waiting -> stringResource(R.string.plan_next_at, Fmt.time(plan.nextMs!!))
         else -> stringResource(R.string.plan_now)
     }
     val detail = when {
+        plan.noneFit -> null
         level == null -> stringResource(R.string.plan_learning_hint)
         waiting -> stringResource(
             if (lower) R.string.plan_wait_lower else R.string.plan_wait_hold,
@@ -367,7 +375,9 @@ private fun PlanRow(plan: PlanInfo, nowMs: Long) {
         Spacer(Modifier.width(10.dp))
         Column {
             Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-            Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (detail != null) {
+                Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }

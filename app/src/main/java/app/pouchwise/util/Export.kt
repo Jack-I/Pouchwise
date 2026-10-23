@@ -58,7 +58,7 @@ object Export {
         return sb.toString()
     }
 
-    /** One row per felt answer, with the model's levels at that moment and when the pouch went in. */
+    /** One row per felt answer, with the model's levels at that moment, when the pouch went in and when it came out. */
     fun feltCsv(entries: List<LogEntry>, types: List<PouchType>, settings: Settings, marks: List<FeltMark>): String {
         val byId = types.associateBy { it.id }
         val zone = ZoneId.systemDefault()
@@ -70,8 +70,9 @@ object Export {
         fun ng(mg: Double, vd: Double) = Pharmacokinetics.toNgPerMl(mg, settings.bodyWeightKg, vd)
         fun freePct(nicotineNg: Double) = 100.0 * (1.0 - Levels.receptorsBusy(nicotineNg))
         val sb = StringBuilder(
-            "entry_id,pouch,brand,strength_mg,release_k,toss_in_iso,mark_iso,min_after_toss_in,in_mouth,felt,nicotine_ng_ml,cotinine_ng_ml," +
-                "receptors_free_pct,nicotine_at_toss_in_ng_ml,receptors_free_at_toss_in_pct,min_since_prev_pouch,first_of_day\n",
+            "entry_id,pouch,brand,strength_mg,release_k,toss_in_iso,mark_iso,min_after_toss_in,in_mouth,felt,recalled,nicotine_ng_ml," +
+                "cotinine_ng_ml,receptors_free_pct,nicotine_at_toss_in_ng_ml,receptors_free_at_toss_in_pct,nicotine_at_pull_out_ng_ml," +
+                "receptors_free_at_pull_out_pct,min_since_prev_pouch,first_of_day\n",
         )
         for (m in marks.sortedWith(compareBy({ it.atMs }, { it.id }))) {
             val e = entryById[m.entryId] ?: continue
@@ -80,7 +81,9 @@ object Export {
             val atMark = Pharmacokinetics.levelsAt(m.atMs, doses, settings.pk)
             val nicotine = ng(atMark.nicotineMg, Pharmacokinetics.NICOTINE_VD_L_PER_KG)
             val nicotineAtStart = ng(Pharmacokinetics.levelsAt(e.timestamp, doses, settings.pk).nicotineMg, Pharmacokinetics.NICOTINE_VD_L_PER_KG)
-            val inMouth = m.atMs < e.timestamp + PouchTiming.effectiveDurationMs(e, settings)
+            val out = PouchTiming.outMs(e, settings)
+            val nicotineAtOut = ng(Pharmacokinetics.levelsAt(out, doses, settings.pk).nicotineMg, Pharmacokinetics.NICOTINE_VD_L_PER_KG)
+            val inMouth = m.atMs < out
             sb.append(e.id).append(',')
                 .append(quote(type?.name ?: "")).append(',')
                 .append(quote(type?.brand ?: "")).append(',')
@@ -91,11 +94,14 @@ object Export {
                 .append(minutesAfter(e.timestamp, m.atMs)).append(',')
                 .append(if (inMouth) 1 else 0).append(',')
                 .append(felt.code).append(',')
+                .append(if (m.recalled) 1 else 0).append(',')
                 .append(String.format(Locale.ROOT, "%.1f", nicotine)).append(',')
                 .append(String.format(Locale.ROOT, "%.1f", ng(atMark.cotinineMg, Pharmacokinetics.COTININE_VD_L_PER_KG))).append(',')
                 .append(String.format(Locale.ROOT, "%.0f", freePct(nicotine))).append(',')
                 .append(String.format(Locale.ROOT, "%.1f", nicotineAtStart)).append(',')
                 .append(String.format(Locale.ROOT, "%.0f", freePct(nicotineAtStart))).append(',')
+                .append(String.format(Locale.ROOT, "%.1f", nicotineAtOut)).append(',')
+                .append(String.format(Locale.ROOT, "%.0f", freePct(nicotineAtOut))).append(',')
                 .append(previous[e.id]?.let { minutesAfter(it.timestamp, e.timestamp).toString() } ?: "").append(',')
                 .append(if (e.id in firsts) 1 else 0).append('\n')
         }
@@ -146,7 +152,7 @@ object Export {
         root.put("feltMarks", JSONArray().apply {
             marks.forEach { m ->
                 val felt = Felt.of(m.level) ?: return@forEach
-                put(JSONObject().apply { put("entryId", m.entryId); put("felt", felt.code); put("atMs", m.atMs) })
+                put(JSONObject().apply { put("entryId", m.entryId); put("felt", felt.code); put("atMs", m.atMs); put("recalled", m.recalled) })
             }
         })
         root.put("planHistory", JSONArray().apply {

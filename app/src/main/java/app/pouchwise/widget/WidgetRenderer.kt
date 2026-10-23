@@ -137,7 +137,10 @@ object WidgetRenderer {
                 setTextColor(R.id.cover_status_text, muted)
                 val last = cover.lastOutMs?.let { context.getString(R.string.cover_last_out_at, Fmt.timeOrDayTime(it, now)) }
                     ?: context.getString(R.string.cover_nothing_yet)
-                val next = state.nextOnPlanMs?.let { " · " + context.getString(R.string.cover_next, Fmt.time(it)) }.orEmpty()
+                val next = when {
+                    state.nextTomorrow -> " · " + context.getString(R.string.cover_next_tomorrow)
+                    else -> state.nextOnPlanMs?.let { " · " + context.getString(R.string.cover_next, Fmt.time(it)) }.orEmpty()
+                }
                 setTextViewText(R.id.cover_status_text, last + next)
             } else {
                 val (entry, type) = latest
@@ -258,8 +261,11 @@ object WidgetRenderer {
             } else {
                 setTextViewText(
                     R.id.widget_wide_sub,
-                    state.nextOnPlanMs?.let { context.getString(R.string.widget_next, Fmt.time(it)) }
-                        ?: context.getString(if (state.mode == LimitMode.COUNT) R.string.widget_unit_pouches else R.string.widget_unit_mg_today),
+                    when {
+                        state.nextTomorrow -> context.getString(R.string.widget_tomorrow)
+                        state.nextOnPlanMs != null -> context.getString(R.string.widget_next, Fmt.time(state.nextOnPlanMs))
+                        else -> context.getString(if (state.mode == LimitMode.COUNT) R.string.widget_unit_pouches else R.string.widget_unit_mg_today)
+                    },
                 )
                 setChronometer(R.id.widget_wide_timer, SystemClock.elapsedRealtime(), null, false)
                 setViewVisibility(R.id.widget_wide_timer, View.GONE)
@@ -273,8 +279,7 @@ object WidgetRenderer {
                 setContentDescription(R.id.widget_wide_remove, context.getString(R.string.widget_remove))
                 setOnClickPendingIntent(R.id.widget_wide_add, quickAction(context, QuickLogActivity.ACTION_LOG, 1))
                 val anyIn = since != null
-                setInt(R.id.widget_wide_remove, "setBackgroundResource", if (anyIn) R.drawable.widget_btn_bg else R.drawable.widget_btn_bg_off)
-                setImageViewResource(R.id.widget_wide_remove, if (anyIn) R.drawable.ic_widget_pull_out else R.drawable.ic_widget_pull_out_off)
+                setImageViewResource(R.id.widget_wide_remove, if (anyIn) R.drawable.widget_btn_pull_out else R.drawable.widget_btn_pull_out_off)
                 setOnClickPendingIntent(R.id.widget_wide_remove, quickAction(context, QuickLogActivity.ACTION_REMOVE, 2))
             } else {
                 setViewVisibility(R.id.widget_wide_buttons, View.GONE)
