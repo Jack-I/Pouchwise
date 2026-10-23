@@ -24,11 +24,12 @@ import androidx.core.content.ContextCompat
 import app.pouchwise.MainActivity
 import app.pouchwise.R
 import app.pouchwise.model.LimitMode
+import app.pouchwise.model.Limits
 import app.pouchwise.ui.theme.pouchColor
 import app.pouchwise.util.Fmt
 import kotlin.math.roundToInt
 
-/** Draws the ring bitmaps and builds the RemoteViews for both widgets. */
+/** Draws the ring bitmaps and builds the RemoteViews for the 1×1, 2×1 and cover widgets. */
 object WidgetRenderer {
     private const val BLUE = 0xFF1E88E5.toInt()
     private const val RED_DISC = 0xFFB71C1C.toInt()
@@ -74,9 +75,8 @@ object WidgetRenderer {
     }
 
     /**
-     * The 1×1 widget as one picture: the ring with the app name under it, drawn at the widget's own size.
-     * A TextView there was clipped by launcher fonts drawing beyond their declared metrics; here the label
-     * gets room measured from its actual ink and shrinks to fit the width if it has to.
+     * The 1×1 widget as one picture: the ring with the app name under it, drawn at the widget's own size. The label
+     * gets room measured from its actual ink, as launcher fonts draw beyond their declared metrics, and shrinks to fit.
      */
     fun ringWithLabel(context: Context, widthPx: Int, heightPx: Int, state: WidgetState): Bitmap {
         val dm = context.resources.displayMetrics
@@ -195,23 +195,13 @@ object WidgetRenderer {
     /** "2 pouches left today", "1 pouch over the limit", "35 mg left today"… */
     private fun leftText(context: Context, state: WidgetState): String {
         val res = context.resources
-        return when (state.mode) {
-            LimitMode.COUNT -> {
-                val diff = state.count - state.limit
-                when {
-                    diff > 0 -> res.getQuantityString(R.plurals.over_limit_by_pouches, diff, diff)
-                    diff == 0 -> context.getString(R.string.limit_reached)
-                    else -> res.getQuantityString(R.plurals.pouches_left_today, -diff, -diff)
-                }
-            }
-            LimitMode.MG -> {
-                val diff = state.mg - state.limit
-                when {
-                    diff > 1e-9 -> context.getString(R.string.over_limit_by_mg, Fmt.mg(diff))
-                    diff > -1e-9 -> context.getString(R.string.limit_reached)
-                    else -> context.getString(R.string.mg_left_today, Fmt.mg(-diff))
-                }
-            }
+        val left = Limits.left(state.mode, state.limit, state.count, state.mg)
+        return when {
+            left == 0.0 -> context.getString(R.string.limit_reached)
+            state.mode == LimitMode.COUNT && left > 0 -> res.getQuantityString(R.plurals.pouches_left_today, left.toInt(), left.toInt())
+            state.mode == LimitMode.COUNT -> res.getQuantityString(R.plurals.over_limit_by_pouches, -left.toInt(), -left.toInt())
+            left > 0 -> context.getString(R.string.mg_left_today, Fmt.mg(left))
+            else -> context.getString(R.string.over_limit_by_mg, Fmt.mg(-left))
         }
     }
 

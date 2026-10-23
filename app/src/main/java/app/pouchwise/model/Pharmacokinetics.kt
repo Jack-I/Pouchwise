@@ -186,9 +186,9 @@ object Pharmacokinetics {
     /**
      * When each substance will be 95 % gone if nothing more is taken: the moment it stays below a twentieth
      * of the highest level still ahead (now, or the peak that a pouch still in or cotinine still forming
-     * will bring). Null when even that level is below the "cleared" amount.
+     * will bring). Null when even that level is below the "cleared" amount, and for cotinine without [withCotinine].
      */
-    fun mostlyGone(nowMs: Long, doses: List<Dose>, p: PkParams): Clearance {
+    fun mostlyGone(nowMs: Long, doses: List<Dose>, p: PkParams, withCotinine: Boolean = true): Clearance {
         val recent = doses.filter { nowMs - it.timeMs <= LOOKBACK_MS }
         val lastOut = recent.maxOfOrNull { it.timeMs + durationMs(it, p) } ?: nowMs
         var nPeak = 0.0
@@ -202,7 +202,7 @@ object Pharmacokinetics {
             t += SCAN_STEP_MS
         }
         val nicotine = nPeak >= NICOTINE_CLEARED_MG
-        val cotinine = cPeak >= COTININE_CLEARED_MG
+        val cotinine = withCotinine && cPeak >= COTININE_CLEARED_MG
         if (!nicotine && !cotinine) return Clearance(null, null)
         val gone = clearance(
             nowMs, recent, p,

@@ -25,6 +25,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,7 +63,7 @@ private const val SCREEN_LEVELS = 3
 fun PouchwiseApp(vm: AppViewModel) {
     var tabIndex by rememberSaveable { mutableIntStateOf(0) }
     var screen by rememberSaveable { mutableIntStateOf(SCREEN_MAIN) }
-    var pouchesOpenedFromSettings by rememberSaveable { mutableIntStateOf(0) }
+    var pouchesFromSettings by rememberSaveable { mutableStateOf(false) }
 
     val settings by vm.settings.collectAsStateWithLifecycle()
     val settingsLoaded by vm.settingsLoaded.collectAsStateWithLifecycle()
@@ -78,18 +79,18 @@ fun PouchwiseApp(vm: AppViewModel) {
     }
 
     BackHandler(enabled = screen != SCREEN_MAIN) {
-        screen = if (screen == SCREEN_POUCHES && pouchesOpenedFromSettings == 1) SCREEN_SETTINGS else SCREEN_MAIN
+        screen = if (screen == SCREEN_POUCHES && pouchesFromSettings) SCREEN_SETTINGS else SCREEN_MAIN
     }
 
     when (screen) {
         SCREEN_SETTINGS -> SettingsScreen(
             vm = vm,
             onBack = { screen = SCREEN_MAIN },
-            onManagePouches = { pouchesOpenedFromSettings = 1; screen = SCREEN_POUCHES },
+            onManagePouches = { pouchesFromSettings = true; screen = SCREEN_POUCHES },
         )
         SCREEN_POUCHES -> PouchTypesScreen(
             vm = vm,
-            onBack = { screen = if (pouchesOpenedFromSettings == 1) SCREEN_SETTINGS else SCREEN_MAIN },
+            onBack = { screen = if (pouchesFromSettings) SCREEN_SETTINGS else SCREEN_MAIN },
         )
         SCREEN_LEVELS -> LevelsScreen(vm = vm, onBack = { screen = SCREEN_MAIN })
         else -> MainScaffold(
@@ -97,7 +98,7 @@ fun PouchwiseApp(vm: AppViewModel) {
             tabIndex = tabIndex,
             onTab = { tabIndex = it },
             onOpenSettings = { screen = SCREEN_SETTINGS },
-            onEditPouches = { pouchesOpenedFromSettings = 0; screen = SCREEN_POUCHES },
+            onEditPouches = { pouchesFromSettings = false; screen = SCREEN_POUCHES },
             onOpenLevels = { screen = SCREEN_LEVELS },
         )
     }

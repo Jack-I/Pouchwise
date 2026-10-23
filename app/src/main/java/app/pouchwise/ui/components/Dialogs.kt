@@ -108,7 +108,7 @@ fun PouchTypeDialog(
     currency: String,
     onSave: (PouchEdit) -> Unit,
 ) {
-    val initialKnown = initial?.brand?.takeIf { Brands.isKnown(it) }?.let { Brands.find(it)!!.name }
+    val initialKnown = initial?.brand?.let { Brands.find(it)?.name }
     var brandSel by rememberSaveable { mutableStateOf(initialKnown ?: OTHER_BRAND) }
     var custom by rememberSaveable {
         mutableStateOf(if (initial == null || initialKnown != null) "" else initial.brand.ifBlank { initial.name })
@@ -319,8 +319,7 @@ fun EntryDialog(
     val endsAfterNow = newDurationMs != null && start + newDurationMs > System.currentTimeMillis()
     val valid = (durationMs == null || newDurationMs != null) && !endsAfterNow
     val outAt = newDurationMs?.let { start + it }
-    // Once the pouch has been out for a while, an answer counts at its pull-out, as PouchTiming.placeAnswer keeps it.
-    fun countsAt(at: Long, recalled: Boolean): Long? = outAt?.takeIf { recalled || at > it + PouchTiming.RECALL_AFTER_MS }
+    fun countsAt(at: Long, recalled: Boolean): Long? = outAt?.let { PouchTiming.recalledAt(at, recalled, it) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -347,7 +346,6 @@ fun EntryDialog(
                         FilledTonalIconButton(onClick = { minutesText = (shown - 1).coerceAtLeast(1).toString() }) {
                             Icon(Icons.Filled.Remove, contentDescription = null)
                         }
-                        // Not OutlinedTextField: its 16 dp side padding hides two digits at this width.
                         val frame = if (minutes == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                         BasicTextField(
                             value = minutesText,

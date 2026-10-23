@@ -71,7 +71,7 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
     val doses = remember(entries, settings) { entries.map { PouchTiming.toDose(it, settings) } }
     val levels = remember(doses, pk, clock) { Pharmacokinetics.levelsAt(clock, doses, pk) }
     val mostlyGone by produceState<Clearance?>(initialValue = null, doses, pk, clock) {
-        value = withContext(Dispatchers.Default) { Pharmacokinetics.mostlyGone(clock, doses, pk) }
+        value = withContext(Dispatchers.Default) { Pharmacokinetics.mostlyGone(clock, doses, pk, withCotinine = false) }
     }
     val nonUserAt by produceState<Long?>(initialValue = null, doses, settings, clock) {
         value = withContext(Dispatchers.Default) { Levels.nonUserAtMs(clock, doses, pk, settings.bodyWeightKg) ?: CLEARED }

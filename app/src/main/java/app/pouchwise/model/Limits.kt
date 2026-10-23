@@ -1,12 +1,16 @@
 package app.pouchwise.model
 
 import app.pouchwise.data.LogEntry
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 object Limits {
+    /** The fixed daily limit, in the unit of the current [LimitMode]. */
+    fun baseLimit(s: Settings): Double = if (s.limitMode == LimitMode.COUNT) s.dailyLimitCount.toDouble() else s.dailyLimitMg
+
     /** Limit for a given tracking day, in the unit of the current [LimitMode]. */
     fun limitForDay(s: Settings, epochDay: Long): Double {
-        val base = if (s.limitMode == LimitMode.COUNT) s.dailyLimitCount.toDouble() else s.dailyLimitMg
+        val base = baseLimit(s)
         if (!s.taperEnabled) return base
         if (s.taperTargetDay <= s.taperStartDay) return s.taperTargetValue
         if (epochDay <= s.taperStartDay) return s.taperStartValue
@@ -22,12 +26,11 @@ object Limits {
     fun usage(mode: LimitMode, count: Int, mg: Double): Double =
         if (mode == LimitMode.COUNT) count.toDouble() else mg
 
-    /** True when adding one pouch of [addMg] would exceed the limit. Reaching it exactly is allowed. */
-    fun wouldExceed(s: Settings, limit: Int, countSoFar: Int, mgSoFar: Double, addMg: Double): Boolean =
-        when (s.limitMode) {
-            LimitMode.COUNT -> countSoFar + 1 > limit
-            LimitMode.MG -> mgSoFar + addMg > limit + 1e-9
-        }
+    /** What is left of today's limit in its unit, negative when over; within a rounding hair of it counts as 0. */
+    fun left(mode: LimitMode, limit: Int, count: Int, mg: Double): Double {
+        val left = limit - usage(mode, count, mg)
+        return if (abs(left) < 0.05) 0.0 else left
+    }
 
     /** How many more pouches of [strengthMg] fit under the limit today (never negative). */
     fun remainingPouches(s: Settings, limit: Int, countSoFar: Int, mgSoFar: Double, strengthMg: Double): Int =

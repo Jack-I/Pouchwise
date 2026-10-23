@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Share
@@ -17,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
 import app.pouchwise.R
+import app.pouchwise.model.PouchTiming
 import app.pouchwise.model.ThemeMode
 import app.pouchwise.ui.components.*
 import app.pouchwise.util.Fmt
@@ -39,19 +40,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "" }.getOrDefault("")
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.settings), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            )
-        },
-    ) { inner ->
+    Scaffold(topBar = { BackTopBar(stringResource(R.string.settings), onBack) }) { inner ->
         Column(
             Modifier
                 .fillMaxSize()
@@ -94,7 +83,10 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
                     hint = stringResource(R.string.baseline_hint),
                 )
                 Spacer(Modifier.height(12.dp))
-                var currency by remember(settings.currency) { mutableStateOf(settings.currency) }
+                var currency by remember { mutableStateOf(settings.currency) }
+                var typing by remember { mutableStateOf(false) }
+                // While typing, saves of earlier keystrokes are still arriving and must not overwrite the field.
+                LaunchedEffect(settings.currency, typing) { if (!typing) currency = settings.currency }
                 OutlinedTextField(
                     value = currency,
                     onValueChange = { v ->
@@ -104,7 +96,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
                     label = { Text(stringResource(R.string.currency_label)) },
                     placeholder = { Text(Money.regionSymbol()) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().onFocusChanged { typing = it.isFocused },
                 )
             }
 
@@ -121,8 +113,8 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
                 StepperRow(
                     label = stringResource(R.string.absorption_minutes),
                     valueText = pk.absorptionMinutes.toString(),
-                    onMinus = { vm.updateSettings { it.copy(pk = it.pk.copy(absorptionMinutes = (it.pk.absorptionMinutes - 5).coerceIn(5, 90))) } },
-                    onPlus = { vm.updateSettings { it.copy(pk = it.pk.copy(absorptionMinutes = (it.pk.absorptionMinutes + 5).coerceIn(5, 90))) } },
+                    onMinus = { vm.updateSettings { it.copy(pk = it.pk.copy(absorptionMinutes = (it.pk.absorptionMinutes - 5).coerceIn(5, PouchTiming.MAX_POUCH_MINUTES))) } },
+                    onPlus = { vm.updateSettings { it.copy(pk = it.pk.copy(absorptionMinutes = (it.pk.absorptionMinutes + 5).coerceIn(5, PouchTiming.MAX_POUCH_MINUTES))) } },
                     hint = stringResource(R.string.pouch_time_hint),
                 )
                 Spacer(Modifier.height(12.dp))

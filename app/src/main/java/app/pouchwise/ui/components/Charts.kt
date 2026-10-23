@@ -80,18 +80,15 @@ private fun DrawScope.label(
     y: Float,
     style: TextStyle,
     align: Align = Align.START,
-    baselineBottom: Boolean = false,
 ) {
     val layout = measurer.measure(AnnotatedString(text), style = style)
     val w = layout.size.width.toFloat()
-    val h = layout.size.height.toFloat()
     val left = when (align) {
         Align.START -> x
         Align.CENTER -> x - w / 2f
         Align.END -> x - w
     }
-    val top = if (baselineBottom) y - h else y
-    drawText(layout, topLeft = Offset(left, top))
+    drawText(layout, topLeft = Offset(left, y))
 }
 
 private fun niceStep(maxValue: Double, targetTicks: Int = 4): Double {

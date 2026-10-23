@@ -102,12 +102,7 @@ object Patterns {
             (recent.average() - firstPouch.take(TREND_DAYS).average()).roundToInt()
         } else null
 
-        val gaps = perDay.values.flatMap { list -> list.sortedBy { it.timestamp }.zipWithNext { a, b -> b.timestamp - a.timestamp } }.sorted()
-        val typicalGap = when {
-            gaps.isEmpty() -> null
-            gaps.size % 2 == 1 -> gaps[gaps.size / 2]
-            else -> (gaps[gaps.size / 2 - 1] + gaps[gaps.size / 2]) / 2
-        }
+        val gaps = perDay.values.flatMap { list -> list.sortedBy { it.timestamp }.zipWithNext { a, b -> (b.timestamp - a.timestamp).toDouble() } }
         val inMouth = inWindow.filter { !PouchTiming.isActive(it, s, nowMs) && it.timestamp <= nowMs }
             .map { PouchTiming.effectiveDurationMs(it, s) }
         return PatternSummary(
@@ -116,7 +111,7 @@ object Patterns {
             firstPouch = firstPouch,
             firstNow = firstNow,
             firstShift = firstShift,
-            typicalGapMs = typicalGap,
+            typicalGapMs = Stats.median(gaps)?.roundToLong(),
             avgInMouthMs = inMouth.takeIf { it.isNotEmpty() }?.average()?.roundToLong(),
         )
     }

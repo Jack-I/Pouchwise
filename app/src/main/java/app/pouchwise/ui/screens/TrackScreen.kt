@@ -66,9 +66,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         }
     }
     val clock = if (anyActive) maxOf(tick, wallNow) else wallNow
-    val activeEntries = remember(entries, settings, clock) {
-        entries.filter { PouchTiming.isActive(it, settings, clock) }
-    }
+    val activeEntries = entries.filter { PouchTiming.isActive(it, settings, clock) }
 
     val today = DayKeys.epochDay(wallNow, settings.dayStartHour)
     val todaysAsc = remember(entries, settings.dayStartHour, today) {
@@ -265,23 +263,13 @@ private fun TodayCard(
     val ratio = if (limit > 0) used / limit else if (used > 0) 2.0 else 0.0
     val level = GardenLevel.of(DayStat(0, count, mg, limit, mode, hasData = true))
 
-    val headline = when (mode) {
-        LimitMode.COUNT -> {
-            val left = limit - count
-            when {
-                left > 0 -> pluralStringResource(R.plurals.pouches_left_today, left, left)
-                left == 0 -> stringResource(R.string.limit_reached)
-                else -> pluralStringResource(R.plurals.over_limit_by_pouches, -left, -left)
-            }
-        }
-        LimitMode.MG -> {
-            val left = limit - mg
-            when {
-                left > 0.05 -> stringResource(R.string.mg_left_today, Fmt.mg(left))
-                left > -0.05 -> stringResource(R.string.limit_reached)
-                else -> stringResource(R.string.over_limit_by_mg, Fmt.mg(-left))
-            }
-        }
+    val left = Limits.left(mode, limit, count, mg)
+    val headline = when {
+        left == 0.0 -> stringResource(R.string.limit_reached)
+        mode == LimitMode.COUNT && left > 0 -> pluralStringResource(R.plurals.pouches_left_today, left.toInt(), left.toInt())
+        mode == LimitMode.COUNT -> pluralStringResource(R.plurals.over_limit_by_pouches, -left.toInt(), -left.toInt())
+        left > 0 -> stringResource(R.string.mg_left_today, Fmt.mg(left))
+        else -> stringResource(R.string.over_limit_by_mg, Fmt.mg(-left))
     }
     val detail = when (mode) {
         LimitMode.COUNT -> pluralStringResource(R.plurals.used_of_limit_count, limit, count, limit, Fmt.mg(mg))
@@ -544,30 +532,11 @@ private fun LogRow(
                 Text(name, style = MaterialTheme.typography.bodyLarge, color = accent, modifier = Modifier.weight(1f, fill = false))
                 if (early) {
                     Spacer(Modifier.width(6.dp))
-                    Text(
-                        stringResource(R.string.early_marker),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(AppColors.plan.copy(alpha = 0.3f))
-                            .padding(horizontal = 6.dp, vertical = 1.dp),
-                    )
+                    Tag(stringResource(R.string.early_marker), AppColors.plan.copy(alpha = 0.3f))
                 }
                 if (marks.isNotEmpty()) {
                     Spacer(Modifier.width(6.dp))
-                    Text(
-                        feltChain(marks),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
-                            .padding(horizontal = 6.dp, vertical = 1.dp),
-                    )
+                    Tag(feltChain(marks), MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), Modifier.weight(1f, fill = false))
                 }
             }
             Text(

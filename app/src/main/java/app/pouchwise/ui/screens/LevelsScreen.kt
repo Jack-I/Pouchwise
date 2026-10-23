@@ -7,8 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +26,7 @@ import app.pouchwise.R
 import app.pouchwise.model.DayKeys
 import app.pouchwise.model.Pharmacokinetics
 import app.pouchwise.model.PouchTiming
+import app.pouchwise.ui.components.BackTopBar
 import app.pouchwise.ui.theme.AppColors
 import app.pouchwise.util.Fmt
 import kotlinx.coroutines.Dispatchers
@@ -126,19 +125,7 @@ fun LevelsScreen(vm: AppViewModel, onBack: () -> Unit) {
     val nicotine = lines(NICOTINE, yours?.first, R.string.lv_you_peak)
     val cotinine = lines(COTININE, yours?.second, R.string.lv_you_day_average)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.levels_title), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            )
-        },
-    ) { inner ->
+    Scaffold(topBar = { BackTopBar(stringResource(R.string.levels_title), onBack) }) { inner ->
         LazyColumn(
             Modifier.fillMaxSize().padding(inner),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),

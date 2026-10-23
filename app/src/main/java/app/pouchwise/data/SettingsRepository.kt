@@ -59,7 +59,7 @@ class SettingsRepository(private val context: Context) {
         return before to after
     }
 
-    /** Limits are whole pouches or whole mg; older versions could store 32.5. */
+    /** Limits are read as whole pouches or whole mg. */
     private fun read(p: Preferences): Settings {
         val d = Settings()
         fun whole(v: Double) = Math.round(v).toDouble()

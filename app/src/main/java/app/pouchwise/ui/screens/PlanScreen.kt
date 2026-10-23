@@ -1,5 +1,6 @@
 package app.pouchwise.ui.screens
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -42,13 +43,9 @@ fun PlanScreen(vm: AppViewModel) {
     val limitToday = Limits.limitForDayRounded(settings, today)
     val stepValue = if (mode == LimitMode.COUNT) 1.0 else 5.0
 
-    var editLimit by remember { mutableStateOf(false) }
-    var editStart by remember { mutableStateOf(false) }
-    var editTarget by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<LimitEdit?>(null) }
     var pickStartDate by remember { mutableStateOf(false) }
     var pickTargetDate by remember { mutableStateOf(false) }
-
-    fun baseLimit(s: Settings): Double = if (s.limitMode == LimitMode.COUNT) s.dailyLimitCount.toDouble() else s.dailyLimitMg
 
     fun setBase(v: Double) = vm.updateSettings { s ->
         val clamped = max(0.0, v)
@@ -121,13 +118,13 @@ fun PlanScreen(vm: AppViewModel) {
                     Text(limitAmount(mode, limitToday.toDouble()), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             } else {
-                val base = baseLimit(settings)
+                val base = Limits.baseLimit(settings)
                 StepperRow(
                     label = stringResource(R.string.daily_limit),
                     valueText = limitAmount(mode, base),
                     onMinus = { setBase(base - stepValue) },
                     onPlus = { setBase(base + stepValue) },
-                    onClickValue = { editLimit = true },
+                    onClickValue = { editing = LimitEdit.BASE },
                 )
             }
             Spacer(Modifier.height(8.dp))
@@ -149,7 +146,7 @@ fun PlanScreen(vm: AppViewModel) {
                             else {
                                 val fresh = s.taperTargetDay <= s.taperStartDay || s.taperTargetDay < today
                                 if (fresh) {
-                                    val start = baseLimit(s)
+                                    val start = Limits.baseLimit(s)
                                     s.copy(
                                         taperEnabled = true,
                                         taperStartDay = today,
@@ -170,7 +167,7 @@ fun PlanScreen(vm: AppViewModel) {
                     valueText = limitAmount(mode, settings.taperStartValue),
                     onMinus = { vm.updateSettings { it.copy(taperStartValue = max(0.0, it.taperStartValue - stepValue)) } },
                     onPlus = { vm.updateSettings { it.copy(taperStartValue = it.taperStartValue + stepValue) } },
-                    onClickValue = { editStart = true },
+                    onClickValue = { editing = LimitEdit.START },
                 )
                 DateRow(stringResource(R.string.start_date), Fmt.dateLong(settings.taperStartDay)) { pickStartDate = true }
                 Spacer(Modifier.height(8.dp))
@@ -179,7 +176,7 @@ fun PlanScreen(vm: AppViewModel) {
                     valueText = limitAmount(mode, settings.taperTargetValue),
                     onMinus = { vm.updateSettings { it.copy(taperTargetValue = max(0.0, it.taperTargetValue - stepValue)) } },
                     onPlus = { vm.updateSettings { it.copy(taperTargetValue = it.taperTargetValue + stepValue) } },
-                    onClickValue = { editTarget = true },
+                    onClickValue = { editing = LimitEdit.TARGET },
                 )
                 DateRow(stringResource(R.string.target_date), Fmt.dateLong(settings.taperTargetDay)) { pickTargetDate = true }
                 Spacer(Modifier.height(10.dp))
@@ -207,34 +204,27 @@ fun PlanScreen(vm: AppViewModel) {
         }
     }
 
-    if (editLimit) {
+    editing?.let { edit ->
         NumberDialog(
-            title = stringResource(R.string.daily_limit),
-            initial = Fmt.mg(baseLimit(settings)),
+            title = stringResource(edit.title),
+            initial = Fmt.mg(
+                when (edit) {
+                    LimitEdit.BASE -> Limits.baseLimit(settings)
+                    LimitEdit.START -> settings.taperStartValue
+                    LimitEdit.TARGET -> settings.taperTargetValue
+                },
+            ),
             decimal = false,
             suffix = unit,
-            onDismiss = { editLimit = false },
-            onConfirm = { setBase(it); editLimit = false },
-        )
-    }
-    if (editStart) {
-        NumberDialog(
-            title = stringResource(R.string.start_value),
-            initial = Fmt.mg(settings.taperStartValue),
-            decimal = false,
-            suffix = unit,
-            onDismiss = { editStart = false },
-            onConfirm = { v -> vm.updateSettings { it.copy(taperStartValue = v) }; editStart = false },
-        )
-    }
-    if (editTarget) {
-        NumberDialog(
-            title = stringResource(R.string.target_value),
-            initial = Fmt.mg(settings.taperTargetValue),
-            decimal = false,
-            suffix = unit,
-            onDismiss = { editTarget = false },
-            onConfirm = { v -> vm.updateSettings { it.copy(taperTargetValue = v) }; editTarget = false },
+            onDismiss = { editing = null },
+            onConfirm = { v ->
+                when (edit) {
+                    LimitEdit.BASE -> setBase(v)
+                    LimitEdit.START -> vm.updateSettings { it.copy(taperStartValue = v) }
+                    LimitEdit.TARGET -> vm.updateSettings { it.copy(taperTargetValue = v) }
+                }
+                editing = null
+            },
         )
     }
     if (pickStartDate) {
@@ -251,6 +241,13 @@ fun PlanScreen(vm: AppViewModel) {
             onConfirm = { d -> vm.updateSettings { it.copy(taperTargetDay = d) }; pickTargetDate = false },
         )
     }
+}
+
+/** The limit values typed in a dialog. */
+private enum class LimitEdit(@StringRes val title: Int) {
+    BASE(R.string.daily_limit),
+    START(R.string.start_value),
+    TARGET(R.string.target_value),
 }
 
 @Composable

@@ -39,10 +39,8 @@ object IntervalPlan {
 
     /** Median of [levelsAtPouches], or null with fewer than five pouches to go by. */
     fun usualLevel(entries: List<LogEntry>, s: Settings, fromMs: Long, toMs: Long): Double? {
-        val levels = levelsAtPouches(entries, s, fromMs, toMs).sorted()
-        if (levels.size < MIN_SAMPLES) return null
-        val mid = levels.size / 2
-        return if (levels.size % 2 == 1) levels[mid] else (levels[mid - 1] + levels[mid]) / 2
+        val levels = levelsAtPouches(entries, s, fromMs, toMs)
+        return if (levels.size < MIN_SAMPLES) null else Stats.median(levels)
     }
 
     /** Level (mg) below which the next pouch is due at [nowMs]; null with the plan off or too little data yet. */

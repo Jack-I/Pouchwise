@@ -8,7 +8,6 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -45,7 +44,6 @@ import app.pouchwise.data.PouchType
 import app.pouchwise.data.SettingsRepository
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.model.Settings
-import app.pouchwise.model.ThemeMode
 import app.pouchwise.ui.components.ColorDot
 import app.pouchwise.ui.theme.PouchwiseTheme
 import app.pouchwise.ui.theme.pouchColor
@@ -72,12 +70,7 @@ class QuickLogActivity : ComponentActivity() {
             // Follow the app's own theme setting, like the app does.
             val settings by settingsFlow.collectAsState(initial = null)
             val mode = settings?.themeMode ?: return@setContent
-            val dark = when (mode) {
-                ThemeMode.SYSTEM -> isSystemInDarkTheme()
-                ThemeMode.LIGHT -> false
-                ThemeMode.DARK -> true
-            }
-            PouchwiseTheme(darkTheme = dark) {
+            PouchwiseTheme(mode) {
                 if (removing) RemoveChooser() else LogChooser()
             }
         }

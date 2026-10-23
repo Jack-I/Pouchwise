@@ -1,10 +1,12 @@
 package app.pouchwise.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import app.pouchwise.model.ThemeMode
 
 private val LightColors = lightColorScheme(
     primary = Color(0xFF1E88E5),
@@ -85,9 +87,11 @@ val PouchPalette = listOf(
 fun pouchColor(index: Int): Color = PouchPalette[Math.floorMod(index, PouchPalette.size)]
 
 @Composable
-fun PouchwiseTheme(darkTheme: Boolean, content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
-        content = content,
-    )
+fun PouchwiseTheme(mode: ThemeMode, content: @Composable () -> Unit) {
+    val dark = when (mode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+    MaterialTheme(colorScheme = if (dark) DarkColors else LightColors, content = content)
 }

@@ -2,7 +2,6 @@ package app.pouchwise.model
 
 import app.pouchwise.data.LogEntry
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -28,13 +27,12 @@ class LimitsTest {
 
     @Test
     fun exceedingRules() {
-        val count = Settings(limitMode = LimitMode.COUNT)
-        assertFalse(Limits.wouldExceed(count, 10, 9, 0.0, 8.0))
-        assertTrue(Limits.wouldExceed(count, 10, 10, 0.0, 8.0))
+        assertEquals(1.0, Limits.left(LimitMode.COUNT, 10, 9, 0.0), 0.0)
+        assertEquals(-1.0, Limits.left(LimitMode.COUNT, 10, 11, 0.0), 0.0)
+        assertEquals(0.0, Limits.left(LimitMode.MG, 49, 0, 49.03), 0.0)  // a rounding hair over is "reached"
+        assertEquals(1.3, Limits.left(LimitMode.MG, 49, 0, 47.7), 1e-9)
 
         val mg = Settings(limitMode = LimitMode.MG)
-        assertFalse(Limits.wouldExceed(mg, 43, 0, 35.0, 8.0))
-        assertTrue(Limits.wouldExceed(mg, 43, 0, 36.0, 8.0))
         assertEquals(1, Limits.remainingPouches(mg, 43, 0, 35.0, 8.0))
         assertEquals(0, Limits.remainingPouches(mg, 43, 0, 36.0, 8.0))
         assertEquals(5, Limits.remainingPouches(mg, 43, 0, 0.0, 8.0))
