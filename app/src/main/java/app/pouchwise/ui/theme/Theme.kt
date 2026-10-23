@@ -83,9 +83,11 @@ object AppColors {
     )
 }
 
+/** A pouch keeps its colour by index, so new colours go at the end. */
 val PouchPalette = listOf(
     Color(0xFF1E88E5), Color(0xFF43A047), Color(0xFFFB8C00), Color(0xFF8E24AA),
     Color(0xFFE53935), Color(0xFF00ACC1), Color(0xFF6D4C41), Color(0xFF546E7A),
+    Color(0xFFFDD835), Color(0xFFF48FB1), Color(0xFF1DE9B6), Color(0xFFE040FB),
 )
 
 fun pouchColor(index: Int): Color = PouchPalette[Math.floorMod(index, PouchPalette.size)]

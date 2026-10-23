@@ -102,7 +102,7 @@
     <string name="fast_release_hint">For minis, dry slims and pouches that tingle hard: they give up nicotine fast, like ZYN, so time in the mouth matters less.</string>
     <string name="pouch_color">Colour</string>
     <string name="absorbed_today">≈\u00A0%1$s\u00A0mg absorbed today</string>
-    <string name="absorbed_short">≈\u00A0%1$s\u00A0mg absorbed</string>
+    <string name="absorbed_short">≈\u00A0%1$s\u00A0mg\u00A0absorbed</string>
     <string name="new_pouch">New pouch</string>
     <string name="edit_pouch">Edit pouch</string>
     <string name="archived">Hidden</string>

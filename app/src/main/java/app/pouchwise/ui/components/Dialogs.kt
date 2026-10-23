@@ -219,7 +219,12 @@ fun PouchTypeDialog(
                 Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.pouch_color), style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(8.dp))
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    maxItemsInEachRow = 6,
+                ) {
                     PouchPalette.forEachIndexed { i, c ->
                         ColorChoice(color = c, selected = i == color, onClick = { color = i })
                     }

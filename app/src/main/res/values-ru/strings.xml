@@ -108,7 +108,7 @@
     <string name="fast_release_hint">Для мини, сухих слимов и сильно щиплющих: они отдают никотин быстро, как ZYN, и время во рту для них значит меньше.</string>
     <string name="pouch_color">Цвет</string>
     <string name="absorbed_today">≈\u00A0%1$s\u00A0мг усвоено сегодня</string>
-    <string name="absorbed_short">≈\u00A0%1$s\u00A0мг усвоено</string>
+    <string name="absorbed_short">≈\u00A0%1$s\u00A0мг\u00A0усвоено</string>
     <string name="new_pouch">Новый пауч</string>
     <string name="edit_pouch">Изменить пауч</string>
     <string name="archived">Скрытые</string>

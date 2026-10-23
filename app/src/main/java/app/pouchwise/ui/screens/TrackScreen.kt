@@ -1,6 +1,7 @@
 package app.pouchwise.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,7 +10,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
@@ -455,16 +455,16 @@ private fun PouchTypeRow(type: PouchType, price: String?, fits: Int, onLog: () -
             ColorDot(pouchColor(type.colorIndex))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Row {
+                // A long name keeps its line and the strength goes below it.
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         type.name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false).alignByBaseline(),
+                        modifier = Modifier.alignByBaseline(),
                     )
-                    Spacer(Modifier.width(6.dp))
                     Text(
                         stringResource(R.string.mg_value, Fmt.mg(type.strengthMg)) + (price?.let { " · $it" } ?: ""),
                         style = MaterialTheme.typography.bodyMedium,
@@ -513,6 +513,7 @@ private fun LogRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(if (over) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f) else MaterialTheme.colorScheme.surfaceContainer)
+            .clickable(onClickLabel = stringResource(R.string.edit_entry), onClick = onEdit)
             .padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -520,17 +521,13 @@ private fun LogRow(
         Spacer(Modifier.width(8.dp))
         ColorDot(pouchColor(colorIndex), size = 10)
         Spacer(Modifier.width(8.dp))
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(name, style = MaterialTheme.typography.bodyLarge, color = accent, modifier = Modifier.weight(1f, fill = false))
-                if (early) {
-                    Spacer(Modifier.width(6.dp))
-                    Tag(stringResource(R.string.early_marker), AppColors.plan.copy(alpha = 0.3f))
-                }
-                if (marks.isNotEmpty()) {
-                    Spacer(Modifier.width(6.dp))
-                    Tag(feltChain(marks), MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), Modifier.weight(1f, fill = false))
-                }
+        Column(Modifier.weight(1f).padding(vertical = 4.dp)) {
+            // The name keeps its line; the tags go below it when they do not fit beside it.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                val center = Modifier.align(Alignment.CenterVertically)
+                Text(name, style = MaterialTheme.typography.bodyLarge, color = accent, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = center)
+                if (early) Tag(stringResource(R.string.early_marker), AppColors.plan.copy(alpha = 0.3f), center)
+                if (marks.isNotEmpty()) Tag(feltChain(marks), MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), center)
             }
             Text(
                 "${stringResource(R.string.mg_value, Fmt.mg(entry.strengthMg))} · $durationLabel · $absorbedLabel",
@@ -542,7 +539,6 @@ private fun LogRow(
             Icon(Icons.Filled.Warning, contentDescription = stringResource(R.string.over_limit_marker), tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(4.dp))
         }
-        IconButton(onClick = onEdit) { Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.edit_entry)) }
         IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete)) }
     }
 }
