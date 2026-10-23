@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.pm.PackageInfoCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
 import app.pouchwise.R
@@ -37,7 +38,10 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
     val startImport = rememberImportFlow(vm)
     val pk = settings.pk
     val version = remember {
-        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "" }.getOrDefault("")
+        runCatching {
+            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            (info.versionName ?: "") to PackageInfoCompat.getLongVersionCode(info)
+        }.getOrDefault("" to 0L)
     }
 
     Scaffold(topBar = { BackTopBar(stringResource(R.string.settings), onBack) }) { inner ->
@@ -175,7 +179,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
             SoftCard {
                 Text(stringResource(R.string.disclaimer), style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(6.dp))
-                Text(stringResource(R.string.version, version), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.version, version.first, version.second), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

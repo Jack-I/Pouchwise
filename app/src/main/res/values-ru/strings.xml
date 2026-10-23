@@ -247,7 +247,7 @@
     <string name="language_system">Как в системе</string>
     <string name="about">О приложении</string>
     <string name="disclaimer">Pouchwise — трекер привычки, а не медицинское устройство. Уровни в организме — грубая оценка по простой фармакокинетической модели.</string>
-    <string name="version">Версия %1$s</string>
+    <string name="version">Версия %1$s, сборка %2$d</string>
 
     <string name="widget_ring_label">Кольцо Pouchwise</string>
     <string name="widget_ring_desc">Сегодня относительно дневного лимита</string>
