@@ -86,6 +86,10 @@
     <string name="felt_hit">Вштырило</string>
     <string name="felt_a_bit">Слегка</string>
     <string name="felt_nothing">Ничего</string>
+    <string name="felt_overwhelm">Перекрыло</string>
+    <string name="felt_mark_at">%1$s · %2$d\u00A0мин</string>
+    <string name="felt_add_now">Добавить сейчас</string>
+    <string name="felt_remove">Убрать этот ответ</string>
 
     <string name="brand">Бренд</string>
     <string name="brand_other">Другой</string>
@@ -129,7 +133,7 @@
     <string name="range_48h">48 ч</string>
     <string name="range_7d">7 д</string>
     <string name="legend_future">если больше не брать</string>
-    <string name="model_summary">t½ никотина %1$s ч · t½ котинина %2$s ч · усваивается %3$d%% за %4$d мин</string>
+    <string name="model_summary">t½ никотина %1$s ч · t½ котинина %2$s ч · усваивается %3$d%% вышедшего из пауча</string>
     <string name="no_data_yet">Запишите пауч, чтобы увидеть кривую.</string>
 
     <string name="history_title">История</string>
@@ -195,7 +199,7 @@
     <string name="weight_hint">Нужен, чтобы перевести мг в организме в нг/мл в крови.</string>
     <string name="absorption_minutes">Время пауча под губой, минут</string>
     <string name="pouch_time_hint">Через столько пауч считается вынутым, если не вынуть его раньше. У записанных паучей время своё.</string>
-    <string name="model_hint" formatted="false">Считается, что за 30 минут под губой усваивается около 30% никотина с этикетки (меньше, если короче, больше, если дольше), полувыведение никотина 2 ч, котинина 16 ч. 30% — типичное значение в восьми исследованиях крови, в основном оплаченных производителями, так что уровни примерные.</string>
+    <string name="model_hint" formatted="false">Считается, что усваивается около 80% никотина, вышедшего из пауча. Как быстро он выходит, зависит от марки: за 30 минут средний пауч даёт около 30% никотина с этикетки, ZYN — 43%, Loop — 12%; короче — меньше, дольше — больше. Полувыведение никотина 2 ч, котинина 16 ч. Подобрано по восьми исследованиям крови, в основном оплаченным производителями, так что уровни примерные.</string>
     <string name="settings_appearance">Оформление</string>
     <string name="theme_system">Как в системе</string>
     <string name="theme_light">Светлая</string>
@@ -203,6 +207,7 @@
     <string name="settings_data">Данные</string>
     <string name="export_csv">Экспорт CSV</string>
     <string name="export_json">Экспорт JSON</string>
+    <string name="export_felt_csv">Экспорт ответов «вштырило» (CSV)</string>
     <string name="export_hint">Данные хранятся только на этом телефоне. Экспорт — чтобы сохранить копию; JSON-экспорт можно импортировать на другом телефоне.</string>
     <string name="share_export">Поделиться экспортом</string>
     <string name="import_json">Импорт JSON</string>
@@ -284,7 +289,7 @@
     <string name="interval_lower">Снижать</string>
     <string name="interval_usual">За последние две недели вы брали следующий пауч примерно при %1$s\u00A0мг никотина в организме (≈\u00A0%2$s\u00A0нг/мл).</string>
     <string name="interval_keep_rule">Держать: следующий лучше после того, как никотин опустится ниже %1$s\u00A0мг. Дни остаются как есть.</string>
-    <string name="interval_lower_rule">Снижать: на четверть ниже, сейчас %1$s\u00A0мг, пересчёт по понедельникам — перерывы растут от недели к неделе.</string>
+    <string name="interval_lower_rule">Снижать: на 15%% ниже, сейчас %1$s\u00A0мг, пересчёт по понедельникам — перерывы растут от недели к неделе.</string>
     <string name="interval_learning">Чтобы узнать ваш обычный уровень, плану нужно хотя бы пять паучей за две недели, не считая первого за день.</string>
     <string name="interval_never_blocks">Пауч раньше времени помечается, но не запрещается.</string>
     <string name="settings_spending">Траты</string>

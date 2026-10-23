@@ -38,7 +38,7 @@ class IntervalPlanTest {
         val monday = at(19, 0)
         assertEquals(monday, IntervalPlan.weekStartMs(now, 0))
         val lower = IntervalPlan.threshold(entries, s.copy(intervalMode = IntervalMode.LOWER), now)!!
-        assertEquals(IntervalPlan.usualLevel(entries, s, monday - IntervalPlan.WINDOW_MS, monday)!! * 0.75, lower, 1e-12)
+        assertEquals(IntervalPlan.usualLevel(entries, s, monday - IntervalPlan.WINDOW_MS, monday)!! * 0.85, lower, 1e-12)
         assertNull(IntervalPlan.threshold(entries, s, now))
     }
 

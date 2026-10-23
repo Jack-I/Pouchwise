@@ -8,13 +8,13 @@ import kotlin.math.min
 
 /**
  * Spacing between pouches by nicotine level. "Keep": the next pouch once nicotine is back below the level at
- * which you usually take one (median over the last two weeks). "Lower": a quarter below that, fixed for the week
+ * which you usually take one (median over the last two weeks). "Lower": 15 % below that, fixed for the week
  * from the two weeks before Monday, and never below the level at which half of the α4β2 receptors are free.
  */
 object IntervalPlan {
     /** Plasma nicotine at which half of the brain's α4β2 nicotinic receptors are taken (Brody et al., Arch Gen Psychiatry 2006). */
     const val RECEPTOR_HALF_NG_ML = 0.87
-    const val LOWER_SHARE = 0.75
+    const val LOWER_SHARE = 0.85
     const val WINDOW_MS = 14L * 24 * 3_600_000L
     /** Entries a plan needs loaded: the week so far, two weeks before it, and the model's lookback. */
     const val DATA_MS = 28L * 24 * 3_600_000L

@@ -59,14 +59,14 @@ object PouchTiming {
         Dose(e.timestamp, e.strengthMg, effectiveDurationMs(e, s), e.releaseK, pouchMinutes(e, s))
 
     /**
-     * Nicotine absorbed from this pouch by [nowMs]: labelled strength × absorbed share × released
-     * share for the minutes it has been in so far (capped at its planned time).
+     * Nicotine absorbed from this pouch by [nowMs]: labelled strength × the share released in the minutes it has
+     * been in so far (capped at its planned time) × the share of that reaching the blood.
      */
     fun absorbedMg(e: LogEntry, s: Settings, nowMs: Long): Double {
         val planned = effectiveDurationMs(e, s)
         val soFar = min(planned, max(nowMs - e.timestamp, 0L))
         if (soFar <= 0L) return 0.0
-        return e.strengthMg * s.pk.absorptionFraction * Pharmacokinetics.releasedShare(soFar / 60_000.0, e.releaseK)
+        return e.strengthMg * Pharmacokinetics.uptake(s.pk) * Pharmacokinetics.released(soFar / 60_000.0, e.releaseK)
     }
 
     /** Marks the pouch as taken out now. */

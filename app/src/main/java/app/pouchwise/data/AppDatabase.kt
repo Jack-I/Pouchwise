@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [PouchType::class, LogEntry::class, PlanVersion::class], version = 9, exportSchema = false)
+@Database(entities = [PouchType::class, LogEntry::class, PlanVersion::class, FeltMark::class], version = 10, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun dao(): PouchDao
 
@@ -82,9 +82,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `felt_marks` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `entryId` INTEGER NOT NULL, `level` INTEGER NOT NULL, `atMs` INTEGER NOT NULL)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_felt_marks_entryId` ON `felt_marks` (`entryId`)")
+                db.execSQL("INSERT INTO felt_marks (entryId, level, atMs) SELECT id, felt, COALESCE(feltAt, timestamp) FROM log_entries WHERE felt IS NOT NULL")
+                db.execSQL("UPDATE log_entries SET felt = NULL, feltAt = NULL")
+            }
+        }
+
         fun get(context: Context): AppDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "pouchwise.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                .addMigrations(
+                    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
+                    MIGRATION_9_10,
+                )
                 .build()
                 .also { instance = it }
         }

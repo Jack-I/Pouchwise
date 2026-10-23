@@ -46,7 +46,7 @@ class PouchTimingTest {
         assertEquals(at30, at90, 1e-12)        // nothing more after the pouch time
 
         val removed = PouchTiming.finish(e, s, start + 15 * min)
-        val expected = 10.0 * s.pk.absorptionFraction * Pharmacokinetics.releasedShare(15.0, Brands.averageK)
+        val expected = 10.0 * Pharmacokinetics.uptake(s.pk) * Pharmacokinetics.released(15.0, Brands.averageK)
         assertEquals(expected, PouchTiming.absorbedMg(removed, s, start + 15 * min), 1e-9)
         assertEquals(expected, PouchTiming.absorbedMg(removed, s, start + 5 * 60 * min), 1e-9)
     }

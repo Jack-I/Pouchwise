@@ -8,9 +8,11 @@ import org.junit.Test
 class BrandsTest {
     @Test
     fun catalogueMatchesTheStudy() {
-        assertEquals(7, Brands.known.size)
+        assertEquals(8, Brands.known.size)
         assertEquals(0.103, Brands.kFor("ZYN"), 1e-12)
         assertEquals(0.021, Brands.kFor("Loop"), 1e-12)
+        assertEquals(0.032, Brands.kFor("zyn wet"), 1e-12)
+        // The average is of the study's seven; ZYN Wet comes from blood levels, not from it.
         assertEquals(0.0624, Brands.averageK, 5e-4)
     }
 

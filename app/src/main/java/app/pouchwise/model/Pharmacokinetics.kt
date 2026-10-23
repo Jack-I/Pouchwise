@@ -7,7 +7,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 data class PkParams(
-    /** Share of the labelled nicotine that reaches the bloodstream when a pouch stays in for 30 minutes. */
+    /** Share of the labelled nicotine that reaches the bloodstream from a pouch of average release speed kept in for 30 minutes. */
     val absorptionFraction: Double = 0.30,
     /** Pouch time for pouches put in from now on, minutes; each logged pouch keeps the value it was logged with. */
     val absorptionMinutes: Int = 30,
@@ -35,7 +35,7 @@ data class Clearance(val nicotineClearMs: Long?, val cotinineClearMs: Long?)
 
 /**
  * One-compartment nicotine with first-order elimination feeding a cotinine compartment
- * (Bateman cascade). While a pouch is in, nicotine comes in as the pouch releases it ([releasedShare]),
+ * (Bateman cascade). While a pouch is in, nicotine comes in as the pouch releases it ([released]),
  * fast at first and slowing down; taking it out stops the input. Closed form, so any instant can be
  * evaluated directly.
  */
@@ -57,7 +57,7 @@ object Pharmacokinetics {
     const val LOOKBACK_MS = 7L * 24 * 3_600_000L
     const val MAX_FORECAST_MS = 14L * 24 * 3_600_000L
 
-    /** [PkParams.absorptionFraction] is the absorbed share for a pouch kept in this long. */
+    /** [PkParams.absorptionFraction] is the absorbed share for an average pouch kept in this long. */
     const val REFERENCE_MINUTES = 30.0
 
     /**
@@ -72,22 +72,24 @@ object Pharmacokinetics {
     private const val SCAN_STEP_MS = 5 * 60_000L
 
     /**
-     * Nicotine a pouch has given up after [minutesIn] minutes, relative to one kept in for
-     * [REFERENCE_MINUTES]: first-order release, so a shorter time gives less and a longer one more.
-     * It depends only on the minutes actually in, not on the pouch-time setting.
+     * Share of a pouch's nicotine that has left it after [minutesIn] minutes in the mouth: first-order release,
+     * so a slow brand or a short time gives less. It depends only on the minutes actually in, not on the pouch-time setting.
      */
-    fun releasedShare(minutesIn: Double, kPerMin: Double): Double {
-        val t = minutesIn.coerceAtLeast(0.0)
-        val k = kPerMin * IN_MOUTH_RELEASE_FACTOR
-        if (k <= 1e-9) return t / REFERENCE_MINUTES
-        return (1 - exp(-k * t)) / (1 - exp(-k * REFERENCE_MINUTES))
-    }
+    fun released(minutesIn: Double, kPerMin: Double): Double =
+        1 - exp(-kPerMin * IN_MOUTH_RELEASE_FACTOR * minutesIn.coerceAtLeast(0.0))
+
+    /**
+     * Share of the nicotine out of the pouch that reaches the bloodstream, the same for every brand; set so that an
+     * average pouch kept in for [REFERENCE_MINUTES] gives [PkParams.absorptionFraction] of its label.
+     */
+    fun uptake(p: PkParams): Double = p.absorptionFraction / released(REFERENCE_MINUTES, Brands.averageK)
 
     fun levelsAt(timeMs: Long, doses: List<Dose>, p: PkParams): BodyLevels {
         val kn = ln(2.0) / p.nicotineHalfLifeHours.coerceAtLeast(0.05)
         var kc = ln(2.0) / p.cotinineHalfLifeHours.coerceAtLeast(0.05)
         if (abs(kc - kn) < 1e-9) kc *= 1.0001
         val y = p.cotinineYield * COTININE_MW / NICOTINE_MW
+        val u = uptake(p)
 
         var n = 0.0
         var c = 0.0
@@ -98,25 +100,15 @@ object Pharmacokinetics {
             val tau = ageMs / HOUR_MS
             val tOut = durationMs(d, p) / HOUR_MS
             val t = min(tau, tOut)
-            val full = d.labelledMg * p.absorptionFraction
-            val k = d.kPerMin * IN_MOUTH_RELEASE_FACTOR
             val en = exp(-kn * t)
             val ec = exp(-kc * t)
             // Levels at t while the pouch is in.
-            val nIn: Double
-            val cIn: Double
-            if (k <= 1e-9) {
-                val rate = full * 60.0 / REFERENCE_MINUTES
-                nIn = rate / kn * (1 - en)
-                cIn = y * rate * ((1 - ec) / kc - (en - ec) / (kc - kn))
-            } else {
-                var ka = k * 60.0
-                if (abs(ka - kn) < 1e-6 * kn || abs(ka - kc) < 1e-6 * kc) ka *= 1.001
-                val r0 = full * ka / (1 - exp(-ka * REFERENCE_MINUTES / 60.0))
-                val ea = exp(-ka * t)
-                nIn = r0 / (kn - ka) * (ea - en)
-                cIn = y * kn * r0 / (kn - ka) * ((ea - ec) / (kc - ka) - (en - ec) / (kc - kn))
-            }
+            var ka = d.kPerMin * IN_MOUTH_RELEASE_FACTOR * 60.0
+            if (abs(ka - kn) < 1e-6 * kn || abs(ka - kc) < 1e-6 * kc) ka *= 1.001
+            val r0 = d.labelledMg * u * ka
+            val ea = exp(-ka * t)
+            val nIn = r0 / (kn - ka) * (ea - en)
+            val cIn = y * kn * r0 / (kn - ka) * ((ea - ec) / (kc - ka) - (en - ec) / (kc - kn))
             if (tau <= tOut) {
                 n += nIn
                 c += cIn

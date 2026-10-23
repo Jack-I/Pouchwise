@@ -9,6 +9,7 @@ import androidx.room.withTransaction
 import app.pouchwise.data.AppDatabase
 import app.pouchwise.data.Backup
 import app.pouchwise.data.Felt
+import app.pouchwise.data.FeltMark
 import app.pouchwise.data.LogEntry
 import app.pouchwise.data.PlanVersion
 import app.pouchwise.data.PouchEdit
@@ -82,6 +83,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val plans: StateFlow<List<PlanVersion>> = dao.observePlans()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Felt answers by entry id, oldest first. */
+    val feltMarks: StateFlow<Map<Long, List<FeltMark>>> = dao.observeFeltMarks()
+        .map { marks -> marks.groupBy { it.entryId } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
     val settings: StateFlow<Settings> = settingsRepo.settings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Settings())
 
@@ -151,29 +157,37 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun deleteEntry(entry: LogEntry) = viewModelScope.launch {
-        dao.deleteEntry(entry)
+        db.withTransaction {
+            dao.deleteEntry(entry)
+            dao.deleteFeltMarksOf(entry.id)
+        }
         refreshWidgets()
     }
 
-    /** A hand correction: when the pouch went in and how long it stayed; [durationMs] is null while it is still in. */
-    fun editEntry(entry: LogEntry, newStartMs: Long, durationMs: Long?, felt: Felt?) = viewModelScope.launch {
+    /**
+     * A hand correction: when the pouch went in, how long it stayed ([durationMs] is null while it is still in)
+     * and its felt answers, which replace the stored ones.
+     */
+    fun editEntry(entry: LogEntry, newStartMs: Long, durationMs: Long?, marks: List<FeltMark>) = viewModelScope.launch {
         val s = settingsRepo.settings.first()
         val moved = if (durationMs == null) PouchTiming.withNewStart(entry, newStartMs, s)
                     else PouchTiming.withTimes(entry, newStartMs, durationMs, s)
-        dao.updateEntry(answered(moved, felt))
+        db.withTransaction {
+            dao.updateEntry(moved)
+            dao.deleteFeltMarksOf(entry.id)
+            dao.insertFeltMarks(marks.map { it.copy(id = 0, entryId = entry.id) })
+        }
         refreshWidgets()
     }
 
-    /** Records how the pouch was felt; null clears the answer. */
-    fun setFelt(entry: LogEntry, felt: Felt?) = viewModelScope.launch {
-        val a = answered(entry, felt)
-        dao.setFelt(a.id, a.felt, a.feltAt)
+    /** Records how the pouch feels now. */
+    fun addFelt(entry: LogEntry, felt: Felt) = viewModelScope.launch {
+        dao.insertFeltMark(FeltMark(entryId = entry.id, level = felt.level, atMs = System.currentTimeMillis()))
     }
 
-    /** The answer with the moment it was given; an unchanged answer keeps its moment. */
-    private fun answered(entry: LogEntry, felt: Felt?): LogEntry =
-        if (felt?.level == entry.felt) entry
-        else entry.copy(felt = felt?.level, feltAt = felt?.let { System.currentTimeMillis() })
+    fun takeBackFelt(entry: LogEntry) = viewModelScope.launch {
+        dao.deleteLatestFeltMark(entry.id)
+    }
 
     fun updateSettings(transform: (Settings) -> Settings) = viewModelScope.launch {
         val (before, after) = settingsRepo.update(transform)
@@ -234,11 +248,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Read straight from the database: the screen-bound flows can be stale or empty on the Settings screen. */
     fun exportCsv(context: Context) = viewModelScope.launch {
-        Export.shareCsv(context, dao.allEntries(), dao.allTypes(), settingsRepo.settings.first())
+        Export.shareCsv(context, dao.allEntries(), dao.allTypes(), settingsRepo.settings.first(), dao.allFeltMarks())
+    }
+
+    fun exportFeltCsv(context: Context) = viewModelScope.launch {
+        Export.shareFeltCsv(context, dao.allEntries(), dao.allTypes(), settingsRepo.settings.first(), dao.allFeltMarks())
     }
 
     fun exportJson(context: Context) = viewModelScope.launch {
-        Export.shareJson(context, dao.allEntries(), dao.allTypes(), settingsRepo.settings.first(), dao.allPlans())
+        Export.shareJson(context, dao.allEntries(), dao.allTypes(), settingsRepo.settings.first(), dao.allPlans(), dao.allFeltMarks())
     }
 
     /** Replaces pouches, entries and plan history with the file's in one transaction, then takes over its settings. */
@@ -256,12 +274,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val plans = contents.plans.ifEmpty { listOf(PlanHistory.versionOf(imported, fromDay = 0L)) }
         val ok = runCatching {
             db.withTransaction {
+                dao.deleteAllFeltMarks()
                 dao.deleteAllEntries()
                 dao.deleteAllTypes()
                 dao.deleteAllPlans()
                 dao.insertTypes(contents.types)
                 dao.insertEntries(entries)
                 dao.insertPlans(plans)
+                dao.insertFeltMarks(contents.feltMarks)
             }
         }.isSuccess
         if (ok) {

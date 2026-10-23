@@ -26,6 +26,8 @@ object Backup {
         val entries: List<LogEntry>,
         /** Recorded plan versions; empty for files from before 0.7.7. */
         val plans: List<PlanVersion>,
+        /** Felt answers of the file's entries, oldest first. */
+        val feltMarks: List<FeltMark>,
         /** ISO date-time as written in the file, or null when the file lacks it. */
         val exportedAt: String?,
         private val settings: JSONObject?,
@@ -71,14 +73,24 @@ object Backup {
         val typesJson = root.optJSONArray("types") ?: throw NotAnExport("no pouches")
         val entriesJson = root.optJSONArray("entries") ?: throw NotAnExport("no entries")
         val plansJson = root.optJSONArray("planHistory")
+        val marksJson = root.optJSONArray("feltMarks")
         try {
             val types = (0 until typesJson.length()).map { i -> type(typesJson.getJSONObject(i), i) }
-            val entries = (0 until entriesJson.length()).map { i -> entry(entriesJson.getJSONObject(i)) }
+            val entryObjects = (0 until entriesJson.length()).map { i -> entriesJson.getJSONObject(i) }
+            val entries = entryObjects.map { entry(it) }
             val plans = if (plansJson == null) emptyList() else (0 until plansJson.length()).map { i -> plan(plansJson.getJSONObject(i)) }
             if (types.distinctBy { it.id }.size != types.size) throw NotAnExport("repeated pouch ids")
             if (entries.distinctBy { it.id }.size != entries.size) throw NotAnExport("repeated entry ids")
             if (plans.distinctBy { it.fromDay }.size != plans.size) throw NotAnExport("repeated plan days")
-            return Contents(types, entries, plans.sortedBy { it.fromDay }, root.optString("exportedAt").ifEmpty { null }, root.optJSONObject("settings"))
+            val ids = entries.map { it.id }.toSet()
+            val marks = (if (marksJson == null) entryObjects.mapNotNull { legacyMark(it) }
+                         else (0 until marksJson.length()).mapNotNull { i -> mark(marksJson.getJSONObject(i)) })
+                .filter { it.entryId in ids }
+                .sortedBy { it.atMs }
+            return Contents(
+                types, entries, plans.sortedBy { it.fromDay }, marks,
+                root.optString("exportedAt").ifEmpty { null }, root.optJSONObject("settings"),
+            )
         } catch (e: JSONException) {
             throw NotAnExport(e.message ?: "unreadable field")
         }
@@ -109,7 +121,6 @@ object Backup {
         val start = o.getLong("timestamp")
         val end = if (o.isNull("endTimestamp")) null else o.getLong("endTimestamp")
         if (start <= 0L || (end != null && end < start)) throw NotAnExport("bad times")
-        val felt = Felt.ofCode(o.optString("felt"))
         return LogEntry(
             id = o.getLong("id"),
             pouchTypeId = o.getLong("pouchTypeId"),
@@ -122,9 +133,21 @@ object Backup {
             day = if (o.isNull("day")) null else o.getLong("day").takeIf { abs(it - Math.floorDiv(start, DAY_MS)) <= 2 },
             pricePerPouch = o.amount("pricePerPouch"),
             planLevelMg = o.amount("planLevelMg")?.takeIf { it <= 100.0 },
-            felt = felt?.level,
-            feltAt = if (felt == null || o.isNull("feltAt")) null else o.optLong("feltAt").takeIf { it > 0L },
         )
+    }
+
+    /** A felt answer; one with an unknown answer or time is left out rather than refusing the file. */
+    private fun mark(o: JSONObject): FeltMark? {
+        val felt = Felt.ofCode(o.optString("felt")) ?: return null
+        val at = o.optLong("atMs").takeIf { it > 0L } ?: return null
+        return FeltMark(entryId = o.optLong("entryId", -1L), level = felt.level, atMs = at)
+    }
+
+    /** Files from the first 0.9.4 builds kept a single answer on the entry itself. */
+    private fun legacyMark(o: JSONObject): FeltMark? {
+        val felt = Felt.ofCode(o.optString("felt")) ?: return null
+        val at = o.optLong("feltAt").takeIf { it > 0L } ?: o.getLong("timestamp")
+        return FeltMark(entryId = o.getLong("id"), level = felt.level, atMs = at)
     }
 
     private fun plan(o: JSONObject): PlanVersion {

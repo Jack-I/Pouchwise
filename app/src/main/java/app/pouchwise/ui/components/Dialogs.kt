@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,6 +32,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.pouchwise.R
 import app.pouchwise.data.Felt
+import app.pouchwise.data.FeltMark
 import app.pouchwise.data.PouchType
 import app.pouchwise.util.Fmt
 import app.pouchwise.data.PouchEdit
@@ -288,8 +290,8 @@ fun TimeDialog(
 }
 
 /**
- * Corrects a logged pouch: when it went in and, once it is out, how many minutes it stayed. Moving the start
- * keeps the minutes. [durationMs] is null while the pouch is still in; [onSave] gets the same shape back.
+ * Corrects a logged pouch: when it went in, once it is out how many minutes it stayed, and its felt answers.
+ * Moving the start keeps the minutes. [durationMs] is null while the pouch is still in; [onSave] gets the same shape back.
  */
 @Composable
 fun EntryDialog(
@@ -297,12 +299,13 @@ fun EntryDialog(
     color: Color,
     startMs: Long,
     durationMs: Long?,
-    felt: Felt?,
+    marks: List<FeltMark>,
     onDismiss: () -> Unit,
-    onSave: (startMs: Long, durationMs: Long?, felt: Felt?) -> Unit,
+    onSave: (startMs: Long, durationMs: Long?, marks: List<FeltMark>) -> Unit,
 ) {
     var start by rememberSaveable { mutableLongStateOf(startMs) }
-    var feltLevel by rememberSaveable { mutableStateOf(felt?.level) }
+    // Level and time of each answer; plain pairs so they survive rotation.
+    var answers by rememberSaveable { mutableStateOf(marks.map { it.level to it.atMs }) }
     val initialMinutes = durationMs?.let { (it / 60_000L).toInt() }
     var minutesText by rememberSaveable { mutableStateOf(initialMinutes?.toString().orEmpty()) }
     var pickTime by rememberSaveable { mutableStateOf(false) }
@@ -320,7 +323,7 @@ fun EntryDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.edit_entry)) },
         text = {
-            Column {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     ColorDot(color, size = 10)
                     Spacer(Modifier.width(8.dp))
@@ -377,12 +380,30 @@ fun EntryDialog(
                 }
                 Spacer(Modifier.height(14.dp))
                 Text(stringResource(R.string.felt_label), style = MaterialTheme.typography.bodyLarge)
+                for (answer in answers.sortedBy { it.second }) {
+                    val felt = Felt.of(answer.first) ?: continue
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            stringResource(R.string.felt_mark_at, stringResource(feltLabel(felt)), feltMinutes(start, answer.second)),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(onClick = { answers = answers - answer }, modifier = Modifier.size(36.dp)) {
+                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.felt_remove), modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
                 Spacer(Modifier.height(6.dp))
-                FeltChips(Felt.of(feltLevel), { feltLevel = it?.level })
+                Text(stringResource(R.string.felt_add_now), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(2.dp))
+                FeltChips(null, { f -> answers = answers + (f.level to System.currentTimeMillis()) })
             }
         },
         confirmButton = {
-            TextButton(enabled = valid, onClick = { onSave(start, newDurationMs, Felt.of(feltLevel)) }) { Text(stringResource(R.string.save)) }
+            TextButton(
+                enabled = valid,
+                onClick = { onSave(start, newDurationMs, answers.map { (level, at) -> FeltMark(entryId = 0, level = level, atMs = at) }) },
+            ) { Text(stringResource(R.string.save)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )

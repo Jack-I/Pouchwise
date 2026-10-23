@@ -255,7 +255,7 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
             stringResource(
                 R.string.model_summary,
                 Fmt.mg(pk.nicotineHalfLifeHours), Fmt.mg(pk.cotinineHalfLifeHours),
-                (pk.absorptionFraction * 100).roundToInt(), Pharmacokinetics.REFERENCE_MINUTES.toInt(),
+                (Pharmacokinetics.uptake(pk) * 100).roundToInt(),
             ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

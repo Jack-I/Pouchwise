@@ -79,6 +79,10 @@
     <string name="felt_hit">Hit</string>
     <string name="felt_a_bit">A bit</string>
     <string name="felt_nothing">Nothing</string>
+    <string name="felt_overwhelm">Overwhelm</string>
+    <string name="felt_mark_at">%1$s · %2$d\u00A0min</string>
+    <string name="felt_add_now">Add now</string>
+    <string name="felt_remove">Remove this answer</string>
 
     <!-- pouch types -->
     <string name="brand">Brand</string>
@@ -124,7 +128,7 @@
     <string name="range_48h">48 h</string>
     <string name="range_7d">7 d</string>
     <string name="legend_future">if you stop now</string>
-    <string name="model_summary">t½ nicotine %1$s h · t½ cotinine %2$s h · %3$d%% absorbed over %4$d min</string>
+    <string name="model_summary">t½ nicotine %1$s h · t½ cotinine %2$s h · %3$d%% of what leaves the pouch is absorbed</string>
     <string name="no_data_yet">Log a pouch to see the curve.</string>
 
     <!-- history -->
@@ -192,7 +196,7 @@
     <string name="weight_hint">Turns mg in the body into ng/mL in the blood.</string>
     <string name="absorption_minutes">Pouch time, minutes</string>
     <string name="pouch_time_hint">A pouch counts as out after this long, unless you pull it out sooner. Logged pouches keep their own time.</string>
-    <string name="model_hint" formatted="false">Assumes about 30% of the label\'s nicotine is absorbed over 30 minutes in the mouth (less if shorter, more if longer), and half-lives of 2 h for nicotine and 16 h for cotinine. The 30% is typical of eight blood studies, most funded by manufacturers, so the levels are rough.</string>
+    <string name="model_hint" formatted="false">Assumes about 80% of the nicotine that leaves the pouch is absorbed. How fast it leaves depends on the brand: over 30 minutes an average pouch gives about 30% of the label\'s nicotine, ZYN 43%, Loop 12%; less if shorter, more if longer. Half-lives: 2 h for nicotine, 16 h for cotinine. Fitted to eight blood studies, most funded by manufacturers, so the levels are rough.</string>
     <string name="settings_appearance">Appearance</string>
     <string name="theme_system">System</string>
     <string name="theme_light">Light</string>
@@ -200,6 +204,7 @@
     <string name="settings_data">Data</string>
     <string name="export_csv">Export CSV</string>
     <string name="export_json">Export JSON</string>
+    <string name="export_felt_csv">Export felt answers (CSV)</string>
     <string name="export_hint">Your data stays on this phone. Export it to keep a copy; a JSON export can be imported on another phone.</string>
     <string name="share_export">Share export</string>
     <string name="import_json">Import JSON</string>
@@ -276,7 +281,7 @@
     <string name="interval_lower">Lower</string>
     <string name="interval_usual">Over the last two weeks you took the next pouch at about %1$s\u00A0mg of nicotine in the body (≈\u00A0%2$s\u00A0ng/mL).</string>
     <string name="interval_keep_rule">Hold: the next one is better after nicotine drops below %1$s\u00A0mg. Days stay as they are.</string>
-    <string name="interval_lower_rule">Lower: a quarter lower, now %1$s\u00A0mg, recalculated every Monday, so the gaps grow week by week.</string>
+    <string name="interval_lower_rule">Lower: 15%% lower, now %1$s\u00A0mg, recalculated every Monday, so the gaps grow week by week.</string>
     <string name="interval_learning">To learn your usual level the plan needs at least five pouches over two weeks, not counting each day\'s first.</string>
     <string name="interval_never_blocks">A pouch taken earlier is marked, never blocked.</string>
     <string name="settings_spending">Spending</string>

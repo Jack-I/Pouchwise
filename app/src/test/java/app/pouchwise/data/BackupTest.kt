@@ -78,16 +78,28 @@ class BackupTest {
 
     @Test
     fun feltAnswersRoundTrip() {
-        val answered = listOf(entries[0].copy(felt = Felt.HIT.level, feltAt = 1_760_000_300_000L), entries[1])
-        assertEquals(answered, Backup.parse(Export.json(answered, types, settings)).entries)
+        val marks = listOf(
+            FeltMark(entryId = 10, level = Felt.HIT.level, atMs = 1_760_000_180_000L),
+            FeltMark(entryId = 10, level = Felt.OVERWHELM.level, atMs = 1_760_001_200_000L),
+            FeltMark(entryId = 11, level = Felt.NOTHING.level, atMs = 1_760_001_300_000L),
+        )
+        val back = Backup.parse(Export.json(entries, types, settings, marks = marks)).feltMarks
+        assertEquals(marks.map { Triple(it.entryId, it.level, it.atMs) }, back.map { Triple(it.entryId, it.level, it.atMs) })
 
-        val odd = Backup.parse("""{"types":[],"entries":[
-            {"id":1,"pouchTypeId":1,"timestamp":1000,"strengthMg":6,"felt":"wow","feltAt":2000},
-            {"id":2,"pouchTypeId":1,"timestamp":1000,"strengthMg":6,"felt":"nothing","feltAt":null}]}""").entries
-        assertNull(odd[0].felt)
-        assertNull(odd[0].feltAt)
-        assertEquals(Felt.NOTHING.level, odd[1].felt)
-        assertNull(odd[1].feltAt)
+        // Unknown answers and answers for pouches that are not in the file are left out.
+        val odd = Backup.parse("""{"types":[],"entries":[{"id":1,"pouchTypeId":1,"timestamp":1000,"strengthMg":6}],"feltMarks":[
+            {"entryId":1,"felt":"wow","atMs":2000},{"entryId":2,"felt":"hit","atMs":2000},{"entryId":1,"felt":"a_bit","atMs":3000}]}""")
+        assertEquals(listOf(Felt.A_BIT.level), odd.feltMarks.map { it.level })
+
+        // The first 0.9.4 builds kept a single answer on the entry.
+        val legacy = Backup.parse("""{"types":[],"entries":[
+            {"id":1,"pouchTypeId":1,"timestamp":1000,"strengthMg":6,"felt":"hit","feltAt":2000},
+            {"id":2,"pouchTypeId":1,"timestamp":5000,"strengthMg":6,"felt":"nothing","feltAt":null}]}""")
+        assertEquals(
+            listOf(Triple(1L, Felt.HIT.level, 2000L), Triple(2L, Felt.NOTHING.level, 5000L)),
+            legacy.feltMarks.map { Triple(it.entryId, it.level, it.atMs) },
+        )
+        assertNull(legacy.entries[0].felt)
     }
 
     @Test

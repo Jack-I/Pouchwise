@@ -166,6 +166,12 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
                     }
                 }
                 Spacer(Modifier.height(10.dp))
+                OutlinedButton(onClick = { vm.exportFeltCsv(context) }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.export_felt_csv))
+                }
+                Spacer(Modifier.height(10.dp))
                 OutlinedButton(onClick = startImport, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Filled.FileOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))

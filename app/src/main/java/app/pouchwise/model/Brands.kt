@@ -3,7 +3,7 @@ package app.pouchwise.model
 import kotlin.math.exp
 import kotlin.math.roundToInt
 
-data class BrandInfo(val name: String, val kPerMin: Double)
+data class BrandInfo(val name: String, val kPerMin: Double, val inStudy: Boolean = true)
 
 /**
  * First-order nicotine release constants per brand, from in-vitro dissolution of commercial pouches
@@ -18,10 +18,12 @@ object Brands {
         BrandInfo("Velo", 0.057),
         BrandInfo("Volt", 0.056),
         BrandInfo("Dryft", 0.042),
+        // Not in that study: the rate that fits its blood levels next to four other pouches (McEwan et al. 2022).
+        BrandInfo("ZYN Wet", 0.032, inStudy = false),
         BrandInfo("Loop", 0.021),
     )
 
-    val averageK: Double = known.map { it.kPerMin }.average()
+    val averageK: Double = known.filter { it.inStudy }.map { it.kPerMin }.average()
 
     /** Rate used for a pouch marked "fast release": ZYN-like, applied when the brand's own rate is lower. */
     const val FAST_K = 0.10

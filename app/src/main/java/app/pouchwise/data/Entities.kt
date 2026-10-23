@@ -72,9 +72,8 @@ data class LogEntry(
      * Null with the plan off or still learning.
      */
     val planLevelMg: Double? = null,
-    /** How much the pouch was felt, as a [Felt] level; null when not answered. */
+    /** Schema v9 columns, superseded by [FeltMark]; always null from v10 on. */
     val felt: Int? = null,
-    /** When that answer was given. */
     val feltAt: Long? = null,
 )
 
@@ -82,13 +81,27 @@ data class LogEntry(
 enum class Felt(val level: Int, val code: String) {
     NOTHING(0, "nothing"),
     A_BIT(1, "a_bit"),
-    HIT(2, "hit");
+    HIT(2, "hit"),
+    OVERWHELM(3, "overwhelm");
 
     companion object {
+        /** Strongest first, as the buttons show them. */
+        val strongestFirst: List<Felt> = entries.reversed()
+
         fun of(level: Int?): Felt? = entries.firstOrNull { it.level == level }
         fun ofCode(code: String?): Felt? = entries.firstOrNull { it.code == code }
     }
 }
+
+/** One answer to how a pouch was felt, at the moment it was given; a pouch collects one per change of feeling. */
+@Entity(tableName = "felt_marks", indices = [Index("entryId")])
+data class FeltMark(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val entryId: Long,
+    /** A [Felt] level. */
+    val level: Int,
+    val atMs: Long,
+)
 
 /** The limit plan from [fromDay] on, until the next version; past days are judged by the version of their day. */
 @Entity(tableName = "plan_versions")

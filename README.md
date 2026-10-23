@@ -13,7 +13,7 @@ No account, no server, no analytics. Everything lives in a local SQLite database
 
 | Screen | What it does |
 |---|---|
-| **Track** | Today card: pouches or mg left, progress bar, the day's face. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** tosses a pouch in: a card with a timer and a **Pull out** button appears; if you never tap it, the pouch counts as out after the pouch time (30 min by default). The card also asks how the pouch was felt: **Hit**, **A bit** or **Nothing**; the answer shows as a tag in the log and can be changed in the entry. Today's log shows each pouch with when it went in and how long it stayed; you can correct both or delete an entry. With the tolerance plan on, the Today card says the next pouch is better after a given time, and pouches taken earlier are marked *early*. With prices set, each pouch row shows its price and the Today card what today cost. |
+| **Track** | Today card: pouches or mg left, progress bar, the day's face. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** tosses a pouch in: a card with a timer and a **Pull out** button appears; if you never tap it, the pouch counts as out after the pouch time (30 min by default). The card also asks how the pouch feels: **Overwhelm**, **Hit**, **A bit** or **Nothing**; tap again whenever the feeling changes, and each answer is kept with its minute. The log shows them as a tag (*hit → overwhelm*); the entry lists them to remove or add. Today's log shows each pouch with when it went in and how long it stayed; you can correct both or delete an entry. With the tolerance plan on, the Today card says the next pouch is better after a given time, and pouches taken earlier are marked *early*. With prices set, each pouch row shows its price and the Today card what today cost. |
 | **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL), when 95 % of the nicotine will be gone, and when cotinine will be back to a non-user's level. A chart you can drag with one finger, back through up to 30 days of history (solid) and ahead through the forecast if you stop now (dashed), and zoom with two, from 2 h to 7 d; the 8 h / 48 h / 7 d buttons jump to those widths. "Now" starts two thirds of the way across, and **Now** brings it back. With the tolerance plan on, the chart draws its level and marks when the forecast drops below it. "Receptors busy now" is the share of the brain's α4β2 receptors taken at the current level, and "Receptors at rest today" counts the time nicotine was low enough to leave most of them free. **What the levels mean** puts your levels next to levels measured in studies (non-users, nicotine gum and patches, smokers, snus users, poisoning), with what is known about harm and links to the sources. |
 | **History** | Five weeks of day tiles: pouches and mg per day, coloured in seven clearly different steps (blue for a day without pouches, through green to yellow at the limit, then orange, red and purple) by the share of the limit that applied on that day. Streak within the limit, days over the limit, the last 30 and 7 finished days, totals. Daily bars against the limit line, dragged through the whole history and a week ahead, every day labelled. Two more views behind a switch at the top: patterns over the last 30 days (pouches by hour and by weekday, the time of the first pouch and its trend, the typical gap, the average time in the mouth) and spending (this week and month, and the saving against what you used before). |
 | **Plan** | Limit counted in whole pouches or whole mg of nicotine. Either a fixed daily limit or a taper: start value → target value by a date, with today's limit interpolated linearly. Switching the unit converts the plan with your typical pouch strength, and switching back restores the values you had. A change applies from today on; past days keep the plan they had. Tolerance: off, hold or lower (see below). |
@@ -127,20 +127,25 @@ set JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=C:\__no_unix_sockets__
 ## Body model
 
 While a pouch is in, nicotine comes in as the pouch releases it: fast at first, then slowing down
-(first-order). Taking the pouch out stops the input. The model is anchored at one point: a pouch kept
-in for 30 minutes delivers 30 % of its labelled nicotine. Any other time in scales that by
-`(1 − e^(−k·t)) / (1 − e^(−k·30))`, with t the minutes actually in, so a shorter time gives less and a
-longer one more. The pouch-time setting only decides when a pouch counts as out by itself; every
-entry keeps the value that was set when it went in, so changing the setting affects new pouches only.
+(first-order). Taking the pouch out stops the input. After t minutes in the mouth a pouch has released
+`1 − e^(−0.25·k·t)` of its nicotine, with k from its brand (below), and about 80 % of what it has released
+reaches the blood. The 80 % is set so that a pouch of average speed kept in for 30 minutes delivers 30 % of
+its labelled nicotine; over the same 30 minutes a ZYN delivers about 43 %, a Loop about 12 %. A shorter
+time gives less and a longer one more. The pouch-time setting only decides when a pouch counts as out by
+itself; every entry keeps the value that was set when it went in, so changing the setting affects new
+pouches only.
 
 The 30 % is the typical value in eight studies that measured blood nicotine after pouches: fitted to
-them, this model needs a median of about 27–31 %. Products differ a lot, and most of these studies were
-funded by manufacturers, so treat the absolute levels on the Body screen as approximate. For scale,
+them, this model needs a median of about 27–31 %. Letting each brand's release speed set its dose fits
+those studies better than one share for every brand (9–13 % less spread, also between brands tested on
+the same people), and a slow pouch can no longer absorb more than has left it. Products differ a lot,
+and most of these studies were funded by manufacturers, so treat the absolute levels on the Body screen
+as approximate. For scale,
 24–52 % of the labelled nicotine leaves a pouch within 20 minutes
 ([Mallock-Ohnesorg et al., Front Pharmacol 2024](https://doi.org/10.3389/fphar.2024.1392027)), and only
 part of that reaches the blood.
 
-The rate k starts from the brand you pick when creating a pouch. The catalogue holds the seven
+The rate k starts from the brand you pick when creating a pouch. The catalogue holds the
 brands measured by in-vitro dissolution in artificial saliva
 (Platt et al., [Sci Rep 2026](https://www.nature.com/articles/s41598-025-34556-5), USP-4 flow-through, 60 min):
 
@@ -152,8 +157,13 @@ brands measured by in-vitro dissolution in artificial saliva
 | Velo | 0.057 | ~69 % |
 | Volt | 0.056 | ~68 % |
 | Dryft | 0.042 | ~60 % |
+| ZYN Wet | 0.032 | ~55 % |
 | Loop | 0.021 | ~48 % |
-| any other brand | 0.062 (average) | ~73 % |
+| any other brand | 0.062 (average of the seven measured) | ~73 % |
+
+ZYN Wet was not in that study: its k is the one that fits its blood levels next to four other pouches
+([McEwan et al., Eur J Drug Metab Pharmacokinet 2022](https://doi.org/10.1007/s13318-021-00742-9)), where
+it gave the least nicotine of the five.
 
 Two things from that study shaped the design: every product released nicotine front-loaded
 (first-order), and "dry" versus "wet" did not predict speed — the wet pouches (Loop, Volt) were the
@@ -163,7 +173,7 @@ own value is lower. Pouches above 12 mg get a blunt tolerance warning in the dia
 
 In the mouth, release is slower than in that flow-through test: blood levels after pouches and snus
 kept in for different times fit k × 0.25 (`IN_MOUTH_RELEASE_FACTOR`). With the average k, a pouch taken
-out after 15 minutes has given 0.56 of its 30-minute dose and one kept in for 60 minutes 1.63×; for
+out after 15 minutes has given 0.56 of its own 30-minute dose and one kept in for 60 minutes 1.63×; for
 ZYN 0.60 and 1.46×, for Loop 0.52 and 1.85×.
 
 From there it is a one-compartment model: nicotine is eliminated with a 2 h half-life, 75 % of it
@@ -179,8 +189,8 @@ takes about 90 h, in line with the 80–100 h measured after people stop. mg and
 body weight and volumes of distribution of 2.6 L/kg (nicotine) and 0.9 L/kg (cotinine).
 
 Two numbers live side by side. The daily total and the limit count the labelled mg of each pouch —
-what you put in, independent of how long it stayed. The *absorbed* estimate (labelled × 30 % ×
-released share for the minutes in) is shown next to it: on the Today card, per entry in the log, in
+what you put in, independent of how long it stayed. The *absorbed* estimate (labelled × share released
+in the minutes in × 80 %) is shown next to it: on the Today card, per entry in the log, in
 the day detail on History, in the export, and it is what drives the Body chart. The chart follows the
 same curve while a pouch is in, so taking one out never redraws the past.
 Code: `model/Pharmacokinetics.kt`, `model/Brands.kt`; tests: `app/src/test/.../model/`.
@@ -196,7 +206,7 @@ without nicotine ([Cosgrove et al. 2009](https://pmc.ncbi.nlm.nih.gov/articles/P
 
 - **Hold**: the next pouch is better after nicotine is back below the level at which you usually take one
   (the median over the last two weeks, leaving out each day's first pouch). Days stay as they are.
-- **Lower**: a quarter below that, worked out from the two weeks before Monday and fixed for the week, so
+- **Lower**: 15 % below that, worked out from the two weeks before Monday and fixed for the week, so
   the gaps grow week by week; never below the level at which half of the receptors are free.
 
 Each pouch records the plan level in force when it went in; one taken while the model still had nicotine
@@ -208,18 +218,22 @@ as on the Body screen. "Receptors at rest" is the time today with nicotine below
 The rule throughout: whatever shapes the past is recorded when it happens, and settings only shape the
 future.
 
-- Database `pouchwise.db` (Room, schema v9). `pouch_types` and `log_entries`; an entry stores the
+- Database `pouchwise.db` (Room, schema v10). `pouch_types` and `log_entries`; an entry stores the
   strength, release constant, pouch time (`pouchMinutes`), tracking day (`day`), price (`pricePerPouch`) and
   tolerance plan level (`planLevelMg`) at log time, so
   editing a pouch or the pouch time never rewrites old entries. A new day-start hour or time zone
   re-files only the pouches of the running day, so they stay in "today"; finished days keep theirs. `endTimestamp` is when the pouch was taken out (NULL = stayed in for its full
-  pouch time). `felt` is the felt answer (0 nothing, 1 a bit, 2 hit; NULL = not answered) and `feltAt`
-  when it was given. `plan_versions` keeps the limit plan from the day each change was made, and every past
+  pouch time). `felt_marks` holds the felt answers, one row per change of feeling: the entry, the answer
+  (0 nothing, 1 a bit, 2 hit, 3 overwhelm) and when it was given (`log_entries.felt`/`feltAt` are unused
+  leftovers of schema v9). `plan_versions` keeps the limit plan from the day each change was made, and every past
   day is judged by the version in force on that day.
 - Export from Settings → Data: CSV
   (`id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg,pouch_min,day,price,plan_level_mg,felt,felt_after_min`;
-  `felt` is `hit`, `a_bit` or `nothing`, and `felt_after_min` is how long after the toss-in it was answered)
-  or JSON (everything: pouches, entries, plan history and settings).
+  `felt` is the latest answer, `overwhelm`, `hit`, `a_bit` or `nothing`, and `felt_after_min` how long after the
+  toss-in it was given), JSON (everything: pouches, entries, felt answers, plan history and settings), or the
+  felt answers alone, one row each with the model's levels at that moment
+  (`entry_id,pouch,brand,strength_mg,release_k,toss_in_iso,mark_iso,min_after_toss_in,in_mouth,felt,nicotine_ng_ml,cotinine_ng_ml,receptors_free_pct,nicotine_at_toss_in_ng_ml,receptors_free_at_toss_in_pct,min_since_prev_pouch,first_of_day`).
+  The levels are worked out when exporting, with the current model.
 - Import from Settings → Data, or from the first-launch screen: a JSON export replaces all pouches,
   entries and settings on the phone after a confirmation that shows what is on the phone and what is
   in the file. It runs in one transaction, so a damaged or foreign file changes nothing. CSV is for

@@ -13,6 +13,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,10 +38,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.pouchwise.R
 import app.pouchwise.data.Felt
+import app.pouchwise.data.FeltMark
 import app.pouchwise.model.GardenLevel
 import app.pouchwise.model.LimitMode
 import app.pouchwise.ui.theme.AppColors
 import app.pouchwise.util.Fmt
+import kotlin.math.roundToInt
 
 val CardShape = RoundedCornerShape(24.dp)
 
@@ -222,17 +228,21 @@ fun BigEmoji(text: String, size: Int = 56) {
 }
 
 fun feltLabel(felt: Felt): Int = when (felt) {
+    Felt.OVERWHELM -> R.string.felt_overwhelm
     Felt.HIT -> R.string.felt_hit
     Felt.A_BIT -> R.string.felt_a_bit
     Felt.NOTHING -> R.string.felt_nothing
 }
 
-/** Hit / A bit / Nothing. Tapping the chosen answer again takes it back. */
+/** Whole minutes from the toss-in to an answer. */
+fun feltMinutes(startMs: Long, atMs: Long): Int = ((atMs - startMs) / 60_000.0).roundToInt().coerceAtLeast(0)
+
+/** Overwhelm / Hit / A bit / Nothing in one row, [selected] filled. */
 @Composable
-fun FeltChips(selected: Felt?, onSelect: (Felt?) -> Unit, modifier: Modifier = Modifier) {
+fun FeltChips(selected: Felt?, onTap: (Felt) -> Unit, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(10.dp)
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (f in listOf(Felt.HIT, Felt.A_BIT, Felt.NOTHING)) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        for (f in Felt.strongestFirst) {
             val on = f == selected
             Box(
                 Modifier
@@ -243,17 +253,43 @@ fun FeltChips(selected: Felt?, onSelect: (Felt?) -> Unit, modifier: Modifier = M
                         if (on) Modifier.background(MaterialTheme.colorScheme.primary)
                         else Modifier.border(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), shape),
                     )
-                    .selectable(selected = on, role = Role.RadioButton) { onSelect(if (on) null else f) },
+                    .selectable(selected = on, role = Role.RadioButton) { onTap(f) },
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    (if (on) "✓ " else "") + stringResource(feltLabel(f)),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = if (on) FontWeight.Bold else null,
+                FittingText(
+                    stringResource(feltLabel(f)),
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = if (on) FontWeight.Bold else FontWeight.Medium),
                     color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
                 )
             }
         }
     }
+}
+
+/** One line of text that shrinks until it fits, for labels that must not be cut at large font sizes. */
+@Composable
+private fun FittingText(text: String, style: TextStyle, color: Color) {
+    var size by remember(text, style) { mutableStateOf(style.fontSize) }
+    Text(
+        text,
+        style = style.copy(fontSize = size),
+        color = color,
+        maxLines = 1,
+        softWrap = false,
+        onTextLayout = { if (it.hasVisualOverflow && size.value > 8f) size = size * 0.9f },
+        modifier = Modifier.padding(horizontal = 2.dp),
+    )
+}
+
+/** The answers in order, e.g. "Hit · 3 min → Overwhelm · 20 min". */
+@Composable
+fun feltHistory(marks: List<FeltMark>, startMs: Long): String =
+    marks.mapNotNull { m -> Felt.of(m.level)?.let { stringResource(R.string.felt_mark_at, stringResource(feltLabel(it)), feltMinutes(startMs, m.atMs)) } }
+        .joinToString(" → ")
+
+/** The answers as a short tag, e.g. "hit → overwhelm"; a long run keeps its first and last. */
+@Composable
+fun feltChain(marks: List<FeltMark>): String {
+    val words = marks.mapNotNull { m -> Felt.of(m.level)?.let { stringResource(feltLabel(it)).lowercase() } }
+    return if (words.size <= 3) words.joinToString(" → ") else "${words.first()} → … → ${words.last()}"
 }

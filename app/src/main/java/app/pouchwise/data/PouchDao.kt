@@ -71,10 +71,6 @@ interface PouchDao {
     @Query("UPDATE log_entries SET day = :day WHERE id = :id")
     suspend fun setDay(id: Long, day: Long)
 
-    /** Touches only the felt answer, so a tap on a card drawn before a pull-out cannot undo it. */
-    @Query("UPDATE log_entries SET felt = :felt, feltAt = :feltAt WHERE id = :id")
-    suspend fun setFelt(id: Long, felt: Int?, feltAt: Long?)
-
     @Query("SELECT * FROM log_entries WHERE day >= :day")
     suspend fun entriesFromDay(day: Long): List<LogEntry>
 
@@ -121,4 +117,26 @@ interface PouchDao {
 
     @Delete
     suspend fun deleteEntry(entry: LogEntry)
+
+    @Query("SELECT * FROM felt_marks ORDER BY atMs, id")
+    fun observeFeltMarks(): Flow<List<FeltMark>>
+
+    @Query("SELECT * FROM felt_marks ORDER BY atMs, id")
+    suspend fun allFeltMarks(): List<FeltMark>
+
+    @Insert
+    suspend fun insertFeltMark(mark: FeltMark): Long
+
+    @Insert
+    suspend fun insertFeltMarks(marks: List<FeltMark>)
+
+    /** Takes back the pouch's latest answer. */
+    @Query("DELETE FROM felt_marks WHERE id = (SELECT id FROM felt_marks WHERE entryId = :entryId ORDER BY atMs DESC, id DESC LIMIT 1)")
+    suspend fun deleteLatestFeltMark(entryId: Long)
+
+    @Query("DELETE FROM felt_marks WHERE entryId = :entryId")
+    suspend fun deleteFeltMarksOf(entryId: Long)
+
+    @Query("DELETE FROM felt_marks")
+    suspend fun deleteAllFeltMarks()
 }

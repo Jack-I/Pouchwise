@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
 import app.pouchwise.R
 import app.pouchwise.data.Felt
+import app.pouchwise.data.FeltMark
 import app.pouchwise.data.LogEntry
 import app.pouchwise.data.PouchType
 import app.pouchwise.data.pricePerPouch
@@ -47,6 +48,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val entries by vm.entries.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
+    val feltMarks by vm.feltMarks.collectAsStateWithLifecycle()
 
     val types = typesOrNull ?: return
     val active = remember(types) { types.filter { !it.archived } }
@@ -121,8 +123,9 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                 autoMs = PouchTiming.autoMs(e, settings),
                 absorbedMg = PouchTiming.absorbedMg(e, settings, tick),
                 onRemove = { vm.finishPouch(e) },
-                felt = Felt.of(e.felt),
-                onFelt = { vm.setFelt(e, it) },
+                marks = feltMarks[e.id].orEmpty(),
+                // Tapping the latest answer again takes it back, for a wrong tap.
+                onFelt = { f -> if (f.level == feltMarks[e.id]?.lastOrNull()?.level) vm.takeBackFelt(e) else vm.addFelt(e, f) },
             )
         }
 
@@ -180,6 +183,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                     absorbedLabel = stringResource(R.string.absorbed_short, Fmt.oneDecimal(PouchTiming.absorbedMg(e, settings, clock))),
                     over = e.id in overIds,
                     early = e.id in earlyIds,
+                    marks = feltMarks[e.id].orEmpty(),
                     onEdit = { editEntry = e },
                     onDelete = { deleteEntry = e },
                 )
@@ -209,10 +213,10 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             color = pouchColor(type?.colorIndex ?: 0),
             startMs = e.timestamp,
             durationMs = if (stillIn) null else PouchTiming.effectiveDurationMs(e, settings),
-            felt = Felt.of(e.felt),
+            marks = feltMarks[e.id].orEmpty(),
             onDismiss = { editEntry = null },
-            onSave = { start, duration, felt ->
-                vm.editEntry(e, start, duration, felt)
+            onSave = { start, duration, marks ->
+                vm.editEntry(e, start, duration, marks)
                 editEntry = null
             },
         )
@@ -377,8 +381,8 @@ private fun ActivePouchCard(
     autoMs: Long,
     absorbedMg: Double,
     onRemove: () -> Unit,
-    felt: Felt?,
-    onFelt: (Felt?) -> Unit,
+    marks: List<FeltMark>,
+    onFelt: (Felt) -> Unit,
 ) {
     val elapsed = (nowMs - entry.timestamp).coerceIn(0L, autoMs)
     val remaining = autoMs - elapsed
@@ -440,7 +444,11 @@ private fun ActivePouchCard(
             }
         }
         Spacer(Modifier.height(12.dp))
-        FeltChips(felt, onFelt)
+        FeltChips(Felt.of(marks.lastOrNull()?.level), onFelt)
+        if (marks.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Text(feltHistory(marks, entry.timestamp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -504,6 +512,7 @@ private fun LogRow(
     absorbedLabel: String,
     over: Boolean,
     early: Boolean,
+    marks: List<FeltMark>,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -535,15 +544,16 @@ private fun LogRow(
                             .padding(horizontal = 6.dp, vertical = 1.dp),
                     )
                 }
-                val felt = Felt.of(entry.felt)
-                if (felt != null) {
+                if (marks.isNotEmpty()) {
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        stringResource(feltLabel(felt)).lowercase(),
+                        feltChain(marks),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
+                            .weight(1f, fill = false)
                             .clip(RoundedCornerShape(8.dp))
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                             .padding(horizontal = 6.dp, vertical = 1.dp),
