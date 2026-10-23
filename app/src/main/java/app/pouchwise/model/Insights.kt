@@ -5,11 +5,11 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
 data class SpendingSummary(
-    val today: Double,
     /** Since the Monday of this week. */
     val week: Double,
     /** Since the first of this month. */
@@ -19,7 +19,7 @@ data class SpendingSummary(
     /** Saved over the finished days since [sinceDay]; null without a price or a baseline. */
     val saved: Double?,
     val sinceDay: Long?,
-    /** Some pouches this month had no price, so the sums above leave them out. */
+    /** Some pouches this week or month had no price, so the sums above leave them out. */
     val unpriced: Boolean,
 )
 
@@ -43,13 +43,12 @@ object Spending {
             (baseline.toLong() * (today - firstDay) - used) * perPouch
         } else null
         return SpendingSummary(
-            today = spent(today..today),
             week = spent(weekStart..today),
             month = spent(monthStart..today),
             perPouch = perPouch,
             saved = saved,
             sinceDay = firstDay,
-            unpriced = (monthStart..today).any { d -> byDay[d].orEmpty().any { it.pricePerPouch == null } },
+            unpriced = (min(weekStart, monthStart)..today).any { d -> byDay[d].orEmpty().any { it.pricePerPouch == null } },
         )
     }
 }
@@ -83,8 +82,9 @@ object Patterns {
         val byHour = IntArray(24)
         inWindow.forEach { byHour[Instant.ofEpochMilli(it.timestamp).atZone(zone).hour]++ }
 
+        // Four of each weekday, all finished.
         val firstLogged = entries.minOfOrNull { DayKeys.of(it, s.dayStartHour) } ?: today
-        val days = max(fromDay, firstLogged) until today
+        val days = max(today - 4 * 7, firstLogged) until today
         val byWeekday = (1..7).map { dow ->
             val same = days.filter { LocalDate.ofEpochDay(it).dayOfWeek.value == dow }
             if (same.isEmpty()) 0.0 else same.sumOf { perDay[it]?.size ?: 0 }.toDouble() / same.size

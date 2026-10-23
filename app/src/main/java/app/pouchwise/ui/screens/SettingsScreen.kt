@@ -30,6 +30,7 @@ import app.pouchwise.model.ThemeMode
 import app.pouchwise.ui.components.*
 import app.pouchwise.util.Fmt
 import app.pouchwise.util.Money
+import java.util.Locale
 
 @Composable
 fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> Unit) {
@@ -49,6 +50,8 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
             Modifier
                 .fillMaxSize()
                 .padding(inner)
+                .consumeWindowInsets(inner)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 32.dp),
@@ -134,7 +137,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
                             selected = settings.themeMode == m,
                             onClick = { vm.updateSettings { it.copy(themeMode = m) } },
                             shape = SegmentedButtonDefaults.itemShape(index = i, count = modes.size),
-                        ) { Text(stringResource(res)) }
+                        ) { FittingText(stringResource(res)) }
                     }
                 }
             }
@@ -149,17 +152,16 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit, onManagePouches: () -> 
             SoftCard {
                 Text(stringResource(R.string.export_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedButton(onClick = { vm.exportCsv(context) }, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.export_csv))
-                    }
-                    OutlinedButton(onClick = { vm.exportJson(context) }, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.export_json))
-                    }
+                OutlinedButton(onClick = { vm.exportCsv(context) }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.export_csv))
+                }
+                Spacer(Modifier.height(10.dp))
+                OutlinedButton(onClick = { vm.exportJson(context) }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.export_json))
                 }
                 Spacer(Modifier.height(10.dp))
                 OutlinedButton(onClick = { vm.exportFeltCsv(context) }, modifier = Modifier.fillMaxWidth()) {
@@ -203,10 +205,14 @@ private fun LanguagePicker() {
                 selected = current == tag,
                 onClick = {
                     current = tag
-                    manager?.applicationLocales = if (tag == null) LocaleList.getEmptyLocaleList() else LocaleList.forLanguageTags(tag)
+                    manager?.applicationLocales = if (tag == null) LocaleList.getEmptyLocaleList() else LocaleList(localeFor(tag, manager?.systemLocales))
                 },
                 shape = SegmentedButtonDefaults.itemShape(index = i, count = options.size),
-            ) { Text(label) }
+            ) { FittingText(label) }
         }
     }
 }
+
+/** The phone's own variant of [language] when it has one, so English (UK) keeps its dates and Monday weeks. */
+private fun localeFor(language: String, system: LocaleList?): Locale =
+    system?.let { list -> (0 until list.size()).map { list[it] }.firstOrNull { it.language == language } } ?: Locale.forLanguageTag(language)

@@ -3,6 +3,7 @@ package app.pouchwise.ui.screens
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -10,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -93,12 +95,12 @@ fun PlanScreen(vm: AppViewModel) {
                     selected = mode == LimitMode.COUNT,
                     onClick = { vm.updateSettings { Limits.convertMode(it, LimitMode.COUNT, typicalStrength) } },
                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                ) { Text(stringResource(R.string.mode_count)) }
+                ) { FittingText(stringResource(R.string.mode_count)) }
                 SegmentedButton(
                     selected = mode == LimitMode.MG,
                     onClick = { vm.updateSettings { Limits.convertMode(it, LimitMode.MG, typicalStrength) } },
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                ) { Text(stringResource(R.string.mode_mg)) }
+                ) { FittingText(stringResource(R.string.mode_mg)) }
             }
             Spacer(Modifier.height(6.dp))
             Text(
@@ -129,32 +131,31 @@ fun PlanScreen(vm: AppViewModel) {
         }
 
         SoftCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            fun setTaper(on: Boolean) = vm.updateSettings { s ->
+                if (!on) s.copy(taperEnabled = false)
+                else {
+                    val fresh = s.taperTargetDay <= s.taperStartDay || s.taperTargetDay < today
+                    if (fresh) {
+                        val start = Limits.baseLimit(s)
+                        s.copy(
+                            taperEnabled = true,
+                            taperStartDay = today,
+                            taperStartValue = start,
+                            taperTargetDay = today + 60,
+                            taperTargetValue = max(if (s.limitMode == LimitMode.COUNT) 1.0 else 5.0, Math.round(start / 2.0).toDouble()),
+                        )
+                    } else s.copy(taperEnabled = true)
+                }
+            }
+            Row(
+                Modifier.toggleable(value = settings.taperEnabled, role = Role.Switch, onValueChange = { setTaper(it) }),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(R.string.taper_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text(stringResource(R.string.taper_body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Switch(
-                    checked = settings.taperEnabled,
-                    onCheckedChange = { on ->
-                        vm.updateSettings { s ->
-                            if (!on) s.copy(taperEnabled = false)
-                            else {
-                                val fresh = s.taperTargetDay <= s.taperStartDay || s.taperTargetDay < today
-                                if (fresh) {
-                                    val start = Limits.baseLimit(s)
-                                    s.copy(
-                                        taperEnabled = true,
-                                        taperStartDay = today,
-                                        taperStartValue = start,
-                                        taperTargetDay = today + 60,
-                                        taperTargetValue = max(if (s.limitMode == LimitMode.COUNT) 1.0 else 5.0, Math.round(start / 2.0).toDouble()),
-                                    )
-                                } else s.copy(taperEnabled = true)
-                            }
-                        }
-                    },
-                )
+                Switch(checked = settings.taperEnabled, onCheckedChange = null)
             }
             if (settings.taperEnabled) {
                 Spacer(Modifier.height(12.dp))
@@ -263,7 +264,7 @@ private fun ToleranceSettings(settings: Settings, entries: List<LogEntry>, today
                 selected = settings.intervalMode == m,
                 onClick = { onMode(m) },
                 shape = SegmentedButtonDefaults.itemShape(index = i, count = modes.size),
-            ) { Text(stringResource(res)) }
+            ) { FittingText(stringResource(res)) }
         }
     }
     Spacer(Modifier.height(10.dp))

@@ -30,7 +30,7 @@ class IntervalPlanTest {
     }
 
     @Test
-    fun keepUsesTheTwoWeeksBeforeTodayAndLowerAQuarterLessFromBeforeMonday() {
+    fun keepUsesTheTwoWeeksBeforeTodayAndLowerFifteenPercentLessFromBeforeMonday() {
         val entries = (5..21).flatMap { d -> listOf(8, 10, 12, 14).map { h -> pouch(at(d, h)) } }
         val now = at(21, 15)
         val keep = IntervalPlan.threshold(entries, s.copy(intervalMode = IntervalMode.KEEP), now)!!

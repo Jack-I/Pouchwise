@@ -180,7 +180,7 @@ fun StepperRow(
             modifier = Modifier
                 .widthIn(min = 56.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .then(if (onClickValue != null) Modifier.clickable { onClickValue() } else Modifier)
+                .then(if (onClickValue != null) Modifier.clickable(onClickLabel = stringResource(R.string.stepper_type)) { onClickValue() } else Modifier)
                 .padding(horizontal = 6.dp, vertical = 8.dp),
         )
         FilledTonalIconButton(onClick = onPlus) {
@@ -250,8 +250,8 @@ fun gardenColor(level: GardenLevel, under: Color): Color {
     return if (under.luminance() < 0.5f) c.copy(alpha = 0.85f).compositeOver(under) else c
 }
 
-/** Near-black or white text, whichever reads better on [tile]. */
-fun onGardenColor(tile: Color): Color = if (tile.luminance() > 0.2f) Color(0xFF111827) else Color.White
+/** Near-black or white, whichever reads better on [fill]. */
+fun contentColorOn(fill: Color): Color = if (fill.luminance() > 0.2f) Color(0xFF111827) else Color.White
 
 @Composable
 fun BigEmoji(text: String, size: Int) {
@@ -299,7 +299,7 @@ fun FeltChips(selected: Felt?, onTap: (Felt) -> Unit, modifier: Modifier = Modif
 
 /** One line of text that shrinks until it fits, for labels that must not be cut at large font sizes. */
 @Composable
-private fun FittingText(text: String, style: TextStyle, color: Color) {
+fun FittingText(text: String, style: TextStyle = LocalTextStyle.current, color: Color = Color.Unspecified) {
     var size by remember(text, style) { mutableStateOf(style.fontSize) }
     Text(
         text,

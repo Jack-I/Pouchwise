@@ -12,6 +12,7 @@ import app.pouchwise.model.IntervalMode
 import app.pouchwise.model.IntervalPlan
 import app.pouchwise.model.LimitMode
 import app.pouchwise.model.Limits
+import app.pouchwise.model.Pharmacokinetics
 import app.pouchwise.model.PlanHistory
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.model.Settings
@@ -31,9 +32,9 @@ import java.time.ZonedDateTime
 import java.util.TimeZone
 
 /**
- * Ten days of use run through the model, the plan, the exports and the import together, the way the app chains
- * them: pouches logged with the plan level of their moment, some pulled out early or corrected, felt answers given
- * live and from memory, then everything exported and read back.
+ * Ten days of use, across the night the clocks go back, run through the model, the plan, the exports and the import
+ * together, the way the app chains them: pouches logged with the plan level of their moment, some pulled out early or
+ * corrected, felt answers given live and from memory, then everything exported and read back.
  */
 class ScenarioTest {
     private val zone = ZoneId.of("Europe/Rome")
@@ -46,14 +47,15 @@ class ScenarioTest {
         PouchType(id = 2, name = "ZYN lemon", strengthMg = 6.5, brand = "ZYN", releaseK = Brands.kFor("ZYN"), pricePerCan = 5.0, pouchesPerCan = 20),
     )
     private val clockTimes = listOf(7 to 10, 9 to 0, 11 to 30, 14 to 0, 16 to 30, 19 to 0, 22 to 0, 25 to 30) // 25:30 = 01:30 next morning
-    private val firstDay = LocalDate.of(2026, 10, 12)
+    private val firstDay = LocalDate.of(2026, 10, 20)
     private lateinit var savedZone: TimeZone
 
     @Before fun zone() { savedZone = TimeZone.getDefault(); TimeZone.setDefault(TimeZone.getTimeZone(zone)) }
     @After fun restore() { TimeZone.setDefault(savedZone) }
 
+    /** Wall-clock time as the phone shows it; [hour] runs past 24 for the small hours of the next day. */
     private fun at(day: LocalDate, hour: Int, minute: Int): Long =
-        day.atStartOfDay(zone).plusHours(hour.toLong()).plusMinutes(minute.toLong()).toInstant().toEpochMilli()
+        day.plusDays(hour / 24L).atTime(hour % 24, minute).atZone(zone).toInstant().toEpochMilli()
 
     /** Logs pouches the way PouchLog does: the plan level comes from what was logged before. */
     private fun history(days: Int, extra: List<Long> = emptyList()): List<LogEntry> {
@@ -124,6 +126,10 @@ class ScenarioTest {
 
         val pouchRows = Export.csv(entries, types, s, marks).trim().lines()
         assertEquals(entries.size + 1, pouchRows.size)
+        val pouchNames = pouchRows[0].split(',')
+        fun pouchCell(e: LogEntry, name: String) = pouchRows[entries.indexOf(e) + 1].split(',')[pouchNames.indexOf(name)]
+        assertEquals("25.0", pouchCell(entries[20], "duration_min"))
+        assertEquals(firstDay.toString(), pouchCell(entries.first { it.timestamp == at(firstDay, 25, 30) }, "day"))
         val feltRows = Export.feltCsv(entries, types, s, marks).trim().lines()
         val names = feltRows[0].split(',')
         fun cell(row: Int, name: String) = feltRows[row].split(',')[names.indexOf(name)]
@@ -132,8 +138,11 @@ class ScenarioTest {
         assertEquals(listOf("1", "1", "0"), (1..3).map { cell(it, "in_mouth") })
         assertEquals("1", cell(3, "recalled"))
         assertEquals(cell(3, "nicotine_at_pull_out_ng_ml"), cell(3, "nicotine_ng_ml"))
-        // The level rises while the pouch is in.
+        // The level rises while the pouch is in, and each number is the model's own, to the CSV's one decimal.
         assertTrue(cell(2, "nicotine_ng_ml").toDouble() > cell(1, "nicotine_ng_ml").toDouble())
+        val doses = entries.map { PouchTiming.toDose(it, s) }
+        val atLive = Pharmacokinetics.levelsAt(live.atMs, doses, s.pk).nicotineMg
+        assertEquals(Pharmacokinetics.toNgPerMl(atLive, s.bodyWeightKg, Pharmacokinetics.NICOTINE_VD_L_PER_KG), cell(1, "nicotine_ng_ml").toDouble(), 0.051)
     }
 
     @Test

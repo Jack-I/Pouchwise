@@ -98,8 +98,8 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
 
     testImplementation(libs.junit)
-    // Android's own org.json is a stub in local unit tests.
-    testImplementation(libs.org.json)
+    // Android's own org.json is a stub in local unit tests; this is its source, so the tests read JSON as the phone does.
+    testImplementation(libs.android.json)
     // A real SQLite for the migration tests; Robolectric's has no Windows ARM64 build.
     testImplementation(libs.sqlite.jdbc)
 }

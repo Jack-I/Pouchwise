@@ -91,7 +91,7 @@ fun HistoryScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                     onClick = { section = i },
                     shape = SegmentedButtonDefaults.itemShape(index = i, count = sections.size),
                     icon = {},
-                ) { Text(stringResource(res), style = MaterialTheme.typography.labelMedium, maxLines = 1, softWrap = false) }
+                ) { FittingText(stringResource(res), MaterialTheme.typography.labelMedium) }
             }
         }
 
@@ -337,13 +337,13 @@ private fun DayGrid(
                                     fontSize = 14.sp,
                                     lineHeight = 16.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = onGardenColor(tile),
+                                    color = contentColorOn(tile),
                                 )
                                 Text(
                                     Fmt.mg(stat.mg),
                                     fontSize = 10.sp,
                                     lineHeight = 12.sp,
-                                    color = onGardenColor(tile),
+                                    color = contentColorOn(tile),
                                 )
                             }
                         }

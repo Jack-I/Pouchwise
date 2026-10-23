@@ -1,7 +1,6 @@
 package app.pouchwise.model
 
 import app.pouchwise.data.LogEntry
-import app.pouchwise.data.PouchType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -30,7 +29,6 @@ class InsightsTest {
             pouch(at(20, 9)), pouch(at(20, 11), price = null),
         )
         val sum = Spending.summary(entries, Settings(baselinePerDay = 4), day(20))
-        assertEquals(20.0, sum.today, 1e-9)
         assertEquals(80.0, sum.week, 1e-9)
         assertEquals(120.0, sum.month, 1e-9)
         assertEquals(20.0, sum.perPouch!!, 1e-9)
@@ -64,14 +62,5 @@ class InsightsTest {
         // Gaps of 2 h and 3 h on Monday and 1 h on Tuesday.
         assertEquals(2 * 3_600_000L, p.typicalGapMs)
         assertEquals(20 * 60_000L, p.avgInMouthMs)
-    }
-
-    @Test
-    fun theBaselineIsReadBackFromTheFirstPlan() {
-        val mgPlan = PlanHistory.versionOf(Settings(limitMode = LimitMode.MG, taperEnabled = true, taperStartValue = 60.0), 0)
-        assertEquals(10, PlanHistory.baselinePerDay(mgPlan, PouchType(name = "ZYN", strengthMg = 6.0)))
-        val countPlan = PlanHistory.versionOf(Settings(limitMode = LimitMode.COUNT, dailyLimitCount = 12), 0)
-        assertEquals(12, PlanHistory.baselinePerDay(countPlan, null))
-        assertNull(PlanHistory.baselinePerDay(null, null))
     }
 }

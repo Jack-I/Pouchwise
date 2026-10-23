@@ -13,13 +13,15 @@ import org.junit.Test
 class ExportTest {
     private val min = 60_000L
     private val t0 = 1_761_307_200_000L  // 2025-10-24 12:00 UTC
+    // One tracking day for both pouches, whatever zone the tests run in.
+    private val day = Math.floorDiv(t0, 86_400_000L)
     private val types = listOf(
         PouchType(id = 1, name = "Loop", strengthMg = 7.0, brand = "Loop", releaseK = Brands.kFor("Loop")),
         PouchType(id = 2, name = "ZYN", strengthMg = 6.5, brand = "ZYN", releaseK = Brands.kFor("ZYN")),
     )
     private val entries = listOf(
-        LogEntry(id = 1, pouchTypeId = 1, timestamp = t0, strengthMg = 7.0, endTimestamp = t0 + 30 * min, releaseK = Brands.kFor("Loop"), pouchMinutes = 30),
-        LogEntry(id = 2, pouchTypeId = 2, timestamp = t0 + 65 * min, strengthMg = 6.5, releaseK = Brands.kFor("ZYN"), pouchMinutes = 30),
+        LogEntry(id = 1, pouchTypeId = 1, timestamp = t0, strengthMg = 7.0, endTimestamp = t0 + 30 * min, releaseK = Brands.kFor("Loop"), pouchMinutes = 30, day = day),
+        LogEntry(id = 2, pouchTypeId = 2, timestamp = t0 + 65 * min, strengthMg = 6.5, releaseK = Brands.kFor("ZYN"), pouchMinutes = 30, day = day),
     )
     private val marks = listOf(
         FeltMark(entryId = 1, level = Felt.NOTHING.level, atMs = t0 + 12 * min),

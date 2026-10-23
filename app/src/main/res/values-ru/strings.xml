@@ -24,6 +24,7 @@
     <string name="time_now">сейчас</string>
     <string name="stepper_less">%1$s: меньше</string>
     <string name="stepper_more">%1$s: больше</string>
+    <string name="stepper_type">Ввести число</string>
 
     <plurals name="pouches_left_today">
         <item quantity="one">Остался %d пауч на сегодня</item>
@@ -285,7 +286,7 @@
     <string name="plan_next_tomorrow">Следующий — завтра</string>
     <string name="plan_now">Перерыв выдержан</string>
     <string name="plan_learning">План толерантности изучает ваш обычный уровень</string>
-    <string name="plan_learning_hint">Нужно хотя бы пять паучей за две недели, не считая первого за день.</string>
+    <string name="plan_learning_hint">Нужно хотя бы пять паучей за две недели до сегодняшнего дня, не считая первого за день.</string>
     <string name="early_marker">рано</string>
     <string name="receptor_rest">Рецепторы отдыхали сегодня: %1$s</string>
     <string name="receptor_rest_hint">Время, когда никотин ниже %1$s\u00A0нг/мл и большинство рецепторов свободны.</string>
@@ -299,7 +300,7 @@
     <string name="interval_usual">За последние две недели вы брали следующий пауч примерно при %1$s\u00A0мг никотина в организме (≈\u00A0%2$s\u00A0нг/мл).</string>
     <string name="interval_keep_rule">Держать: следующий лучше после того, как никотин опустится ниже %1$s\u00A0мг. Дни остаются как есть.</string>
     <string name="interval_lower_rule">Снижать: на 15%% ниже, сейчас %1$s\u00A0мг, пересчёт по понедельникам — перерывы растут от недели к неделе.</string>
-    <string name="interval_learning">Чтобы узнать ваш обычный уровень, плану нужно хотя бы пять паучей за две недели, не считая первого за день.</string>
+    <string name="interval_learning">Чтобы узнать ваш обычный уровень, плану нужно хотя бы пять паучей за две недели до сегодняшнего дня, не считая первого за день.</string>
     <string name="interval_never_blocks">Пауч раньше времени помечается, но не запрещается.</string>
     <string name="settings_spending">Траты</string>
     <string name="baseline_label">Паучей в день до Pouchwise</string>

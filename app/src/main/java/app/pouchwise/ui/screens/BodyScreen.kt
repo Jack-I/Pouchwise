@@ -87,7 +87,7 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
     // The chart can be dragged back to the first pouch and ahead until both have cleared; one set of points
     // serves every window size.
     val firstMs = entries.firstOrNull()?.timestamp
-    val reach by produceState<Reach?>(initialValue = null, doses, pk, clock) {
+    val reach by produceState<Reach?>(initialValue = null, doses, pk, clock, settings.bodyWeightKg) {
         value = withContext(Dispatchers.Default) {
             val cleared = Pharmacokinetics.clearance(clock, doses, pk, cotinineThreshold = Levels.nonUserCotinineMg(settings.bodyWeightKg))
             val clearEnd = max(cleared.nicotineClearMs ?: clock, cleared.cotinineClearMs ?: clock)

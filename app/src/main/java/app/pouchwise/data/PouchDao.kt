@@ -43,7 +43,7 @@ interface PouchDao {
     suspend fun entryById(id: Long): LogEntry?
 
     /** Takes a pouch out unless it already is: a pull-out from the widget and one from the app cannot undo each other. */
-    @Query("UPDATE log_entries SET endTimestamp = :endMs WHERE id = :id AND endTimestamp IS NULL")
+    @Query(SET_OUT)
     suspend fun setOut(id: Long, endMs: Long)
 
     @Query("SELECT * FROM pouch_types WHERE archived = 0 ORDER BY sortOrder, id")
@@ -146,4 +146,9 @@ interface PouchDao {
 
     @Query("DELETE FROM felt_marks")
     suspend fun deleteAllFeltMarks()
+
+    companion object {
+        /** Its own constant so the tests can run it on a real SQLite. */
+        const val SET_OUT = "UPDATE log_entries SET endTimestamp = :endMs WHERE id = :id AND endTimestamp IS NULL"
+    }
 }

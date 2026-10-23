@@ -2,6 +2,7 @@ package app.pouchwise.model
 
 import app.pouchwise.data.LogEntry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -88,14 +89,21 @@ class LimitsTest {
 
     @Test
     fun aRoundingHairIsAtTheLimitEverywhere() {
-        // Three 3.34 mg pouches make 10.02 mg: "10 of 10 mg" on every screen, and the third one fits.
+        // Three 3.35 mg pouches add up to a hair over 10.05 mg: "10 of 10 mg" on every screen, and the third one fits.
         val mg = Settings(limitMode = LimitMode.MG)
-        val three = (1..3).map { LogEntry(id = it.toLong(), pouchTypeId = 1, timestamp = it * 1000L, strengthMg = 3.34) }
-        assertTrue(!Limits.isOver(10.02, 10) && Limits.isOver(10.1, 10))
-        assertEquals(1, Limits.remainingPouches(mg, 10, 2, 6.68, 3.34))
+        val three = (1..3).map { LogEntry(id = it.toLong(), pouchTypeId = 1, timestamp = it * 1000L, strengthMg = 3.35) }
+        val used = three.sumOf { it.strengthMg }
+        val two = three.take(2).sumOf { it.strengthMg }
+        assertFalse(Limits.isOver(used, 10))
+        assertEquals(0.0, Limits.left(LimitMode.MG, 10, 3, used), 0.0)
+        assertEquals(1, Limits.remainingPouches(mg, 10, 2, two, 3.35))
+        assertFalse(Limits.noneFit(mg, 10, 2, two, listOf(3.35)))
         assertEquals(emptySet<Long>(), Limits.overLimitEntryIds(three, mg, 10))
-        val day = DayStat(0, 3, 10.02, 10, LimitMode.MG, hasData = true)
+        val day = DayStat(0, 3, used, 10, LimitMode.MG, hasData = true)
         assertTrue(day.withinLimit)
         assertEquals(GardenLevel.AT_LIMIT, GardenLevel.of(day))
+        // A tenth over is over everywhere.
+        assertTrue(Limits.isOver(10.1, 10))
+        assertEquals(-0.1, Limits.left(LimitMode.MG, 10, 3, 10.1), 1e-9)
     }
 }

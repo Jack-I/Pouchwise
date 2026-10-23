@@ -78,7 +78,7 @@ object IntervalPlan {
             nicotineThreshold = levelMg,
             cotinineThreshold = Double.POSITIVE_INFINITY,
             stepMs = MINUTE_MS,
-        ).nicotineClearMs?.takeIf { it > nowMs }
+        ).nicotineClearMs
 
     /** Pouches that went in while nicotine was still at or above their plan level; the day's first never counts. */
     fun earlyIds(dayEntries: List<LogEntry>, allEntries: List<LogEntry>, s: Settings): Set<Long> {

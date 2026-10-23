@@ -107,8 +107,9 @@ class PouchTimingTest {
         val fourAm = Settings(dayStartHour = 4)
         // five minutes earlier: still the day it was logged into, not yesterday under the new rule
         assertEquals(e.day, PouchTiming.withNewStart(e, at - 5 * min, fourAm).day)
-        // to 05:00, past the 04:00 boundary: the day 05:00 belongs to
-        assertEquals(DayKeys.epochDay(at + 180 * min, 4), PouchTiming.withNewStart(e, at + 180 * min, fourAm).day)
+        // a day back: the day that time belongs to now, not the one it was logged into
+        val dayBack = at - 24 * 60 * min
+        assertEquals(DayKeys.epochDay(dayBack, 4), PouchTiming.withNewStart(e, dayBack, fourAm).day)
     }
 
     @Test
@@ -144,6 +145,9 @@ class PouchTimingTest {
         // A recalled answer follows the pouch when its time in the mouth is corrected.
         val shorter = PouchTiming.withTimes(e, start, 25 * min, s)
         assertEquals(start + 25 * min, PouchTiming.placeAnswer(pulledOut, shorter, s).atMs)
+        // A start corrected past an answer takes the answer along: none comes before its pouch.
+        val laterStart = PouchTiming.withNewStart(e, start + 30 * min, s)
+        assertEquals(start + 30 * min, PouchTiming.placeAnswer(live, laterStart, s).atMs)
     }
 
     @Test

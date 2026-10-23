@@ -173,23 +173,25 @@ object Export {
         return root.toString(2)
     }
 
-    fun shareCsv(context: Context, entries: List<LogEntry>, types: List<PouchType>, settings: Settings, marks: List<FeltMark>) =
-        share(context, "pouchwise-${stamp()}.csv", "text/csv", csv(entries, types, settings, marks))
+    // Each builds the file and returns the share sheet for it: call them off the main thread, start the sheet on it.
 
-    fun shareFeltCsv(context: Context, entries: List<LogEntry>, types: List<PouchType>, settings: Settings, marks: List<FeltMark>) =
-        share(context, "pouchwise-felt-${stamp()}.csv", "text/csv", feltCsv(entries, types, settings, marks))
+    fun csvChooser(context: Context, entries: List<LogEntry>, types: List<PouchType>, settings: Settings, marks: List<FeltMark>): Intent =
+        chooser(context, "pouchwise-${stamp()}.csv", "text/csv", csv(entries, types, settings, marks))
 
-    fun shareJson(
+    fun feltCsvChooser(context: Context, entries: List<LogEntry>, types: List<PouchType>, settings: Settings, marks: List<FeltMark>): Intent =
+        chooser(context, "pouchwise-felt-${stamp()}.csv", "text/csv", feltCsv(entries, types, settings, marks))
+
+    fun jsonChooser(
         context: Context, entries: List<LogEntry>, types: List<PouchType>, settings: Settings, plans: List<PlanVersion>, marks: List<FeltMark>,
-    ) {
+    ): Intent {
         val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty() }.getOrDefault("")
-        share(context, "pouchwise-${stamp()}.json", "application/json", json(entries, types, settings, version, plans, marks))
+        return chooser(context, "pouchwise-${stamp()}.json", "application/json", json(entries, types, settings, version, plans, marks))
     }
 
     /** org.json refuses infinite numbers; settings saved by older versions could hold one. */
     private fun finite(v: Double): Double = if (v.isFinite()) v else 0.0
 
-    private fun share(context: Context, fileName: String, mime: String, content: String) {
+    private fun chooser(context: Context, fileName: String, mime: String, content: String): Intent {
         val dir = File(context.cacheDir, "exports").apply { mkdirs() }
         val file = File(dir, fileName)
         file.writeText(content)
@@ -200,7 +202,7 @@ object Export {
             putExtra(Intent.EXTRA_SUBJECT, fileName)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(send, context.getString(R.string.share_export)))
+        return Intent.createChooser(send, context.getString(R.string.share_export))
     }
 
     private fun stamp(): String =

@@ -75,6 +75,23 @@ class MigrationTest {
         }
     }
 
+    @Test
+    fun aSecondPullOutKeepsTheFirst() {
+        // The app and a widget can both take the same pouch out; whichever comes second must not move the first.
+        sqlite().use { db ->
+            createAt(db, current)
+            entry(db, id = 1, at = 0L, end = null, minutes = 30, felt = 0, feltAt = null)
+            fun pullOut(atMs: Long) = db.prepareStatement(PouchDao.SET_OUT).use { st ->
+                st.setLong(1, atMs)
+                st.setLong(2, 1L)
+                st.executeUpdate()
+            }
+            assertEquals(1, pullOut(20 * 60_000L))
+            assertEquals(0, pullOut(25 * 60_000L))
+            assertEquals(listOf<Any?>(20 * 60_000L), rows(db, "SELECT endTimestamp FROM log_entries").single())
+        }
+    }
+
     // ---- schema at an older version ------------------------------------------------------------------------------
 
     /** Creates the tables as a fresh install of [version] had them: today's definitions without what came later. */

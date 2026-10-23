@@ -80,9 +80,14 @@ object PouchTiming {
     /** The pull-out [outMs] when an answer given at [atMs] counts there as recalled; null when it keeps its own moment. */
     fun recalledAt(atMs: Long, recalled: Boolean, outMs: Long): Long? = outMs.takeIf { recalled || atMs > it + RECALL_AFTER_MS }
 
-    /** A felt answer as it is kept: one given long after the pouch came out counts at its pull-out, marked as recalled. */
-    fun placeAnswer(mark: FeltMark, e: LogEntry, s: Settings): FeltMark =
-        recalledAt(mark.atMs, mark.recalled, outMs(e, s))?.let { mark.copy(atMs = it, recalled = true) } ?: mark
+    /**
+     * A felt answer as it is kept: never before its pouch went in (a corrected start can pass it), and one given long
+     * after the pouch came out counts at its pull-out, marked as recalled.
+     */
+    fun placeAnswer(mark: FeltMark, e: LogEntry, s: Settings): FeltMark {
+        val placed = if (mark.atMs < e.timestamp) mark.copy(atMs = e.timestamp) else mark
+        return recalledAt(placed.atMs, placed.recalled, outMs(e, s))?.let { placed.copy(atMs = it, recalled = true) } ?: placed
+    }
 
     /** Marks the pouch as taken out now. */
     fun finish(e: LogEntry, s: Settings, nowMs: Long): LogEntry =

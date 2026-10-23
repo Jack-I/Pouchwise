@@ -66,6 +66,15 @@ class BackupTest {
     }
 
     @Test
+    fun aNullTextIsNotTheWordNull() {
+        val file = Backup.parse(
+            """{"types":[{"id":1,"name":"A","strengthMg":6,"brand":null}],"entries":[],"settings":{"currency":null}}""",
+        )
+        assertEquals("", file.types.single().brand)
+        assertEquals("€", file.settingsOver(Settings(currency = "€")).currency)
+    }
+
+    @Test
     fun pricesPlanLevelsAndTheirSettingsRoundTrip() {
         val priced = types.map { it.copy(pricePerCan = 450.0, pouchesPerCan = 20) }
         val logged = entries.map { it.copy(pricePerPouch = 22.5, planLevelMg = 2.1) }

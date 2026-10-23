@@ -35,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import app.pouchwise.MainActivity
 import app.pouchwise.R
 import app.pouchwise.data.AppDatabase
@@ -48,9 +49,9 @@ import app.pouchwise.ui.components.ColorDot
 import app.pouchwise.ui.theme.PouchwiseTheme
 import app.pouchwise.ui.theme.pouchColor
 import app.pouchwise.util.Fmt
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -75,6 +76,14 @@ class QuickLogActivity : ComponentActivity() {
         }
     }
 
+    /** Closes only once [work] is done: an open activity keeps the process from being frozen halfway through a write. */
+    private fun finishAfter(work: suspend () -> Unit) {
+        lifecycleScope.launch {
+            withContext(NonCancellable + Dispatchers.IO) { work() }
+            finish()
+        }
+    }
+
     @Composable
     private fun LogChooser() {
         var types by remember { mutableStateOf<List<PouchType>?>(null) }
@@ -85,10 +94,7 @@ class QuickLogActivity : ComponentActivity() {
                     startActivity(Intent(this@QuickLogActivity, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                     finish()
                 }
-                1 -> {
-                    QuickLog.log(applicationContext, list.first())
-                    finish()
-                }
+                1 -> finishAfter { QuickLog.log(applicationContext, list.first()) }
                 else -> types = list
             }
         }
@@ -96,8 +102,7 @@ class QuickLogActivity : ComponentActivity() {
         Chooser(stringResource(R.string.quick_log_title)) {
             list.forEach { type ->
                 ChooserRow(type.colorIndex, type.name, stringResource(R.string.mg_value, Fmt.mg(type.strengthMg))) {
-                    QuickLog.log(applicationContext, type)
-                    finish()
+                    finishAfter { QuickLog.log(applicationContext, type) }
                 }
             }
         }
@@ -112,14 +117,8 @@ class QuickLogActivity : ComponentActivity() {
                 WidgetData.pouchesInNow(applicationContext, settings, System.currentTimeMillis())
             }
             when (inNow.size) {
-                0 -> {
-                    QuickLog.nothingIn(applicationContext)
-                    finish()
-                }
-                1 -> {
-                    QuickLog.remove(applicationContext, inNow[0].first, inNow[0].second, settings)
-                    finish()
-                }
+                0 -> finishAfter { QuickLog.nothingIn(applicationContext) }
+                1 -> finishAfter { QuickLog.remove(applicationContext, inNow[0].first, inNow[0].second, settings) }
                 else -> loaded = settings to inNow
             }
         }
@@ -135,8 +134,7 @@ class QuickLogActivity : ComponentActivity() {
             list.forEach { (entry, type) ->
                 val detail = stringResource(R.string.mg_value, Fmt.mg(entry.strengthMg)) + " · " + Fmt.mmss(now - entry.timestamp)
                 ChooserRow(type?.colorIndex ?: 0, type?.name ?: "?", detail) {
-                    QuickLog.remove(applicationContext, entry, type, settings)
-                    finish()
+                    finishAfter { QuickLog.remove(applicationContext, entry, type, settings) }
                 }
             }
         }
@@ -184,20 +182,18 @@ class QuickLogActivity : ComponentActivity() {
     }
 }
 
-/** Logs or takes out a pouch from outside the app and refreshes the widgets; outlives the activity that asked. */
+/** Logs or takes out a pouch from outside the app and refreshes the widgets; a failure says so. */
 object QuickLog {
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     /** A second tap on "+" within this time is taken as a double tap, not as a second pouch. */
     private const val DOUBLE_TAP_MS = 500L
     /** On the elapsed-realtime clock, which a change of the wall clock cannot move. */
     private var lastLogAt = -DOUBLE_TAP_MS
 
-    fun log(context: Context, type: PouchType) {
+    suspend fun log(context: Context, type: PouchType) {
         val app = context.applicationContext
         val now = System.currentTimeMillis()
         if (!acceptTap()) return
-        launch(app) { insert(app, type, now) }
+        guarded(app) { insert(app, type, now) }
     }
 
     /** For a broadcast from the cover-screen widget: done before the receiver lets the process go. */
@@ -205,8 +201,11 @@ object QuickLog {
         val app = context.applicationContext
         val now = System.currentTimeMillis()
         if (!acceptTap()) return
-        val type = AppDatabase.get(app).dao().typesByIds(listOf(typeId)).firstOrNull() ?: return
-        insert(app, type, now)
+        guarded(app) {
+            val type = AppDatabase.get(app).dao().typesByIds(listOf(typeId)).firstOrNull()
+            // A button for a pouch deleted since the widget was drawn: drawing it again drops the button.
+            if (type == null) WidgetUpdater.updateAll(app) else insert(app, type, now)
+        }
     }
 
     private fun acceptTap(): Boolean = synchronized(this) {
@@ -226,9 +225,9 @@ object QuickLog {
         runCatching { WidgetUpdater.updateAll(app) }
     }
 
-    fun remove(context: Context, entry: LogEntry, type: PouchType?, settings: Settings) {
+    suspend fun remove(context: Context, entry: LogEntry, type: PouchType?, settings: Settings) {
         val app = context.applicationContext
-        launch(app) {
+        guarded(app) {
             PouchTiming.finish(entry, settings, System.currentTimeMillis()).endTimestamp?.let { AppDatabase.get(app).dao().setOut(entry.id, it) }
             toast(app, app.getString(R.string.widget_removed, type?.name ?: "?"))
             runCatching { WidgetUpdater.updateAll(app) }
@@ -236,16 +235,22 @@ object QuickLog {
     }
 
     /** The widget still showed a pouch that has meanwhile come out by itself. */
-    fun nothingIn(context: Context) {
+    suspend fun nothingIn(context: Context) {
         val app = context.applicationContext
-        launch(app) {
+        guarded(app) {
             toast(app, app.getString(R.string.widget_nothing_in))
             runCatching { WidgetUpdater.updateAll(app) }
         }
     }
 
-    private fun launch(app: Context, work: suspend () -> Unit) = scope.launch {
-        runCatching { work() }.onFailure { toast(app, app.getString(R.string.widget_failed)) }
+    private suspend fun guarded(app: Context, work: suspend () -> Unit) {
+        try {
+            work()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            toast(app, app.getString(R.string.widget_failed))
+        }
     }
 
     private suspend fun toast(app: Context, text: String) = withContext(Dispatchers.Main) {

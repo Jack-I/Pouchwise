@@ -55,7 +55,7 @@ object Backup {
                 intervalMode = IntervalMode.entries.firstOrNull { it.name == s.optString("intervalMode") } ?: current.intervalMode,
                 baselinePerDay = if (s.has("baselinePerDay") && !s.isNull("baselinePerDay")) s.optInt("baselinePerDay").coerceIn(0, 200)
                                  else current.baselinePerDay,
-                currency = if (s.has("currency")) s.optString("currency").take(8) else current.currency,
+                currency = s.text("currency", current.currency).take(8),
             )
         }
     }
@@ -66,7 +66,7 @@ object Backup {
         } catch (e: JSONException) {
             throw NotAnExport("not a JSON object")
         }
-        val app = root.optString("app")
+        val app = root.text("app")
         if (app.isNotEmpty() && app != "Pouchwise") throw NotAnExport("made by $app")
         val format = root.optInt("format", 0)
         if (format > FORMAT) throw NewerFormat(format)
@@ -91,7 +91,7 @@ object Backup {
                 .sortedBy { it.atMs }
             return Contents(
                 types, entries, plans.sortedBy { it.fromDay }, marks,
-                root.optString("exportedAt").ifEmpty { null }, root.optJSONObject("settings"),
+                root.text("exportedAt").ifEmpty { null }, root.optJSONObject("settings"),
             )
         } catch (e: JSONException) {
             throw NotAnExport(e.message ?: "unreadable field")
@@ -99,7 +99,7 @@ object Backup {
     }
 
     private fun type(o: JSONObject, index: Int): PouchType {
-        val brand = o.optString("brand", "")
+        val brand = o.text("brand")
         val releaseK = o.finite("releaseK", Brands.kFor(brand)).takeIf { it > 0.0 && it <= 1.0 } ?: Brands.kFor(brand)
         return PouchType(
             id = o.getLong("id"),
@@ -174,6 +174,9 @@ object Backup {
         if (!mg.isFinite() || mg <= 0.0 || mg > MAX_STRENGTH_MG) throw NotAnExport("bad strength $mg")
         return mg
     }
+
+    /** A text field, or [fallback] when it is missing or null: Android's org.json reads a null as the word "null". */
+    private fun JSONObject.text(name: String, fallback: String = ""): String = if (isNull(name)) fallback else optString(name, fallback)
 
     /** An optional non-negative amount; missing, null or not a sane number gives null. */
     private fun JSONObject.amount(name: String): Double? =

@@ -40,7 +40,7 @@ object WidgetRenderer {
     /** Share of the 108 dp foreground canvas the drawing occupies (see design/make_icon.py). */
     private const val ART_SHARE = 56f / 108f
 
-    fun ring(context: Context, sizePx: Int, state: WidgetState): Bitmap {
+    private fun ring(context: Context, sizePx: Int, state: WidgetState): Bitmap {
         val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -80,7 +80,7 @@ object WidgetRenderer {
      * The 1×1 widget as one picture: the ring with the app name under it, drawn at the widget's own size. The label
      * gets room measured from its actual ink, as launcher fonts draw beyond their declared metrics, and shrinks to fit.
      */
-    fun ringWithLabel(context: Context, widthPx: Int, heightPx: Int, state: WidgetState): Bitmap {
+    private fun ringWithLabel(context: Context, widthPx: Int, heightPx: Int, state: WidgetState): Bitmap {
         val dm = context.resources.displayMetrics
         val bmp = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)

@@ -10,6 +10,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.SizeF
 import android.widget.RemoteViews
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -41,8 +42,6 @@ object WidgetUpdater {
                 scheduleRefresh(app, null)
                 return@withContext
             }
-            // Until the update has gone through, the alarm is a retry: a failure must not leave yesterday's numbers up.
-            var next: Long? = System.currentTimeMillis() + RETRY_MS
             try {
                 val state = WidgetData.load(app)
                 ringIds.forEach { id -> updateRing(app, manager, id, state) }
@@ -53,9 +52,14 @@ object WidgetUpdater {
                 }
                 // The 1×1 shows only today's numbers; the others also show the pouch that is in and the next one on the plan.
                 val detailed = wideIds.isNotEmpty() || coverIds.isNotEmpty()
-                next = listOfNotNull(state.dayEndMs, state.nextAutoEndMs.takeIf { detailed }, state.nextOnPlanMs.takeIf { detailed }).minOrNull()
-            } finally {
-                scheduleRefresh(app, next)
+                scheduleRefresh(app, listOfNotNull(state.dayEndMs, state.nextAutoEndMs.takeIf { detailed }, state.nextOnPlanMs.takeIf { detailed }).minOrNull())
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // A failure must not leave yesterday's numbers up: try again soon, but no later than already planned.
+                val now = System.currentTimeMillis()
+                scheduleRefresh(app, listOfNotNull(now + RETRY_MS, scheduledAt?.takeIf { it > now }).min())
+                throw e
             }
         }
     }
@@ -91,9 +95,13 @@ object WidgetUpdater {
         return all.distinct().sortedBy { it.width / it.height }.take(4)
     }
 
+    /** When the refresh alarm is set for, as far as this process knows. */
+    @Volatile private var scheduledAt: Long? = null
+
     private fun scheduleRefresh(context: Context, atMs: Long?) {
         val alarms = context.getSystemService(AlarmManager::class.java) ?: return
         val intent = Intent(context, WideWidgetProvider::class.java).setAction(ACTION_REFRESH)
+        scheduledAt = atMs
         if (atMs == null) {
             PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE)?.let(alarms::cancel)
             return

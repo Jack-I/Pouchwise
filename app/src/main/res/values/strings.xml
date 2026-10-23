@@ -26,6 +26,7 @@
     <string name="time_now">now</string>
     <string name="stepper_less">%1$s: less</string>
     <string name="stepper_more">%1$s: more</string>
+    <string name="stepper_type">Type a number</string>
 
     <!-- track -->
     <plurals name="pouches_left_today">
@@ -277,7 +278,7 @@
     <string name="plan_next_tomorrow">Next one: tomorrow</string>
     <string name="plan_now">Gap kept</string>
     <string name="plan_learning">The tolerance plan is learning your usual level</string>
-    <string name="plan_learning_hint">It needs at least five pouches over two weeks, not counting each day\'s first.</string>
+    <string name="plan_learning_hint">It needs at least five pouches in the two weeks before today, not counting each day\'s first.</string>
     <string name="early_marker">early</string>
     <string name="receptor_rest">Receptors at rest today: %1$s</string>
     <string name="receptor_rest_hint">Time with nicotine below %1$s\u00A0ng/mL, when most of them are free.</string>
@@ -291,7 +292,7 @@
     <string name="interval_usual">Over the last two weeks you took the next pouch at about %1$s\u00A0mg of nicotine in the body (≈\u00A0%2$s\u00A0ng/mL).</string>
     <string name="interval_keep_rule">Hold: the next one is better after nicotine drops below %1$s\u00A0mg. Days stay as they are.</string>
     <string name="interval_lower_rule">Lower: 15%% lower, now %1$s\u00A0mg, recalculated every Monday, so the gaps grow week by week.</string>
-    <string name="interval_learning">To learn your usual level the plan needs at least five pouches over two weeks, not counting each day\'s first.</string>
+    <string name="interval_learning">To learn your usual level the plan needs at least five pouches in the two weeks before today, not counting each day\'s first.</string>
     <string name="interval_never_blocks">A pouch taken earlier is marked, never blocked.</string>
     <string name="settings_spending">Spending</string>
     <string name="baseline_label">Pouches a day before Pouchwise</string>

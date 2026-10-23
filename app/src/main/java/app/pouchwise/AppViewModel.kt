@@ -2,6 +2,7 @@ package app.pouchwise
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -26,6 +27,9 @@ import app.pouchwise.model.PouchTiming
 import app.pouchwise.model.Settings
 import app.pouchwise.util.Export
 import app.pouchwise.widget.WidgetUpdater
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +38,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.ZoneId
 import kotlin.math.abs
 
@@ -59,13 +64,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     for (e in dao.entriesWithoutDay()) dao.setDayIfMissing(e.id, DayKeys.epochDay(e.timestamp, s.dayStartHour))
                 }
                 if (dao.planCount() == 0) dao.upsertPlan(PlanHistory.versionOf(s, fromDay = 0L))
-                // Users from before savings existed: their first own plan says how many a day they started from.
-                // The default plan written before onboarding says nothing, so a skipped onboarding stays without one.
-                if (s.onboarded && s.baselinePerDay == null) {
-                    val firstOwn = dao.allPlans().firstOrNull { it != PlanHistory.versionOf(Settings(), it.fromDay) }
-                    PlanHistory.baselinePerDay(firstOwn, dao.allTypes().minByOrNull { it.id })
-                        ?.let { base -> settingsRepo.update { it.copy(baselinePerDay = it.baselinePerDay ?: base) } }
-                }
             }
         }
     }
@@ -184,12 +182,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun updateSettings(transform: (Settings) -> Settings) = viewModelScope.launch {
-        val (before, after) = settingsRepo.update(transform)
-        if (before.dayStartHour != after.dayStartHour) {
-            val zone = ZoneId.systemDefault()
-            RunningDay.refile(appContext, before.dayStartHour, zone, after.dayStartHour, zone)
+        // Once saved, the pouches and the plan record must follow even if the screen is left at that moment.
+        withContext(NonCancellable) {
+            val (before, after) = settingsRepo.update(transform)
+            if (before.dayStartHour != after.dayStartHour) {
+                val zone = ZoneId.systemDefault()
+                RunningDay.refile(appContext, before.dayStartHour, zone, after.dayStartHour, zone)
+            }
+            recordPlan(before, after)
         }
-        recordPlan(before, after)
         refreshWidgets()
     }
 
@@ -234,20 +235,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun skipOnboarding() = updateSettings { it.copy(onboarded = true) }
 
-    fun exportCsv(context: Context) = export { d, s -> Export.shareCsv(context, d.entries, d.types, s, d.marks) }
+    fun exportCsv(context: Context) = export(context) { d, s -> Export.csvChooser(appContext, d.entries, d.types, s, d.marks) }
 
-    fun exportFeltCsv(context: Context) = export { d, s -> Export.shareFeltCsv(context, d.entries, d.types, s, d.marks) }
+    fun exportFeltCsv(context: Context) = export(context) { d, s -> Export.feltCsvChooser(appContext, d.entries, d.types, s, d.marks) }
 
-    fun exportJson(context: Context) = export { d, s -> Export.shareJson(context, d.entries, d.types, s, d.plans, d.marks) }
+    fun exportJson(context: Context) = export(context) { d, s -> Export.jsonChooser(appContext, d.entries, d.types, s, d.plans, d.marks) }
 
     private class Everything(val entries: List<LogEntry>, val types: List<PouchType>, val plans: List<PlanVersion>, val marks: List<FeltMark>)
 
     /** Read straight from the database in one go: the screen-bound flows can be stale or empty on the Settings screen. */
-    private fun export(share: (Everything, Settings) -> Unit) = viewModelScope.launch {
-        runCatching {
+    private fun export(context: Context, build: (Everything, Settings) -> Intent) = viewModelScope.launch {
+        try {
             val data = db.withTransaction { Everything(dao.allEntries(), dao.allTypes(), dao.allPlans(), dao.allFeltMarks()) }
-            share(data, settingsRepo.settings.first())
-        }.onFailure { Toast.makeText(appContext, R.string.export_failed, Toast.LENGTH_LONG).show() }
+            val settings = settingsRepo.settings.first()
+            context.startActivity(withContext(Dispatchers.Default) { build(data, settings) })
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Toast.makeText(appContext, R.string.export_failed, Toast.LENGTH_LONG).show()
+        }
     }
 
     /** Replaces pouches, entries and plan history with the file's in one transaction, then takes over its settings. */

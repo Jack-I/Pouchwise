@@ -58,16 +58,18 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
 
     // A one-second clock runs only while a pouch is in, for the countdown and the running absorbed amount.
     val wallNow = wallClock(now)
-    val anyActive = entries.any { PouchTiming.isActive(it, settings, wallNow) }
+    // It ticks on the whole seconds of the latest pouch in, so its timer never skips a second.
+    val tickFrom = entries.filter { PouchTiming.isActive(it, settings, wallNow) }.maxOfOrNull { it.timestamp }
     var tick by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(anyActive) {
-        while (anyActive) {
+    LaunchedEffect(tickFrom) {
+        val from = tickFrom ?: return@LaunchedEffect
+        while (true) {
             // Paced by frames, so the clock rests while the app is not on screen.
             tick = withFrameMillis { System.currentTimeMillis() }
-            delay(1_000)
+            delay(1_000 - Math.floorMod(tick - from, 1_000L))
         }
     }
-    val clock = if (anyActive) maxOf(tick, wallNow) else wallNow
+    val clock = if (tickFrom != null) maxOf(tick, wallNow) else wallNow
     val activeEntries = entries.filter { PouchTiming.isActive(it, settings, clock) }
 
     val today = DayKeys.epochDay(wallNow, settings.dayStartHour)

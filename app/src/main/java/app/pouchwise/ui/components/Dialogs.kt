@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -24,6 +25,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -39,6 +43,7 @@ import app.pouchwise.data.PouchEdit
 import app.pouchwise.model.Brands
 import app.pouchwise.model.DayKeys
 import app.pouchwise.model.PouchTiming
+import app.pouchwise.ui.theme.PaletteOrder
 import app.pouchwise.ui.theme.PouchPalette
 import java.time.Instant
 import java.time.ZoneId
@@ -115,12 +120,7 @@ fun PouchTypeDialog(
     }
     var variant by rememberSaveable {
         mutableStateOf(
-            when {
-                initial == null -> ""
-                initialKnown != null -> initial.name.removePrefixIgnoringCase(initial.brand.trim().ifEmpty { initialKnown }).trim()
-                initial.brand.isNotBlank() -> initial.name.removePrefixIgnoringCase(initial.brand.trim()).trim()
-                else -> ""
-            },
+            if (initial == null || initial.brand.isBlank()) "" else initial.name.removePrefixIgnoringCase(initial.brand.trim()).trim(),
         )
     }
     var strength by rememberSaveable { mutableStateOf(initial?.let { fmtInput(it.strengthMg) } ?: "") }
@@ -134,7 +134,8 @@ fun PouchTypeDialog(
     val perCanValue = perCan.trim().toIntOrNull()
     val priceOk = price.isBlank() || (priceValue != null && priceValue >= 0 && priceValue < 1e7)
     val perCanOk = perCanValue != null && perCanValue in 1..1000
-    val valid = brand.isNotBlank() && mg != null && mg > 0 && mg < 200 && priceOk && perCanOk
+    val mgOk = mg != null && mg > 0 && mg < 200
+    val valid = brand.isNotBlank() && mgOk && priceOk && perCanOk
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -163,7 +164,7 @@ fun PouchTypeDialog(
                     onValueChange = { strength = it },
                     label = { Text(stringResource(R.string.pouch_strength)) },
                     singleLine = true,
-                    isError = strength.isNotBlank() && (mg == null || mg <= 0),
+                    isError = strength.isNotBlank() && !mgOk,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -176,8 +177,11 @@ fun PouchTypeDialog(
                     )
                 }
                 Spacer(Modifier.height(12.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = fast, onCheckedChange = { fast = it })
+                Row(
+                    Modifier.toggleable(value = fast, role = Role.Checkbox, onValueChange = { fast = it }),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(checked = fast, onCheckedChange = null)
                     Column(Modifier.weight(1f)) {
                         Text(stringResource(R.string.fast_release), style = MaterialTheme.typography.bodyLarge)
                         Text(
@@ -219,16 +223,7 @@ fun PouchTypeDialog(
                 Spacer(Modifier.height(12.dp))
                 Text(stringResource(R.string.pouch_color), style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.height(8.dp))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    maxItemsInEachRow = 6,
-                ) {
-                    PouchPalette.forEachIndexed { i, c ->
-                        ColorChoice(color = c, selected = i == color, onClick = { color = i })
-                    }
-                }
+                ColorGrid(selected = color, onSelect = { color = it })
             }
         },
         confirmButton = {
@@ -247,18 +242,30 @@ fun PouchTypeDialog(
     )
 }
 
+/** The palette in rows of seven around the colour wheel; the circles shrink to fit a narrow dialog. */
 @Composable
-private fun ColorChoice(color: Color, selected: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(36.dp)
-            .clip(CircleShape)
-            .background(color)
-            .then(if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape) else Modifier)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White)
+private fun ColorGrid(selected: Int, onSelect: (Int) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        PaletteOrder.chunked(7).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { i ->
+                    val color = PouchPalette[i]
+                    Box(
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .widthIn(max = 40.dp)
+                            .aspectRatio(1f)
+                            .clip(CircleShape)
+                            .background(color)
+                            .then(if (i == selected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape) else Modifier)
+                            .clickable { onSelect(i) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (i == selected) Icon(Icons.Filled.Check, contentDescription = null, tint = contentColorOn(color))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -343,13 +350,14 @@ fun EntryDialog(
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.in_the_mouth), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    val inMouth = stringResource(R.string.in_the_mouth)
+                    Text(inMouth, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                     if (durationMs == null) {
                         Text(stringResource(R.string.still_in), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
                         val shown = (minutesText.toIntOrNull() ?: initialMinutes ?: 1).coerceIn(1, PouchTiming.MAX_POUCH_MINUTES)
                         FilledTonalIconButton(onClick = { minutesText = (shown - 1).coerceAtLeast(1).toString() }) {
-                            Icon(Icons.Filled.Remove, contentDescription = null)
+                            Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.stepper_less, inMouth))
                         }
                         val frame = if (minutes == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                         BasicTextField(
@@ -364,6 +372,7 @@ fun EntryDialog(
                             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier
+                                .semantics { contentDescription = inMouth }
                                 .padding(horizontal = 6.dp)
                                 .width(44.dp)
                                 .border(1.dp, frame, RoundedCornerShape(8.dp))
@@ -372,7 +381,7 @@ fun EntryDialog(
                         Text(stringResource(R.string.unit_min), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.width(4.dp))
                         FilledTonalIconButton(onClick = { minutesText = (shown + 1).coerceAtMost(PouchTiming.MAX_POUCH_MINUTES).toString() }) {
-                            Icon(Icons.Filled.Add, contentDescription = null)
+                            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.stepper_more, inMouth))
                         }
                     }
                 }
@@ -456,6 +465,7 @@ fun NumberDialog(
                 onValueChange = { text = it },
                 singleLine = true,
                 suffix = { Text(suffix) },
+                isError = text.isNotBlank() && value == null,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
             )

@@ -3,7 +3,9 @@ package app.pouchwise.data
 import android.content.Context
 import androidx.room.withTransaction
 import app.pouchwise.model.DayKeys
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import java.time.ZoneId
 
 /**
@@ -22,14 +24,17 @@ object RunningDay {
         }
     }
 
-    /** Run on every app start and on the system's time-zone broadcast. */
-    suspend fun checkZone(context: Context) {
+    /**
+     * Run on every app start and widget refresh. The pouches move before the new zone is saved, so a failure is tried
+     * again next time; moving them twice changes nothing.
+     */
+    suspend fun checkZone(context: Context): Unit = withContext(NonCancellable) {
         val repo = SettingsRepository(context)
         val zone = ZoneId.systemDefault()
-        if (repo.settings.first().zoneId == zone.id) return
-        val (before, _) = repo.update { it.copy(zoneId = zone.id) }
-        if (before.zoneId.isEmpty() || before.zoneId == zone.id) return
-        val oldZone = runCatching { ZoneId.of(before.zoneId) }.getOrNull() ?: return
-        refile(context, before.dayStartHour, oldZone, before.dayStartHour, zone)
+        val saved = repo.settings.first()
+        if (saved.zoneId == zone.id) return@withContext
+        val oldZone = saved.zoneId.takeIf { it.isNotEmpty() }?.let { runCatching { ZoneId.of(it) }.getOrNull() }
+        if (oldZone != null) refile(context, saved.dayStartHour, oldZone, saved.dayStartHour, zone)
+        repo.update { if (it.zoneId == saved.zoneId) it.copy(zoneId = zone.id) else it }
     }
 }

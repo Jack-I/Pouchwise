@@ -41,17 +41,19 @@ fun OnboardingScreen(vm: AppViewModel) {
     val nNow = perDayNow.trim().toIntOrNull()
     val nTarget = perDayTarget.trim().toIntOrNull()
     val sTarget = parseDecimal(strengthTarget.ifBlank { strengthNow })
-    val valid = brand.isNotBlank() &&
-        sNow != null && sNow > 0 && sNow < 200 &&
-        nNow != null && nNow > 0 && nNow < 200 &&
-        nTarget != null && nTarget >= 0 && nTarget < 200 &&
-        sTarget != null && sTarget > 0 && sTarget < 200
+    val sNowOk = sNow != null && sNow > 0 && sNow < 200
+    val nNowOk = nNow != null && nNow > 0 && nNow < 200
+    val nTargetOk = nTarget != null && nTarget >= 0 && nTarget < 200
+    val sTargetOk = sTarget != null && sTarget > 0 && sTarget < 200
+    val valid = brand.isNotBlank() && sNowOk && nNowOk && nTargetOk && sTargetOk
 
     Scaffold { inner ->
         Column(
             Modifier
                 .fillMaxSize()
                 .padding(inner)
+                .consumeWindowInsets(inner)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
                 .padding(top = 24.dp, bottom = 32.dp),
@@ -76,6 +78,7 @@ fun OnboardingScreen(vm: AppViewModel) {
                         value = strengthNow, onValueChange = { strengthNow = it },
                         label = { Text(stringResource(R.string.onboarding_strength)) },
                         singleLine = true,
+                        isError = strengthNow.isNotBlank() && !sNowOk,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.weight(1f),
                     )
@@ -83,6 +86,7 @@ fun OnboardingScreen(vm: AppViewModel) {
                         value = perDayNow, onValueChange = { perDayNow = it },
                         label = { Text(stringResource(R.string.onboarding_per_day)) },
                         singleLine = true,
+                        isError = perDayNow.isNotBlank() && !nNowOk,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f),
                     )
@@ -98,6 +102,7 @@ fun OnboardingScreen(vm: AppViewModel) {
                         label = { Text(stringResource(R.string.onboarding_strength)) },
                         placeholder = { Text(strengthNow) },
                         singleLine = true,
+                        isError = strengthTarget.isNotBlank() && !sTargetOk,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.weight(1f),
                     )
@@ -105,6 +110,7 @@ fun OnboardingScreen(vm: AppViewModel) {
                         value = perDayTarget, onValueChange = { perDayTarget = it },
                         label = { Text(stringResource(R.string.onboarding_per_day)) },
                         singleLine = true,
+                        isError = perDayTarget.isNotBlank() && !nTargetOk,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.weight(1f),
                     )
