@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.core.content.FileProvider
 import app.pouchwise.R
 import app.pouchwise.data.Backup
+import app.pouchwise.data.Felt
 import app.pouchwise.data.LogEntry
 import app.pouchwise.data.PlanVersion
 import app.pouchwise.data.PouchType
@@ -26,7 +27,7 @@ object Export {
         val byId = types.associateBy { it.id }
         val zone = ZoneId.systemDefault()
         val now = System.currentTimeMillis()
-        val sb = StringBuilder("id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg,pouch_min,day,price,plan_level_mg\n")
+        val sb = StringBuilder("id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg,pouch_min,day,price,plan_level_mg,felt,felt_after_min\n")
         for (e in entries) {
             val iso = isoFormatter.format(Instant.ofEpochMilli(e.timestamp).atZone(zone))
             val type = byId[e.pouchTypeId]
@@ -44,7 +45,9 @@ object Export {
                 .append(PouchTiming.pouchMinutes(e, settings)).append(',')
                 .append(DayKeys.localDate(DayKeys.of(e, settings.dayStartHour))).append(',')
                 .append(e.pricePerPouch?.let { String.format(Locale.ROOT, "%.2f", it) } ?: "").append(',')
-                .append(e.planLevelMg?.let { String.format(Locale.ROOT, "%.3f", it) } ?: "").append('\n')
+                .append(e.planLevelMg?.let { String.format(Locale.ROOT, "%.3f", it) } ?: "").append(',')
+                .append(Felt.of(e.felt)?.code ?: "").append(',')
+                .append(e.feltAt?.let { Math.round((it - e.timestamp) / 60_000.0).toString() } ?: "").append('\n')
         }
         return sb.toString()
     }
@@ -84,6 +87,8 @@ object Export {
                     put("day", e.day ?: JSONObject.NULL)
                     put("pricePerPouch", e.pricePerPouch ?: JSONObject.NULL)
                     put("planLevelMg", e.planLevelMg ?: JSONObject.NULL)
+                    put("felt", Felt.of(e.felt)?.code ?: JSONObject.NULL)
+                    put("feltAt", e.feltAt ?: JSONObject.NULL)
                 })
             }
         })

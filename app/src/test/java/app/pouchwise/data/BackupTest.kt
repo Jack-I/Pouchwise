@@ -77,6 +77,20 @@ class BackupTest {
     }
 
     @Test
+    fun feltAnswersRoundTrip() {
+        val answered = listOf(entries[0].copy(felt = Felt.HIT.level, feltAt = 1_760_000_300_000L), entries[1])
+        assertEquals(answered, Backup.parse(Export.json(answered, types, settings)).entries)
+
+        val odd = Backup.parse("""{"types":[],"entries":[
+            {"id":1,"pouchTypeId":1,"timestamp":1000,"strengthMg":6,"felt":"wow","feltAt":2000},
+            {"id":2,"pouchTypeId":1,"timestamp":1000,"strengthMg":6,"felt":"nothing","feltAt":null}]}""").entries
+        assertNull(odd[0].felt)
+        assertNull(odd[0].feltAt)
+        assertEquals(Felt.NOTHING.level, odd[1].felt)
+        assertNull(odd[1].feltAt)
+    }
+
+    @Test
     fun aDayFarFromItsTimeIsDropped() {
         val json = """{"types":[],"entries":[
             {"id":1,"pouchTypeId":1,"timestamp":1760000000000,"strengthMg":6,"day":999999999},

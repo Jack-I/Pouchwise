@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.pouchwise.R
+import app.pouchwise.data.Felt
 import app.pouchwise.data.PouchType
 import app.pouchwise.util.Fmt
 import app.pouchwise.data.PouchEdit
@@ -296,10 +297,12 @@ fun EntryDialog(
     color: Color,
     startMs: Long,
     durationMs: Long?,
+    felt: Felt?,
     onDismiss: () -> Unit,
-    onSave: (startMs: Long, durationMs: Long?) -> Unit,
+    onSave: (startMs: Long, durationMs: Long?, felt: Felt?) -> Unit,
 ) {
     var start by rememberSaveable { mutableLongStateOf(startMs) }
+    var feltLevel by rememberSaveable { mutableStateOf(felt?.level) }
     val initialMinutes = durationMs?.let { (it / 60_000L).toInt() }
     var minutesText by rememberSaveable { mutableStateOf(initialMinutes?.toString().orEmpty()) }
     var pickTime by rememberSaveable { mutableStateOf(false) }
@@ -372,10 +375,14 @@ fun EntryDialog(
                         color = if (endsAfterNow) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                Spacer(Modifier.height(14.dp))
+                Text(stringResource(R.string.felt_label), style = MaterialTheme.typography.bodyLarge)
+                Spacer(Modifier.height(6.dp))
+                FeltChips(Felt.of(feltLevel), { feltLevel = it?.level })
             }
         },
         confirmButton = {
-            TextButton(enabled = valid, onClick = { onSave(start, newDurationMs) }) { Text(stringResource(R.string.save)) }
+            TextButton(enabled = valid, onClick = { onSave(start, newDurationMs, Felt.of(feltLevel)) }) { Text(stringResource(R.string.save)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )

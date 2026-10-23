@@ -71,6 +71,10 @@ interface PouchDao {
     @Query("UPDATE log_entries SET day = :day WHERE id = :id")
     suspend fun setDay(id: Long, day: Long)
 
+    /** Touches only the felt answer, so a tap on a card drawn before a pull-out cannot undo it. */
+    @Query("UPDATE log_entries SET felt = :felt, feltAt = :feltAt WHERE id = :id")
+    suspend fun setFelt(id: Long, felt: Int?, feltAt: Long?)
+
     @Query("SELECT * FROM log_entries WHERE day >= :day")
     suspend fun entriesFromDay(day: Long): List<LogEntry>
 

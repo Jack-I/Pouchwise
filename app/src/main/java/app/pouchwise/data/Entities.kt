@@ -72,7 +72,23 @@ data class LogEntry(
      * Null with the plan off or still learning.
      */
     val planLevelMg: Double? = null,
+    /** How much the pouch was felt, as a [Felt] level; null when not answered. */
+    val felt: Int? = null,
+    /** When that answer was given. */
+    val feltAt: Long? = null,
 )
+
+/** How much a pouch was felt, in the owner's words; stored as [level] so that more means stronger. */
+enum class Felt(val level: Int, val code: String) {
+    NOTHING(0, "nothing"),
+    A_BIT(1, "a_bit"),
+    HIT(2, "hit");
+
+    companion object {
+        fun of(level: Int?): Felt? = entries.firstOrNull { it.level == level }
+        fun ofCode(code: String?): Felt? = entries.firstOrNull { it.code == code }
+    }
+}
 
 /** The limit plan from [fromDay] on, until the next version; past days are judged by the version of their day. */
 @Entity(tableName = "plan_versions")

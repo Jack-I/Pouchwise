@@ -13,7 +13,7 @@ No account, no server, no analytics. Everything lives in a local SQLite database
 
 | Screen | What it does |
 |---|---|
-| **Track** | Today card: pouches or mg left, progress bar, the day's face. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** tosses a pouch in: a card with a timer and a **Pull out** button appears; if you never tap it, the pouch counts as out after the pouch time (30 min by default). Today's log shows each pouch with when it went in and how long it stayed; you can correct both or delete an entry. With the tolerance plan on, the Today card says the next pouch is better after a given time, and pouches taken earlier are marked *early*. With prices set, each pouch row shows its price and the Today card what today cost. |
+| **Track** | Today card: pouches or mg left, progress bar, the day's face. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** tosses a pouch in: a card with a timer and a **Pull out** button appears; if you never tap it, the pouch counts as out after the pouch time (30 min by default). The card also asks how the pouch was felt: **Hit**, **A bit** or **Nothing**; the answer shows as a tag in the log and can be changed in the entry. Today's log shows each pouch with when it went in and how long it stayed; you can correct both or delete an entry. With the tolerance plan on, the Today card says the next pouch is better after a given time, and pouches taken earlier are marked *early*. With prices set, each pouch row shows its price and the Today card what today cost. |
 | **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL), when 95 % of the nicotine will be gone, and when cotinine will be back to a non-user's level. A chart you can drag with one finger, back through up to 30 days of history (solid) and ahead through the forecast if you stop now (dashed), and zoom with two, from 2 h to 7 d; the 8 h / 48 h / 7 d buttons jump to those widths. "Now" starts two thirds of the way across, and **Now** brings it back. With the tolerance plan on, the chart draws its level and marks when the forecast drops below it. "Receptors busy now" is the share of the brain's α4β2 receptors taken at the current level, and "Receptors at rest today" counts the time nicotine was low enough to leave most of them free. **What the levels mean** puts your levels next to levels measured in studies (non-users, nicotine gum and patches, smokers, snus users, poisoning), with what is known about harm and links to the sources. |
 | **History** | Five weeks of day tiles: pouches and mg per day, coloured in seven clearly different steps (blue for a day without pouches, through green to yellow at the limit, then orange, red and purple) by the share of the limit that applied on that day. Streak within the limit, days over the limit, the last 30 and 7 finished days, totals. Daily bars against the limit line, dragged through the whole history and a week ahead, every day labelled. Two more views behind a switch at the top: patterns over the last 30 days (pouches by hour and by weekday, the time of the first pouch and its trend, the typical gap, the average time in the mouth) and spending (this week and month, and the saving against what you used before). |
 | **Plan** | Limit counted in whole pouches or whole mg of nicotine. Either a fixed daily limit or a taper: start value → target value by a date, with today's limit interpolated linearly. Switching the unit converts the plan with your typical pouch strength, and switching back restores the values you had. A change applies from today on; past days keep the plan they had. Tolerance: off, hold or lower (see below). |
@@ -208,15 +208,17 @@ as on the Body screen. "Receptors at rest" is the time today with nicotine below
 The rule throughout: whatever shapes the past is recorded when it happens, and settings only shape the
 future.
 
-- Database `pouchwise.db` (Room, schema v8). `pouch_types` and `log_entries`; an entry stores the
+- Database `pouchwise.db` (Room, schema v9). `pouch_types` and `log_entries`; an entry stores the
   strength, release constant, pouch time (`pouchMinutes`), tracking day (`day`), price (`pricePerPouch`) and
   tolerance plan level (`planLevelMg`) at log time, so
   editing a pouch or the pouch time never rewrites old entries. A new day-start hour or time zone
   re-files only the pouches of the running day, so they stay in "today"; finished days keep theirs. `endTimestamp` is when the pouch was taken out (NULL = stayed in for its full
-  pouch time). `plan_versions` keeps the limit plan from the day each change was made, and every past
+  pouch time). `felt` is the felt answer (0 nothing, 1 a bit, 2 hit; NULL = not answered) and `feltAt`
+  when it was given. `plan_versions` keeps the limit plan from the day each change was made, and every past
   day is judged by the version in force on that day.
 - Export from Settings → Data: CSV
-  (`id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg,pouch_min,day,price,plan_level_mg`)
+  (`id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg,pouch_min,day,price,plan_level_mg,felt,felt_after_min`;
+  `felt` is `hit`, `a_bit` or `nothing`, and `felt_after_min` is how long after the toss-in it was answered)
   or JSON (everything: pouches, entries, plan history and settings).
 - Import from Settings → Data, or from the first-launch screen: a JSON export replaces all pouches,
   entries and settings on the phone after a confirmation that shows what is on the phone and what is

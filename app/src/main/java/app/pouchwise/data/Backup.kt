@@ -109,6 +109,7 @@ object Backup {
         val start = o.getLong("timestamp")
         val end = if (o.isNull("endTimestamp")) null else o.getLong("endTimestamp")
         if (start <= 0L || (end != null && end < start)) throw NotAnExport("bad times")
+        val felt = Felt.ofCode(o.optString("felt"))
         return LogEntry(
             id = o.getLong("id"),
             pouchTypeId = o.getLong("pouchTypeId"),
@@ -121,6 +122,8 @@ object Backup {
             day = if (o.isNull("day")) null else o.getLong("day").takeIf { abs(it - Math.floorDiv(start, DAY_MS)) <= 2 },
             pricePerPouch = o.amount("pricePerPouch"),
             planLevelMg = o.amount("planLevelMg")?.takeIf { it <= 100.0 },
+            felt = felt?.level,
+            feltAt = if (felt == null || o.isNull("feltAt")) null else o.optLong("feltAt").takeIf { it > 0L },
         )
     }
 

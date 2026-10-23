@@ -82,6 +82,10 @@
     <string name="still_in">ещё во рту</string>
     <string name="taken_out_at">Вынут в %1$s</string>
     <string name="ends_after_now">Это позже, чем сейчас</string>
+    <string name="felt_label">Ощущение</string>
+    <string name="felt_hit">Вштырило</string>
+    <string name="felt_a_bit">Слегка</string>
+    <string name="felt_nothing">Ничего</string>
 
     <string name="brand">Бренд</string>
     <string name="brand_other">Другой</string>

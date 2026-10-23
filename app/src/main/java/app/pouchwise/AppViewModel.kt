@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.room.withTransaction
 import app.pouchwise.data.AppDatabase
 import app.pouchwise.data.Backup
+import app.pouchwise.data.Felt
 import app.pouchwise.data.LogEntry
 import app.pouchwise.data.PlanVersion
 import app.pouchwise.data.PouchEdit
@@ -155,14 +156,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** A hand correction: when the pouch went in and how long it stayed; [durationMs] is null while it is still in. */
-    fun editEntry(entry: LogEntry, newStartMs: Long, durationMs: Long?) = viewModelScope.launch {
+    fun editEntry(entry: LogEntry, newStartMs: Long, durationMs: Long?, felt: Felt?) = viewModelScope.launch {
         val s = settingsRepo.settings.first()
-        dao.updateEntry(
-            if (durationMs == null) PouchTiming.withNewStart(entry, newStartMs, s)
-            else PouchTiming.withTimes(entry, newStartMs, durationMs, s),
-        )
+        val moved = if (durationMs == null) PouchTiming.withNewStart(entry, newStartMs, s)
+                    else PouchTiming.withTimes(entry, newStartMs, durationMs, s)
+        dao.updateEntry(answered(moved, felt))
         refreshWidgets()
     }
+
+    /** Records how the pouch was felt; null clears the answer. */
+    fun setFelt(entry: LogEntry, felt: Felt?) = viewModelScope.launch {
+        val a = answered(entry, felt)
+        dao.setFelt(a.id, a.felt, a.feltAt)
+    }
+
+    /** The answer with the moment it was given; an unchanged answer keeps its moment. */
+    private fun answered(entry: LogEntry, felt: Felt?): LogEntry =
+        if (felt?.level == entry.felt) entry
+        else entry.copy(felt = felt?.level, feltAt = felt?.let { System.currentTimeMillis() })
 
     fun updateSettings(transform: (Settings) -> Settings) = viewModelScope.launch {
         val (before, after) = settingsRepo.update(transform)

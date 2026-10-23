@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
 import app.pouchwise.R
+import app.pouchwise.data.Felt
 import app.pouchwise.data.LogEntry
 import app.pouchwise.data.PouchType
 import app.pouchwise.data.pricePerPouch
@@ -120,6 +121,8 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                 autoMs = PouchTiming.autoMs(e, settings),
                 absorbedMg = PouchTiming.absorbedMg(e, settings, tick),
                 onRemove = { vm.finishPouch(e) },
+                felt = Felt.of(e.felt),
+                onFelt = { vm.setFelt(e, it) },
             )
         }
 
@@ -206,9 +209,10 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             color = pouchColor(type?.colorIndex ?: 0),
             startMs = e.timestamp,
             durationMs = if (stillIn) null else PouchTiming.effectiveDurationMs(e, settings),
+            felt = Felt.of(e.felt),
             onDismiss = { editEntry = null },
-            onSave = { start, duration ->
-                vm.editEntry(e, start, duration)
+            onSave = { start, duration, felt ->
+                vm.editEntry(e, start, duration, felt)
                 editEntry = null
             },
         )
@@ -373,6 +377,8 @@ private fun ActivePouchCard(
     autoMs: Long,
     absorbedMg: Double,
     onRemove: () -> Unit,
+    felt: Felt?,
+    onFelt: (Felt?) -> Unit,
 ) {
     val elapsed = (nowMs - entry.timestamp).coerceIn(0L, autoMs)
     val remaining = autoMs - elapsed
@@ -433,6 +439,8 @@ private fun ActivePouchCard(
                 }
             }
         }
+        Spacer(Modifier.height(12.dp))
+        FeltChips(felt, onFelt)
     }
 }
 
@@ -524,6 +532,20 @@ private fun LogRow(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .background(AppColors.plan.copy(alpha = 0.3f))
+                            .padding(horizontal = 6.dp, vertical = 1.dp),
+                    )
+                }
+                val felt = Felt.of(entry.felt)
+                if (felt != null) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        stringResource(feltLabel(felt)).lowercase(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                             .padding(horizontal = 6.dp, vertical = 1.dp),
                     )
                 }

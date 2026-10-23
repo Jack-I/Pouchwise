@@ -2,8 +2,10 @@ package app.pouchwise.ui.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,6 +25,7 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -30,6 +33,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.pouchwise.R
+import app.pouchwise.data.Felt
 import app.pouchwise.model.GardenLevel
 import app.pouchwise.model.LimitMode
 import app.pouchwise.ui.theme.AppColors
@@ -215,4 +219,41 @@ fun onGardenColor(tile: Color): Color = if (tile.luminance() > 0.2f) Color(0xFF1
 @Composable
 fun BigEmoji(text: String, size: Int = 56) {
     Text(text, fontSize = size.sp, lineHeight = (size + 8).sp)
+}
+
+fun feltLabel(felt: Felt): Int = when (felt) {
+    Felt.HIT -> R.string.felt_hit
+    Felt.A_BIT -> R.string.felt_a_bit
+    Felt.NOTHING -> R.string.felt_nothing
+}
+
+/** Hit / A bit / Nothing. Tapping the chosen answer again takes it back. */
+@Composable
+fun FeltChips(selected: Felt?, onSelect: (Felt?) -> Unit, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(10.dp)
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (f in listOf(Felt.HIT, Felt.A_BIT, Felt.NOTHING)) {
+            val on = f == selected
+            Box(
+                Modifier
+                    .weight(1f)
+                    .height(36.dp)
+                    .clip(shape)
+                    .then(
+                        if (on) Modifier.background(MaterialTheme.colorScheme.primary)
+                        else Modifier.border(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), shape),
+                    )
+                    .selectable(selected = on, role = Role.RadioButton) { onSelect(if (on) null else f) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    (if (on) "✓ " else "") + stringResource(feltLabel(f)),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = if (on) FontWeight.Bold else null,
+                    color = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
 }

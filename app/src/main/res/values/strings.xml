@@ -75,6 +75,10 @@
     <string name="still_in">still in</string>
     <string name="taken_out_at">Pulled out at %1$s</string>
     <string name="ends_after_now">That\'s later than now</string>
+    <string name="felt_label">Felt it</string>
+    <string name="felt_hit">Hit</string>
+    <string name="felt_a_bit">A bit</string>
+    <string name="felt_nothing">Nothing</string>
 
     <!-- pouch types -->
     <string name="brand">Brand</string>
