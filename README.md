@@ -13,7 +13,7 @@ No account, no server, no analytics. Everything lives in a local SQLite database
 
 | Screen | What it does |
 |---|---|
-| **Track** | Today card: pouches or mg left, progress bar, the day's face. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** tosses a pouch in: a card with a timer and a **Pull out** button appears; if you never tap it, the pouch counts as out after the pouch time (30 min by default). The card also asks how the pouch feels: **Overwhelm**, **Hit**, **A bit** or **Nothing**; tap again whenever the feeling changes, and each answer is kept with its minute. The log shows them as a tag (*hit → overwhelm*); the entry lists them to remove or add. An answer added more than 30 minutes after the pouch came out describes the pouch rather than that moment: it counts at the pull-out and is marked as recalled. Today's log shows each pouch with when it went in and how long it stayed; you can correct both or delete an entry. With the tolerance plan on, the Today card says the next pouch is better after a given time, and pouches taken earlier are marked *early*. With prices set, each pouch row shows its price and the Today card what today cost. |
+| **Track** | Today card: what is left of today's limit (or how far over it) next to the nicotine in the body now, which climbs while a pouch is in; a progress bar and the day's face. One row per pouch brand with a **+** button (long-press to log at an earlier time). Tapping **+** tosses a pouch in: a card with a timer and a **Pull out** button appears; if you never tap it, the pouch counts as out after the pouch time (30 min by default). The card also asks how the pouch feels: **Overwhelm**, **Hit**, **A bit** or **Nothing**; tap again whenever the feeling changes, and each answer is kept with its minute. The log shows them as a tag (*hit → overwhelm*); the entry lists them to remove or add. An answer added more than 30 minutes after the pouch came out describes the pouch rather than that moment: it counts at the pull-out and is marked as recalled. Today's log shows each pouch with when it went in and how long it stayed; tap one to correct both, or delete it. With the tolerance plan on, the Today card says the next pouch is better after a given time, and pouches taken earlier are marked *early*. With prices set, each pouch row shows its price and the Today card what today cost. |
 | **Body** | Nicotine and cotinine in the body right now (mg and an approximate ng/mL), when 95 % of the nicotine will be gone, and when cotinine will be back to a non-user's level. A chart you can drag with one finger, back through up to 30 days of history (solid) and ahead through the forecast if you stop now (dashed), and zoom with two, from 2 h to 7 d; the 8 h / 48 h / 7 d buttons jump to those widths. "Now" starts two thirds of the way across, and **Now** brings it back. With the tolerance plan on, the chart draws its level and marks when the forecast drops below it. "Receptors busy now" is the share of the brain's α4β2 receptors taken at the current level, and "Receptors at rest today" counts the time nicotine was low enough to leave most of them free. **What the levels mean** puts your levels next to levels measured in studies (non-users, nicotine gum and patches, smokers, snus users, poisoning), with what is known about harm and links to the sources. |
 | **History** | Five weeks of day tiles: pouches and mg per day, coloured in seven clearly different steps (blue for a day without pouches, through green to yellow at the limit, then orange, red and purple) by the share of the limit that applied on that day. Streak within the limit, days over the limit, the last 30 and 7 finished days, totals. Daily bars against the limit line, dragged through the whole history and a week ahead, every day labelled. Two more views behind a switch at the top: patterns over the last 30 days (pouches by hour and by weekday, the time of the first pouch and its trend, the typical gap, the average time in the mouth) and spending (this week and month, and the saving against what you used before). |
 | **Plan** | Limit counted in whole pouches or whole mg of nicotine. Either a fixed daily limit or a taper: start value → target value by a date, with today's limit interpolated linearly. Switching the unit converts the plan with your typical pouch strength, and switching back restores the values you had. A change applies from today on; past days keep the plan they had. Tolerance: off, hold or lower (see below). |
@@ -28,22 +28,28 @@ Long-press the home screen → Widgets → Pouchwise. Two sizes:
 
 - **1×1 ring** — the logo inside a ring that fills up towards today's limit and turns red once you
   are over it, with the app name underneath. Tap to open the app.
-- **2×1 counter** — the same ring plus "4/10" (or mg), and two buttons. **+** pops up a chooser of
-  your pouches over the home screen and logs the one you tap (with a single pouch it logs straight
-  away). The pull-out button (a mouth with an arrow leaving it) takes the pouch out; with two or more in,
-  it asks which one. While a pouch is in, its brand and a running timer show under the count, and the
-  button turns white; otherwise it is greyed out.
+- **2×1 counter** — the same ring with today's pouches or mg against the limit inside it ("4" over
+  "/10"), the nicotine in the body now as the large number beside it, and two buttons. The toss-in
+  button (a mouth with an arrow going in) pops up a chooser of your pouches over the home screen and logs
+  the one you tap (with a single pouch it logs straight away). The pull-out button (the arrow leaving the
+  mouth) takes the pouch out; with two or more in, it asks which one. While a pouch is in, its brand and a
+  running timer show under the nicotine, and the pull-out button turns white; otherwise it is greyed out,
+  and with the tolerance plan on the line shows when the next pouch is better after.
 
 On a Galaxy Z Flip the cover screen gets its own widget: Settings → Cover screen → Widgets → Pouchwise.
-Samsung gives such widgets the whole page. It shows the ring and today's numbers, the pouch that is in
+Samsung gives such widgets the whole page. It shows the ring and today's numbers, the nicotine in the
+body now, the pouch that is in
 with a timer and the pull-out button (with two or more in, it asks which one, right on the cover screen), or when the
 last one came out, and buttons for the three pouches you used most in the last two weeks, in the order
 of your list: a tap logs that pouch. Tapping the ring opens the app on the cover screen.
 
 All widgets refresh right after every change made in the app, whenever the app is opened, when a new
-tracking day starts and when a pouch reaches its pouch time. The last two use an ordinary alarm that
-needs no permission and lands within about ten minutes of the moment. They also refresh when the
-time zone or the system language changes.
+tracking day starts, when a pouch reaches its pouch time and at the time the tolerance plan gives for
+the next pouch. While there is nicotine in the body, the 2×1 and cover widgets also refresh every
+15 minutes between pouches and every 30 while one is in, so the nicotine figure keeps up. The timed
+refreshes use an ordinary alarm that needs no permission and lands within about ten minutes of the
+moment; it does not wake the phone, so one that falls due while the screen is off runs when it comes on.
+Widgets also refresh when the time zone or the system language changes.
 
 Going over the limit never blocks logging. The day card turns red with "N pouches over the limit"
 and the extra entries are marked in the log — the data stays honest.
@@ -205,9 +211,13 @@ stay busy all day. The extra receptors that build up with long use go back to no
 without nicotine ([Cosgrove et al. 2009](https://pmc.ncbi.nlm.nih.gov/articles/PMC2796827)).
 
 - **Hold**: the next pouch is better after nicotine is back below the level at which you usually take one
-  (the median over the last two weeks, leaving out each day's first pouch). Days stay as they are.
-- **Lower**: 15 % below that, worked out from the two weeks before Monday and fixed for the week, so
-  the gaps grow week by week; never below the level at which half of the receptors are free.
+  (the median over the last two weeks, leaving out each day's first pouch). That level is capped at what
+  one usual pouch leaves two hours after it goes in (the pouch you used most in those two weeks, kept in
+  for your median time), so a habit of back-to-back pouches is not what Hold holds; the Plan card says
+  when the cap applies.
+- **Lower**: 15 % below that, worked out from the two weeks before Monday, so the gaps grow week by
+  week; never below the level at which half of the receptors are free. Until there are two full weeks
+  of history before Monday, the two weeks before today stand in.
 
 Each pouch records the plan level in force when it went in; one taken while the model still had nicotine
 above it is marked *early*, never blocked. Once none of your pouches fits under the day's limit, the Today
