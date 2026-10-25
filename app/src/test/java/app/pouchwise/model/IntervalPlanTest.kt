@@ -7,6 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDateTime
 import java.time.ZoneId
+import kotlin.math.min
 
 class IntervalPlanTest {
     private val zone = ZoneId.systemDefault()
@@ -31,16 +32,39 @@ class IntervalPlanTest {
 
     @Test
     fun keepUsesTheTwoWeeksBeforeTodayAndLowerFifteenPercentLessFromBeforeMonday() {
-        val entries = (5..21).flatMap { d -> listOf(8, 10, 12, 14).map { h -> pouch(at(d, h)) } }
+        val entries = (1..21).flatMap { d -> listOf(8, 10, 12, 14).map { h -> pouch(at(d, h)) } }
         val now = at(21, 15)
+        val cap = IntervalPlan.basis(entries, s, now).capMg!!
         val keep = IntervalPlan.threshold(entries, s.copy(intervalMode = IntervalMode.KEEP), now)!!
         val dayStart = DayKeys.startOfDayMs(DayKeys.epochDay(now, s.dayStartHour), s.dayStartHour)
-        assertEquals(IntervalPlan.usualLevel(entries, s, dayStart - IntervalPlan.WINDOW_MS, dayStart)!!, keep, 1e-12)
+        assertEquals(min(IntervalPlan.usualLevel(entries, s, dayStart - IntervalPlan.WINDOW_MS, dayStart)!!, cap), keep, 1e-12)
         val monday = at(19, 0)
         assertEquals(monday, IntervalPlan.weekStartMs(now, 0))
         val lower = IntervalPlan.threshold(entries, s.copy(intervalMode = IntervalMode.LOWER), now)!!
-        assertEquals(IntervalPlan.usualLevel(entries, s, monday - IntervalPlan.WINDOW_MS, monday)!! * 0.85, lower, 1e-12)
+        assertEquals(min(IntervalPlan.usualLevel(entries, s, monday - IntervalPlan.WINDOW_MS, monday)!!, cap) * 0.85, lower, 1e-12)
         assertNull(IntervalPlan.threshold(entries, s, now))
+        // Without two full weeks before Monday, Lower is 15 % below today's Hold.
+        val lately = entries.filter { it.timestamp >= at(10, 0) }
+        val keepLately = IntervalPlan.threshold(lately, s.copy(intervalMode = IntervalMode.KEEP), now)!!
+        assertEquals(keepLately * 0.85, IntervalPlan.threshold(lately, s.copy(intervalMode = IntervalMode.LOWER), now)!!, 1e-12)
+    }
+
+    @Test
+    fun backToBackPouchesAreHeldNoHigherThanOneUsualPouchTwoHoursOn() {
+        // Two weeks of a pouch every half hour from 08:00 to 14:00: the plan holds no more than one of them leaves after two hours.
+        val entries = (5..20).flatMap { d -> (0..12).map { i -> pouch(at(d, 8) + i * 30 * 60_000L) } }
+        val now = at(21, 9)
+        val one = PouchTiming.toDose(pouch(0L), s)
+        val cap = Pharmacokinetics.levelsAt(2 * 3_600_000L, listOf(one), s.pk).nicotineMg
+        val basis = IntervalPlan.basis(entries, s, now)
+        assertEquals(cap, basis.capMg!!, 1e-12)
+        assertTrue(basis.usualMg!! > 2 * cap)
+        assertEquals(cap, IntervalPlan.threshold(entries, s.copy(intervalMode = IntervalMode.KEEP), now)!!, 1e-12)
+        assertEquals(cap * 0.85, IntervalPlan.threshold(entries, s.copy(intervalMode = IntervalMode.LOWER), now)!!, 1e-12)
+        // After one such pouch from nothing, the next is due two hours after it went in.
+        val start = at(22, 10)
+        val next = IntervalPlan.nextOnPlanMs(listOf(one.copy(timeMs = start)), s.pk, cap, start + 60_000L)!!
+        assertEquals((start + 2 * 3_600_000L).toDouble(), next.toDouble(), 60_000.0)
     }
 
     @Test

@@ -298,6 +298,7 @@
     <string name="interval_keep">Держать</string>
     <string name="interval_lower">Снижать</string>
     <string name="interval_usual">За последние две недели вы брали следующий пауч примерно при %1$s\u00A0мг никотина в организме (≈\u00A0%2$s\u00A0нг/мл).</string>
+    <string name="interval_cap">Не выше %1$s\u00A0мг: столько оставляет один %2$s через два часа.</string>
     <string name="interval_keep_rule">Держать: следующий лучше после того, как никотин опустится ниже %1$s\u00A0мг. Дни остаются как есть.</string>
     <string name="interval_lower_rule">Снижать: на 15%% ниже, сейчас %1$s\u00A0мг, пересчёт по понедельникам — перерывы растут от недели к неделе.</string>
     <string name="interval_learning">Чтобы узнать ваш обычный уровень, плану нужно хотя бы пять паучей за две недели до сегодняшнего дня, не считая первого за день.</string>

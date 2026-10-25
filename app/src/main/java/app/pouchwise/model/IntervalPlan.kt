@@ -5,11 +5,14 @@ import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToLong
 
 /**
  * Spacing between pouches by nicotine level. "Keep": the next pouch once nicotine is back below the level at
  * which you usually take one (median over the last two weeks). "Lower": 15 % below that, fixed for the week
  * from the two weeks before Monday, and never below the level at which half of the α4β2 receptors are free.
+ * Neither goes above what one usual pouch leaves two hours after it goes in: a habit of back-to-back pouches is
+ * not what the plan holds.
  */
 object IntervalPlan {
     /** Plasma nicotine at which half of the brain's α4β2 nicotinic receptors are taken (Brody et al., Arch Gen Psychiatry 2006). */
@@ -18,6 +21,8 @@ object IntervalPlan {
     const val WINDOW_MS = 14L * 24 * 3_600_000L
     /** Entries a plan needs loaded: the week so far, two weeks before it, and the model's lookback. */
     const val DATA_MS = 28L * 24 * 3_600_000L
+    /** The cap is the level one usual pouch has left this long after it went in. */
+    const val CAP_AFTER_MS = 2 * 3_600_000L
     private const val MIN_SAMPLES = 5
     private const val MINUTE_MS = 60_000L
 
@@ -44,20 +49,46 @@ object IntervalPlan {
         return if (levels.size < MIN_SAMPLES) null else Stats.median(levels)
     }
 
+    /** The pouch used most in [entries] as one usual pouch: the latest of them, in for their median time. Null without any. */
+    fun usualPouch(entries: List<LogEntry>, s: Settings): LogEntry? {
+        val most = entries.groupBy { it.pouchTypeId }.values.maxWithOrNull(compareBy({ it.size }, { g -> g.maxOf { it.timestamp } })) ?: return null
+        val inMs = Stats.median(most.map { PouchTiming.effectiveDurationMs(it, s).toDouble() })!!.roundToLong()
+        return most.maxBy { it.timestamp }.copy(timestamp = 0L, endTimestamp = inMs)
+    }
+
+    /** Nicotine (mg) one [pouch] alone has left [CAP_AFTER_MS] after it went in. */
+    fun capMg(pouch: LogEntry, s: Settings): Double =
+        Pharmacokinetics.levelsAt(pouch.timestamp + CAP_AFTER_MS, listOf(PouchTiming.toDose(pouch, s)), s.pk).nicotineMg
+
+    /** What the day of [nowMs] goes by, from the two weeks before it: the usual level, and one usual pouch for the cap. */
+    class Basis(val usualMg: Double?, val pouch: LogEntry?, val capMg: Double?)
+
+    fun basis(entries: List<LogEntry>, s: Settings, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Basis {
+        val recent = entries.filter { it.timestamp in nowMs - DATA_MS..nowMs }
+        val dayStart = DayKeys.startOfDayMs(DayKeys.epochDay(nowMs, s.dayStartHour, zone), s.dayStartHour, zone)
+        val pouch = usualPouch(recent.filter { it.timestamp in dayStart - WINDOW_MS until dayStart }, s)
+        return Basis(usualLevel(recent, s, dayStart - WINDOW_MS, dayStart), pouch, pouch?.let { capMg(it, s) })
+    }
+
     /**
      * Level (mg) below which the next pouch is due at [nowMs]; null with the plan off or too little data yet. It is fixed
      * for the whole tracking day (the two weeks before it), so the time shown and the level a pouch records agree.
      */
     fun threshold(entries: List<LogEntry>, s: Settings, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Double? {
         if (s.intervalMode == IntervalMode.OFF) return null
-        val recent = entries.filter { it.timestamp in nowMs - DATA_MS..nowMs }
-        val dayStart = DayKeys.startOfDayMs(DayKeys.epochDay(nowMs, s.dayStartHour, zone), s.dayStartHour, zone)
-        val usual = { end: Long -> usualLevel(recent, s, end - WINDOW_MS, end) }
+        val day = basis(entries, s, nowMs, zone)
+        fun capped(level: Double) = day.capMg?.let { min(level, it) } ?: level
+        val keep = capped(day.usualMg ?: return null)
         return when (s.intervalMode) {
             IntervalMode.OFF -> null
-            IntervalMode.KEEP -> usual(dayStart)
-            // In the first weeks there is nothing before Monday yet; the two weeks before today stand in.
-            IntervalMode.LOWER -> (usual(weekStartMs(nowMs, s.dayStartHour, zone)) ?: usual(dayStart))?.let { max(it * LOWER_SHARE, restLevelMg(s)) }
+            IntervalMode.KEEP -> keep
+            IntervalMode.LOWER -> {
+                // Two full weeks before Monday set the week's level; until there are, the two weeks before today stand in.
+                val weekStart = weekStartMs(nowMs, s.dayStartHour, zone)
+                val recent = entries.filter { it.timestamp in nowMs - DATA_MS..nowMs }
+                val week = if (recent.none { it.timestamp < weekStart - WINDOW_MS }) null else usualLevel(recent, s, weekStart - WINDOW_MS, weekStart)
+                max((week?.let { capped(it) } ?: keep) * LOWER_SHARE, restLevelMg(s))
+            }
         }
     }
 
