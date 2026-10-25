@@ -10,6 +10,7 @@ import app.pouchwise.model.IntervalMode
 import app.pouchwise.model.IntervalPlan
 import app.pouchwise.model.LimitMode
 import app.pouchwise.model.Limits
+import app.pouchwise.model.Pharmacokinetics
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.model.Settings
 import kotlinx.coroutines.flow.first
@@ -34,6 +35,10 @@ data class WidgetState(
     val nextOnPlanMs: Long? = null,
     /** With the interval plan on: none of the pouches fits under today's limit, so the next one is tomorrow. */
     val nextTomorrow: Boolean = false,
+    /** Nicotine in the body (mg) when this was loaded. */
+    val nicotineMg: Double = 0.0,
+    /** When to load again so the nicotine shown keeps up: soon while a pouch is in, later while some is left. */
+    val nicotineRefreshMs: Long? = null,
 ) {
     val used: Double get() = Limits.usage(mode, count, mg)
     val over: Boolean get() = Limits.isOver(used, limit)
@@ -86,10 +91,11 @@ object WidgetData {
         val entries = dao.entriesOfDay(day, DayKeys.startOfDayMs(day, settings.dayStartHour), dayEnd)
         val inNow = pouchesInNow(context, settings, now)
         val latest = inNow.lastOrNull()
+        val recent = dao.entriesBetween(now - IntervalPlan.DATA_MS, now + 1)
+        val doses = recent.map { PouchTiming.toDose(it, settings) }
+        val nicotine = Pharmacokinetics.levelsAt(now, doses, settings.pk).nicotineMg
         val nextOnPlan = if (settings.intervalMode == IntervalMode.OFF) null else {
-            val recent = dao.entriesBetween(now - IntervalPlan.DATA_MS, now + 1)
-            IntervalPlan.threshold(recent, settings, now)
-                ?.let { IntervalPlan.nextOnPlanMs(recent.map { PouchTiming.toDose(it, settings) }, settings.pk, it, now) }
+            IntervalPlan.threshold(recent, settings, now)?.let { IntervalPlan.nextOnPlanMs(doses, settings.pk, it, now) }
         }
         val count = entries.size
         val mg = entries.sumOf { it.strengthMg }
@@ -108,6 +114,12 @@ object WidgetData {
             nextOnPlanMs = nextOnPlan,
             nextTomorrow = settings.intervalMode != IntervalMode.OFF &&
                 Limits.noneFit(settings, limit, count, mg, types.map { it.strengthMg }),
+            nicotineMg = nicotine,
+            nicotineRefreshMs = when {
+                inNow.isNotEmpty() -> now + NICOTINE_IN_REFRESH_MS
+                nicotine >= Pharmacokinetics.NICOTINE_CLEARED_MG -> now + NICOTINE_OUT_REFRESH_MS
+                else -> null
+            },
         )
     }
 
@@ -124,6 +136,8 @@ object WidgetData {
         )
     }
 
+    private const val NICOTINE_IN_REFRESH_MS = 30 * 60_000L
+    private const val NICOTINE_OUT_REFRESH_MS = 15 * 60_000L
     private const val QUICK_LOOKBACK_MS = 14L * 24 * 3_600_000L
 
     /** Pouches in right now with their types, oldest first. Pouches put in before the day boundary count too. */

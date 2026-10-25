@@ -50,6 +50,13 @@
                 android:maxLines="2"
                 android:textColor="#D9FFFFFF"
                 android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/cover_nicotine"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:textSize="15sp" />
         </LinearLayout>
     </LinearLayout>
 

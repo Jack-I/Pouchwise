@@ -266,8 +266,6 @@
     <string name="cover_nothing_yet">No pouches logged yet</string>
     <string name="cover_log">Toss in %1$s</string>
     <string name="widget_wide_desc">Today\'s count, the limit and one-tap logging</string>
-    <string name="widget_unit_pouches">pouches</string>
-    <string name="widget_unit_mg_today">mg today</string>
     <string name="widget_add">Toss in a pouch</string>
     <string name="widget_remove">Pull the pouch out</string>
     <string name="widget_failed">That didn\'t work. Try again.</string>

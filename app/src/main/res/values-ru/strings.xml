@@ -274,8 +274,6 @@
     <string name="cover_nothing_yet">Записей пока нет</string>
     <string name="cover_log">Вкинуть %1$s</string>
     <string name="widget_wide_desc">Счёт за сегодня, лимит и запись в одно касание</string>
-    <string name="widget_unit_pouches">паучей</string>
-    <string name="widget_unit_mg_today">мг сегодня</string>
     <string name="widget_add">Вкинуть пауч</string>
     <string name="widget_remove">Вынуть пауч</string>
     <string name="widget_failed">Не получилось, попробуйте ещё раз.</string>

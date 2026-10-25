@@ -50,9 +50,11 @@ object WidgetUpdater {
                     val cover = WidgetData.loadCover(app)
                     coverIds.forEach { manager.updateAppWidget(it, WidgetRenderer.coverViews(app, state, cover)) }
                 }
-                // The 1×1 shows only today's numbers; the others also show the pouch that is in and the next one on the plan.
+                // The 1×1 shows only today's numbers; the others also show the pouch that is in, the next one on the plan
+                // and the nicotine now.
                 val detailed = wideIds.isNotEmpty() || coverIds.isNotEmpty()
-                scheduleRefresh(app, listOfNotNull(state.dayEndMs, state.nextAutoEndMs.takeIf { detailed }, state.nextOnPlanMs.takeIf { detailed }).minOrNull())
+                val times = if (detailed) listOf(state.nextAutoEndMs, state.nextOnPlanMs, state.nicotineRefreshMs) else emptyList()
+                scheduleRefresh(app, (times + state.dayEndMs).filterNotNull().minOrNull())
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

@@ -18,6 +18,7 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import android.text.style.RelativeSizeSpan
+import android.text.style.StyleSpan
 import android.view.View
 import android.widget.RemoteViews
 import androidx.compose.ui.graphics.toArgb
@@ -36,11 +37,14 @@ object WidgetRenderer {
     /** The ring and the texts beyond the limit. */
     private const val SOFT_RED = 0xFFFF8A80.toInt()
     private const val MUTED = 0xD9FFFFFF.toInt()
+    /** The app's nicotine colour on a dark background. */
+    private const val NICOTINE = 0xFF64B5F6.toInt()
 
     /** Share of the 108 dp foreground canvas the drawing occupies (see design/make_icon.py). */
     private const val ART_SHARE = 56f / 108f
 
-    private fun ring(context: Context, sizePx: Int, state: WidgetState): Bitmap {
+    /** The day's ring around [centre] (a large line over a small one) when given, otherwise around the logo. */
+    private fun ring(context: Context, sizePx: Int, state: WidgetState, centre: Pair<String, String>? = null): Bitmap {
         val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -64,9 +68,13 @@ object WidgetRenderer {
             c.drawArc(rect, -90f, sweep, false, paint)
         }
 
+        val inner = sizePx - 2f * (inset + stroke / 2f)
+        if (centre != null) {
+            drawCentre(c, cx, inner, centre)
+            return bmp
+        }
         val logo = ContextCompat.getDrawable(context, R.mipmap.ic_launcher_foreground)
         if (logo != null) {
-            val inner = sizePx - 2f * (inset + stroke / 2f)
             val full = inner * 0.74f / ART_SHARE
             val left = cx - full / 2f
             val top = cx - full / 2f
@@ -74,6 +82,25 @@ object WidgetRenderer {
             logo.draw(c)
         }
         return bmp
+    }
+
+    /** Two lines in the middle of a ring [inner] across: the first large and bold, the second small under it. */
+    private fun drawCentre(c: Canvas, cx: Float, inner: Float, centre: Pair<String, String>) {
+        val big = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
+            color = Color.WHITE
+            textAlign = Paint.Align.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+            textSize = inner * 0.42f
+        }
+        big.measureText(centre.first).let { if (it > inner * 0.78f) big.textSize *= inner * 0.78f / it }
+        val small = Paint(big).apply { typeface = Typeface.DEFAULT; textSize = inner * 0.22f; color = MUTED }
+        // Digits have no descenders, so the two cap heights and the gap between them are what gets centred.
+        val bigCap = big.textSize * 0.72f
+        val smallCap = small.textSize * 0.72f
+        val gap = small.textSize * 0.35f
+        val top = cx - (bigCap + gap + smallCap) / 2f
+        c.drawText(centre.first, cx, top + bigCap, big)
+        c.drawText(centre.second, cx, top + bigCap + gap + smallCap, small)
     }
 
     /**
@@ -126,7 +153,10 @@ object WidgetRenderer {
             setTextColor(R.id.cover_count, if (state.over) SOFT_RED else Color.WHITE)
             setTextViewText(R.id.cover_left, Fmt.leftToday(context.resources, state.mode, state.limit, state.count, state.mg))
             setTextColor(R.id.cover_left, if (state.over) SOFT_RED else MUTED)
-            setContentDescription(R.id.cover_top, context.getString(R.string.app_name) + ": " + countText(context, state))
+            val nicotine = nicotineText(context, state)
+            setTextViewText(R.id.cover_nicotine, nicotine)
+            setTextColor(R.id.cover_nicotine, NICOTINE)
+            setContentDescription(R.id.cover_top, context.getString(R.string.app_name) + ": " + countText(context, state) + ", " + nicotine)
             setOnClickPendingIntent(R.id.cover_top, openApp(context))
 
             val latest = cover.inNow.lastOrNull()
@@ -200,6 +230,13 @@ object WidgetRenderer {
 
     private fun mgText(context: Context, mg: Double): String = context.getString(R.string.mg_value, Fmt.mg(mg))
 
+    /** "1.8 mg nicotine now", the amount in bold. */
+    private fun nicotineText(context: Context, state: WidgetState): CharSequence =
+        SpannableStringBuilder(context.getString(R.string.mg_value, Fmt.oneDecimal(state.nicotineMg))).apply {
+            setSpan(StyleSpan(Typeface.BOLD), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            append(" ").append(context.getString(R.string.nicotine_now))
+        }
+
     private fun blend(color: Int, base: Int, share: Float): Int {
         fun channel(shift: Int) =
             (((color shr shift) and 0xFF) * share + ((base shr shift) and 0xFF) * (1 - share)).roundToInt()
@@ -218,10 +255,13 @@ object WidgetRenderer {
 
     fun wideViews(context: Context, state: WidgetState): RemoteViews =
         RemoteViews(context.packageName, R.layout.widget_wide).apply {
-            setImageViewBitmap(R.id.widget_wide_ring, ring(context, 192, state))
+            // The ring holds the day so far; the large number beside it is the nicotine now.
+            val used = if (state.mode == LimitMode.COUNT) state.count.toString() else Fmt.mg(state.mg)
+            setImageViewBitmap(R.id.widget_wide_ring, ring(context, 192, state, used to "/${state.limit}"))
             setContentDescription(R.id.widget_wide_ring, countText(context, state))
             setInt(R.id.widget_wide_root, "setBackgroundResource", if (state.over) R.drawable.widget_bg_over else R.drawable.widget_bg)
-            setTextViewText(R.id.widget_wide_count, countWithLimit(state))
+            setTextViewText(R.id.widget_wide_count, nicotineLarge(context, state))
+            setContentDescription(R.id.widget_wide_count, nicotineText(context, state))
             setOnClickPendingIntent(R.id.widget_wide_root, openApp(context))
 
             val since = state.inSinceMs
@@ -232,7 +272,7 @@ object WidgetRenderer {
                     since != null -> state.inLabel.orEmpty()
                     state.nextTomorrow -> context.getString(R.string.widget_tomorrow)
                     state.nextOnPlanMs != null -> context.getString(R.string.widget_next, Fmt.time(state.nextOnPlanMs))
-                    else -> context.getString(if (state.mode == LimitMode.COUNT) R.string.widget_unit_pouches else R.string.widget_unit_mg_today)
+                    else -> context.getString(R.string.nicotine_now)
                 },
             )
 
@@ -261,15 +301,11 @@ object WidgetRenderer {
             options,
         )
 
-    /** "39/60": today's amount large, the limit small; the unit goes on the line below. */
-    private fun countWithLimit(state: WidgetState): CharSequence {
-        val used = when (state.mode) {
-            LimitMode.COUNT -> state.count.toString()
-            LimitMode.MG -> Fmt.mg(state.mg)
-        }
-        val text = SpannableStringBuilder(used)
+    /** "1.8 mg": the nicotine now large, its unit small. */
+    private fun nicotineLarge(context: Context, state: WidgetState): CharSequence {
+        val text = SpannableStringBuilder(Fmt.oneDecimal(state.nicotineMg))
         val start = text.length
-        text.append("/${state.limit}")
+        text.append(" ").append(context.getString(R.string.unit_mg))
         text.setSpan(RelativeSizeSpan(0.6f), start, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         text.setSpan(ForegroundColorSpan(MUTED), start, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         return text
