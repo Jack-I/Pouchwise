@@ -41,6 +41,10 @@
         <item quantity="other">%d пауча сверх лимита</item>
     </plurals>
     <string name="over_limit_by_mg">%1$s мг сверх лимита</string>
+    <string name="left_today_caption">осталось сегодня</string>
+    <string name="over_limit_caption">сверх лимита</string>
+    <string name="limit_reached_caption">лимит исчерпан</string>
+    <string name="nicotine_now">никотин сейчас</string>
     <plurals name="used_of_limit_count">
         <item quantity="one">%1$d из %2$d пауча · %3$s мг никотина</item>
         <item quantity="few">%1$d из %2$d паучей · %3$s мг никотина</item>

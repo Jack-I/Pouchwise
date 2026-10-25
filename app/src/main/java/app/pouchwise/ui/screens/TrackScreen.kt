@@ -42,6 +42,7 @@ import app.pouchwise.util.Money
 import kotlinx.coroutines.delay
 import java.time.Instant
 import java.time.ZoneId
+import kotlin.math.abs
 
 @Composable
 fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
@@ -106,6 +107,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         item {
             TodayCard(
                 settings = settings, count = count, mg = mg, absorbedMg = absorbedToday, limit = limit,
+                nicotineMg = Pharmacokinetics.levelsAt(clock, doses, settings.pk).nicotineMg,
                 lastOutMs = lastOutMs, pouchInNow = pouchInNow, nowMs = clock,
                 money = spentToday?.let { Fmt.money(it, Money.symbol(settings, context)) },
                 plan = if (settings.intervalMode == IntervalMode.OFF) null else PlanInfo(
@@ -250,6 +252,7 @@ private fun TodayCard(
     count: Int,
     mg: Double,
     absorbedMg: Double,
+    nicotineMg: Double,
     limit: Int,
     lastOutMs: Long?,
     pouchInNow: Boolean,
@@ -263,7 +266,18 @@ private fun TodayCard(
     val ratio = stat.ratio
     val level = GardenLevel.of(stat)
 
-    val headline = Fmt.leftToday(LocalContext.current.resources, mode, limit, count, mg)
+    val left = Limits.left(mode, limit, count, mg)
+    val leftAmount = when (mode) {
+        LimitMode.COUNT -> abs(left).toInt().let { pluralStringResource(R.plurals.count_pouches, it, it) }
+        LimitMode.MG -> stringResource(R.string.mg_value, Fmt.mg(abs(left)))
+    }
+    val leftCaption = stringResource(
+        when {
+            left == 0.0 -> R.string.limit_reached_caption
+            left > 0 -> R.string.left_today_caption
+            else -> R.string.over_limit_caption
+        },
+    )
     val detail = when (mode) {
         LimitMode.COUNT -> pluralStringResource(R.plurals.used_of_limit_count, limit, count, limit, Fmt.mg(mg))
         LimitMode.MG -> pluralStringResource(R.plurals.used_of_limit_mg, count, Fmt.mg(mg), limit.toString(), count)
@@ -273,19 +287,29 @@ private fun TodayCard(
     val headlineColor = if (over) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface
 
     SoftCard(containerColor = container, padding = 16.dp) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        val big = MaterialTheme.typography.headlineSmall
+        val caption = MaterialTheme.typography.bodySmall
+        val muted = MaterialTheme.colorScheme.onSurfaceVariant
+        Row(Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Text(leftAmount, style = big, fontWeight = FontWeight.Bold, color = headlineColor, maxLines = 1)
+                Text(leftCaption, style = caption, color = muted, maxLines = 1)
+            }
+            VerticalDivider(Modifier.padding(horizontal = 14.dp, vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant)
             Column(Modifier.weight(1f)) {
-                Text(headline, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = headlineColor)
-                Text(detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(
-                    stringResource(R.string.absorbed_today, Fmt.oneDecimal(absorbedMg)) + (money?.let { " · $it" } ?: ""),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Text(stringResource(R.string.mg_value, Fmt.oneDecimal(nicotineMg)), style = big, fontWeight = FontWeight.Bold, color = AppColors.nicotine, maxLines = 1)
+                Text(stringResource(R.string.nicotine_now), style = caption, color = muted, maxLines = 1)
             }
             Spacer(Modifier.width(12.dp))
             BigEmoji(level.emoji, size = 40)
         }
+        Spacer(Modifier.height(8.dp))
+        Text(detail, style = MaterialTheme.typography.bodyMedium, color = muted)
+        Text(
+            stringResource(R.string.absorbed_today, Fmt.oneDecimal(absorbedMg)) + (money?.let { " · $it" } ?: ""),
+            style = caption,
+            color = muted,
+        )
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             LinearProgressIndicator(

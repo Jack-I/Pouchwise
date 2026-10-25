@@ -395,26 +395,36 @@ fun ScrollableBodyChart(
     }
 }
 
-/** Plain bars, labelled under every [labelEvery]th one. */
+/** Plain bars over a scale of whole steps, labelled under every [labelEvery]th one. */
 @Composable
 fun SimpleBars(values: List<Double>, labels: List<String>, color: Color, modifier: Modifier = Modifier, labelEvery: Int = 1) {
     val measurer = rememberTextMeasurer(cacheSize = 64)
     val style = TextStyle(fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Canvas(modifier.fillMaxWidth().height(96.dp)) {
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
+    Canvas(modifier.fillMaxWidth().height(104.dp)) {
         if (values.isEmpty()) return@Canvas
-        val labelH = 16.dp.toPx()
-        val h = size.height - labelH
-        val slot = size.width / values.size
-        val top = values.max().takeIf { it > 0 } ?: 1.0
+        val padL = 24.dp.toPx()
+        val padT = 6.dp.toPx()
+        val h = size.height - padT - 16.dp.toPx()
+        val step = niceStep(values.max(), targetTicks = 2, whole = true)
+        val top = max(ceil(values.max() / step), 1.0) * step
+        fun y(v: Double) = padT + h - (v / top).toFloat() * h
+        var tick = 0.0
+        while (tick <= top + 1e-9) {
+            drawLine(gridColor, Offset(padL, y(tick)), Offset(size.width, y(tick)), strokeWidth = 1f)
+            label(measurer, tickLabel(tick), padL - 4.dp.toPx(), y(tick) - 6.sp.toPx(), style, Align.END)
+            tick += step
+        }
+        val slot = (size.width - padL) / values.size
         values.forEachIndexed { i, v ->
-            val bh = (v / top).toFloat() * (h - 2.dp.toPx())
+            val bh = (v / top).toFloat() * h
             if (bh > 0f) {
                 drawRoundRect(
-                    color, topLeft = Offset(i * slot + slot * 0.15f, h - bh), size = Size(slot * 0.7f, bh),
+                    color, topLeft = Offset(padL + i * slot + slot * 0.15f, padT + h - bh), size = Size(slot * 0.7f, bh),
                     cornerRadius = CornerRadius(2.dp.toPx()),
                 )
             }
-            if (i % labelEvery == 0) label(measurer, labels[i], i * slot + slot / 2, h + 3.dp.toPx(), style, Align.CENTER)
+            if (i % labelEvery == 0) label(measurer, labels[i], padL + i * slot + slot / 2, padT + h + 3.dp.toPx(), style, Align.CENTER)
         }
     }
 }
