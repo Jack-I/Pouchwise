@@ -223,13 +223,10 @@ fun ScrollableBodyChart(
     val dayFmt = remember { DateTimeFormatter.ofPattern("EEE d", Locale.getDefault()) }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val padL = with(density) { 44.dp.toPx() }
-    val padR = with(density) { 48.dp.toPx() }
     var widthPx by remember { mutableIntStateOf(0) }
     val nowMs = span.nowMs
     val windowH = view.windowH
     val windowMs = (windowH * 3_600_000f).toLong()
-    val plotW = widthPx - padL - padR
 
     val t1 = nowMs + (view.endH * 3_600_000f).toLong()
     val t0 = t1 - windowMs
@@ -243,9 +240,25 @@ fun ScrollableBodyChart(
     val cTarget = max(peak { it.cotinineMg }, 2.0)
     val nStep = niceStep(nTarget)
     val cStep = niceStep(cTarget)
+    val nTop = ceil(nTarget / nStep) * nStep
+    val cTop = ceil(cTarget / cStep) * cStep
     val glide = spring<Float>(stiffness = Spring.StiffnessLow)
-    val nMax by animateFloatAsState((ceil(nTarget / nStep) * nStep).toFloat(), glide, label = "nicotine scale")
-    val cMax by animateFloatAsState((ceil(cTarget / cStep) * cStep).toFloat(), glide, label = "cotinine scale")
+    val nMax by animateFloatAsState(nTop.toFloat(), glide, label = "nicotine scale")
+    val cMax by animateFloatAsState(cTop.toFloat(), glide, label = "cotinine scale")
+    // Each side keeps only the room its widest scale label takes; the plot gets the rest.
+    val labelGap = with(density) { 6.dp.toPx() }
+    fun margin(step: Double, top: Double, style: TextStyle): Float {
+        var widest = 0
+        var v = 0.0
+        while (v <= top + 1e-6) {
+            widest = max(widest, measurer.measure(AnnotatedString(tickLabel(v)), style = style).size.width)
+            v += step
+        }
+        return widest + labelGap
+    }
+    val padL by animateFloatAsState(margin(nStep, nTop, nicLabelStyle), glide, label = "nicotine labels")
+    val padR by animateFloatAsState(margin(cStep, cTop, cotLabelStyle), glide, label = "cotinine labels")
+    val plotW = widthPx - padL - padR
 
     Canvas(
         modifier
@@ -304,12 +317,12 @@ fun ScrollableBodyChart(
         while (v <= nMax + 1e-6) {
             val yy = yN(v)
             drawLine(gridColor, Offset(padL, yy), Offset(padL + w, yy), strokeWidth = 1f)
-            label(measurer, tickLabel(v), padL - 6.dp.toPx(), yy - 7.sp.toPx(), nicLabelStyle, Align.END)
+            label(measurer, tickLabel(v), padL - labelGap, yy - 7.sp.toPx(), nicLabelStyle, Align.END)
             v += nStep
         }
         var c = 0.0
         while (c <= cMax + 1e-6) {
-            label(measurer, tickLabel(c), padL + w + 6.dp.toPx(), yC(c) - 7.sp.toPx(), cotLabelStyle, Align.START)
+            label(measurer, tickLabel(c), padL + w + labelGap, yC(c) - 7.sp.toPx(), cotLabelStyle, Align.START)
             c += cStep
         }
 
@@ -333,7 +346,9 @@ fun ScrollableBodyChart(
                 val xx = x(ms)
                 drawLine(gridColor, Offset(xx, padT), Offset(xx, padT + h), strokeWidth = 1f)
                 val text = if (at.hour == 0 && at.minute == 0) dayFmt.format(at) else timeFmt.format(at)
-                label(measurer, text, xx, padT + h + 6.dp.toPx(), labelStyle, Align.CENTER)
+                // At the edges the label stays on the chart rather than centred under its line.
+                val tw = measurer.measure(AnnotatedString(text), style = labelStyle).size.width.toFloat()
+                label(measurer, text, (xx - tw / 2f).coerceIn(0f, max(0f, size.width - tw)), padT + h + 6.dp.toPx(), labelStyle)
             }
             tick = tick.plusHours(tickH)
         }
