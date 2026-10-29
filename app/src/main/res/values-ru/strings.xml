@@ -124,6 +124,9 @@
     <string name="delete_type_body">Пауч пропадёт с экрана учёта, история останется. Его можно вернуть.</string>
     <string name="delete_type_body_unused">С этим паучем ещё нет записей, поэтому он удалится насовсем.</string>
     <string name="manage_pouches">Управление паучами</string>
+    <string name="drag_to_reorder">Перетащите, чтобы поменять порядок</string>
+    <string name="move_up">Переместить выше</string>
+    <string name="move_down">Переместить ниже</string>
     <string name="no_types_yet">Паучей пока нет.</string>
 
     <string name="body_title">В организме</string>

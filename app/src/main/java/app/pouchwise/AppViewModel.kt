@@ -133,6 +133,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshWidgets()
     }
 
+    /** The shown pouches in the order of [activeIds]; hidden ones go after them, so a restored one comes back last. */
+    fun reorderTypes(activeIds: List<Long>) = viewModelScope.launch {
+        db.withTransaction {
+            val hidden = dao.allTypes().filter { it.archived && it.id !in activeIds }.map { it.id }
+            (activeIds + hidden).forEachIndexed { i, id -> dao.setSortOrder(id, i) }
+        }
+        refreshWidgets()
+    }
+
     /** Puts a pouch in: it stays "active" until removed or until its pouch time passes. */
     fun logPouch(type: PouchType, atMs: Long = System.currentTimeMillis()) = viewModelScope.launch {
         val s = settingsRepo.settings.first()

@@ -30,6 +30,9 @@ interface PouchDao {
     @Query("SELECT COALESCE(MAX(sortOrder), 0) FROM pouch_types")
     suspend fun maxSortOrder(): Int
 
+    @Query("UPDATE pouch_types SET sortOrder = :sortOrder WHERE id = :id")
+    suspend fun setSortOrder(id: Long, sortOrder: Int)
+
     @Query("SELECT * FROM log_entries ORDER BY timestamp")
     fun observeEntries(): Flow<List<LogEntry>>
 
