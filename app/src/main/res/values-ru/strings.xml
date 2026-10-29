@@ -63,8 +63,9 @@
     <string name="your_pouches">Ваши паучи</string>
     <string name="edit_short">Изменить</string>
     <string name="add_pouch_type">Добавить пауч</string>
-    <string name="todays_log">Записи за сегодня</string>
-    <string name="empty_log">Сегодня записей нет.</string>
+    <string name="recent_log">За последние 30 часов</string>
+    <string name="log_yesterday">Вчера</string>
+    <string name="empty_log">За последние 30 часов записей нет.</string>
     <string name="no_types_title">Добавьте первый пауч</string>
     <string name="no_types_body">Добавьте свои паучи с крепостью. Нажимайте +, когда вкидываете пауч, и «Вынуть», когда вынимаете; иначе он считается вынутым через %1$d\u00A0мин. Долгое нажатие на + — если вкинули раньше.</string>
     <string name="log_one">Вкинуть один</string>

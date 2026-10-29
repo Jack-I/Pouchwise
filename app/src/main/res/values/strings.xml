@@ -58,8 +58,9 @@
     <string name="your_pouches">Your pouches</string>
     <string name="edit_short">Edit</string>
     <string name="add_pouch_type">Add pouch</string>
-    <string name="todays_log">Today\'s log</string>
-    <string name="empty_log">Nothing logged today.</string>
+    <string name="recent_log">Last 30 hours</string>
+    <string name="log_yesterday">Yesterday</string>
+    <string name="empty_log">Nothing logged in the last 30 hours.</string>
     <string name="no_types_title">Add your first pouch</string>
     <string name="no_types_body">Add the pouches you use, with their strength. Tap + when you toss one in and Pull out when you take it out; otherwise it counts as out after %1$d\u00A0min. Long-press + for one you tossed in earlier.</string>
     <string name="log_one">Toss one in</string>

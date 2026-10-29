@@ -44,6 +44,11 @@ import java.time.Instant
 import java.time.ZoneId
 import kotlin.math.abs
 
+private const val LOG_SPAN_MS = 30 * 3_600_000L
+
+/** One tracking day's pouches in the log, newest first, with the marks that day gave them. */
+private class LogDay(val day: Long, val entries: List<LogEntry>, val overIds: Set<Long>, val earlyIds: Set<Long>)
+
 @Composable
 fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val typesOrNull by vm.types.collectAsStateWithLifecycle()
@@ -52,6 +57,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val context = LocalContext.current
     val now by vm.now.collectAsStateWithLifecycle()
     val feltMarks by vm.feltMarks.collectAsStateWithLifecycle()
+    val plans by vm.plans.collectAsStateWithLifecycle()
 
     val types = typesOrNull ?: return
     val active = remember(types) { types.filter { !it.archived } }
@@ -77,12 +83,26 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val todaysAsc = remember(entries, settings.dayStartHour, today) {
         entries.filter { DayKeys.of(it, settings.dayStartHour) == today }
     }
-    val todays = remember(todaysAsc) { todaysAsc.asReversed() }
     val count = todaysAsc.size
     val mg = todaysAsc.sumOf { it.strengthMg }
     val absorbedToday = todaysAsc.sumOf { PouchTiming.absorbedMg(it, settings, clock) }
     val limit = Limits.limitForDayRounded(settings, today)
-    val overIds = remember(todaysAsc, settings, limit) { Limits.overLimitEntryIds(todaysAsc, settings, limit) }
+    // The log reaches back 30 hours, so a pouch from just before the day changed can still be corrected;
+    // each pouch keeps the marks of its own day.
+    val logFromMs = Math.floorDiv(wallNow - LOG_SPAN_MS, 60_000L) * 60_000L
+    val logDays = remember(entries, settings, plans, today, logFromMs) {
+        entries.filter { it.timestamp >= logFromMs }.asReversed()
+            .groupBy { DayKeys.of(it, settings.dayStartHour) }
+            .map { (day, newestFirst) ->
+                val dayAsc = entries.filter { DayKeys.of(it, settings.dayStartHour) == day }
+                val plan = PlanHistory.settingsForDay(day, today, plans, settings)
+                LogDay(
+                    day, newestFirst,
+                    overIds = Limits.overLimitEntryIds(dayAsc, plan, Limits.limitForDayRounded(plan, day)),
+                    earlyIds = IntervalPlan.earlyIds(dayAsc, entries, settings),
+                )
+            }
+    }
     val pouchInNow = activeEntries.isNotEmpty()
     // The interval plan: the level below which the next pouch is due, and when the forecast gets there.
     val doses = remember(entries, settings) { entries.map { PouchTiming.toDose(it, settings) } }
@@ -90,7 +110,6 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val nextOnPlan = remember(doses, settings, planLevel, now) {
         planLevel?.let { IntervalPlan.nextOnPlanMs(doses, settings.pk, it, System.currentTimeMillis()) }
     }
-    val earlyIds = remember(todaysAsc, entries, settings) { IntervalPlan.earlyIds(todaysAsc, entries, settings) }
     val spentToday = todaysAsc.mapNotNull { it.pricePerPouch }.takeIf { it.isNotEmpty() }?.sum()
     val lastOutMs = PouchTiming.lastOutMs(entries, settings, clock)
 
@@ -167,15 +186,26 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
 
         item {
             SectionTitle(
-                stringResource(R.string.todays_log),
+                stringResource(R.string.recent_log),
                 modifier = Modifier.padding(top = 6.dp),
                 style = MaterialTheme.typography.titleMedium,
             )
         }
-        if (todays.isEmpty()) {
+        if (logDays.isEmpty()) {
             item { Text(stringResource(R.string.empty_log), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        } else {
-            items(todays, key = { "entry-${it.id}" }) { e ->
+        }
+        for (d in logDays) {
+            if (d.day != today) {
+                item(key = "logday-${d.day}") {
+                    Text(
+                        if (d.day == today - 1) stringResource(R.string.log_yesterday) else Fmt.dateWithWeekday(d.day),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp, start = 4.dp),
+                    )
+                }
+            }
+            items(d.entries, key = { "entry-${it.id}" }) { e ->
                 val isActive = PouchTiming.isActive(e, settings, clock)
                 LogRow(
                     entry = e,
@@ -184,8 +214,8 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                     durationLabel = if (isActive) stringResource(R.string.in_mouth)
                                     else stringResource(R.string.duration_m, (PouchTiming.effectiveDurationMs(e, settings) / 60_000L).toInt()),
                     absorbedLabel = stringResource(R.string.absorbed_short, Fmt.oneDecimal(PouchTiming.absorbedMg(e, settings, clock))),
-                    over = e.id in overIds,
-                    early = e.id in earlyIds,
+                    over = e.id in d.overIds,
+                    early = e.id in d.earlyIds,
                     marks = feltMarks[e.id].orEmpty(),
                     onEdit = { editEntry = e },
                     onDelete = { deleteEntry = e },
