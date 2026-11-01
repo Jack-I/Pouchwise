@@ -116,8 +116,8 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val spentToday = todaysAsc.mapNotNull { it.pricePerPouch }.takeIf { it.isNotEmpty() }?.sum()
     val lastOutMs = PouchTiming.lastOutMs(entries, settings, clock)
 
-    // The log stays folded until asked for, so the pouch buttons are not pushed down by a long day.
-    var logOpen by rememberSaveable { mutableStateOf(false) }
+    // Earlier days in the log stay folded until tapped; today's pouches are always shown.
+    var openDays by rememberSaveable { mutableStateOf(listOf<Long>()) }
     var timePickFor by remember { mutableStateOf<PouchType?>(null) }
     var editEntry by remember { mutableStateOf<LogEntry?>(null) }
     var deleteEntry by remember { mutableStateOf<LogEntry?>(null) }
@@ -192,34 +192,41 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         item {
             SectionTitle(
                 stringResource(R.string.recent_log),
-                modifier = Modifier
-                    .padding(top = 6.dp)
-                    .clickable(onClickLabel = stringResource(if (logOpen) R.string.hide else R.string.show)) { logOpen = !logOpen }
-                    .padding(vertical = 8.dp),
+                modifier = Modifier.padding(top = 6.dp),
                 style = MaterialTheme.typography.titleMedium,
-            ) {
-                Icon(
-                    if (logOpen) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            )
         }
-        if (logOpen && logDays.isEmpty()) {
+        if (logDays.isEmpty()) {
             item { Text(stringResource(R.string.empty_log), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        for (d in logDays.takeIf { logOpen }.orEmpty()) {
+        for (d in logDays) {
+            val open = d.day == today || d.day in openDays
             if (d.day != today) {
                 item(key = "logday-${d.day}") {
-                    Text(
-                        if (d.day == today - 1) stringResource(R.string.log_yesterday) else Fmt.dateWithWeekday(d.day),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp, start = 4.dp),
-                    )
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable(onClickLabel = stringResource(if (open) R.string.hide else R.string.show)) {
+                                openDays = if (open) openDays - d.day else openDays + d.day
+                            }
+                            .padding(start = 4.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            if (d.day == today - 1) stringResource(R.string.log_yesterday) else Fmt.dateWithWeekday(d.day),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Icon(
+                            if (open) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
-            items(d.entries, key = { "entry-${it.id}" }) { e ->
+            if (open) items(d.entries, key = { "entry-${it.id}" }) { e ->
                 val isActive = PouchTiming.isActive(e, settings, clock)
                 LogRow(
                     entry = e,
