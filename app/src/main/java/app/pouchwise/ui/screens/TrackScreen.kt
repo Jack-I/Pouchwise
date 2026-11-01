@@ -10,10 +10,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -113,6 +116,8 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val spentToday = todaysAsc.mapNotNull { it.pricePerPouch }.takeIf { it.isNotEmpty() }?.sum()
     val lastOutMs = PouchTiming.lastOutMs(entries, settings, clock)
 
+    // The log stays folded until asked for, so the pouch buttons are not pushed down by a long day.
+    var logOpen by rememberSaveable { mutableStateOf(false) }
     var timePickFor by remember { mutableStateOf<PouchType?>(null) }
     var editEntry by remember { mutableStateOf<LogEntry?>(null) }
     var deleteEntry by remember { mutableStateOf<LogEntry?>(null) }
@@ -187,14 +192,23 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         item {
             SectionTitle(
                 stringResource(R.string.recent_log),
-                modifier = Modifier.padding(top = 6.dp),
+                modifier = Modifier
+                    .padding(top = 6.dp)
+                    .clickable(onClickLabel = stringResource(if (logOpen) R.string.hide else R.string.show)) { logOpen = !logOpen }
+                    .padding(vertical = 8.dp),
                 style = MaterialTheme.typography.titleMedium,
-            )
+            ) {
+                Icon(
+                    if (logOpen) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
-        if (logDays.isEmpty()) {
+        if (logOpen && logDays.isEmpty()) {
             item { Text(stringResource(R.string.empty_log), color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        for (d in logDays) {
+        for (d in logDays.takeIf { logOpen }.orEmpty()) {
             if (d.day != today) {
                 item(key = "logday-${d.day}") {
                     Text(
