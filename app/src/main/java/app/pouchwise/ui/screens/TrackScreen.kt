@@ -369,6 +369,7 @@ private fun TodayCard(
                 color = barColor,
                 trackColor = MaterialTheme.colorScheme.surface,
                 strokeCap = StrokeCap.Round,
+                drawStopIndicator = {},
             )
             if (limit > 0) {
                 Spacer(Modifier.width(10.dp))
@@ -493,6 +494,7 @@ private fun ActivePouchCard(
                     color = MaterialTheme.colorScheme.primary,
                     trackColor = MaterialTheme.colorScheme.surface,
                     strokeCap = StrokeCap.Round,
+                    drawStopIndicator = {},
                 )
             }
             Spacer(Modifier.width(14.dp))
