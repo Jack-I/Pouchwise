@@ -50,7 +50,28 @@ class IntervalPlanTest {
     }
 
     @Test
-    fun backToBackPouchesAreHeldNoHigherThanOneUsualPouchTwoHoursOn() {
+    fun theCapIsTheMedianOverEveryPouchNotTheMostLoggedKind() {
+        fun kind(type: Long, mg: Double, k: Double, minutes: Int) = { ms: Long ->
+            LogEntry(
+                id = nextId++, pouchTypeId = type, timestamp = ms, strengthMg = mg, releaseK = k, pouchMinutes = 45,
+                endTimestamp = ms + minutes * 60_000L, day = DayKeys.epochDay(ms, 0),
+            )
+        }
+        val strong = kind(1, 6.5, 0.103, 40)
+        val medium = kind(2, 6.0, 0.062, 40)
+        val weak = kind(3, 4.0, 0.062, 20)
+        // Two weeks of three weak, two medium and two strong pouches a day: the weak kind is logged most.
+        val entries = (5..18).flatMap { d ->
+            listOf(weak(at(d, 8)), strong(at(d, 10)), medium(at(d, 12)), weak(at(d, 14)), strong(at(d, 16)), medium(at(d, 18)), weak(at(d, 20)))
+        }
+        val cap = IntervalPlan.basis(entries, s, at(19, 9)).capMg!!
+        assertEquals(IntervalPlan.leftAfterCapMg(medium(0L), s), cap, 1e-12)
+        assertTrue(cap > IntervalPlan.leftAfterCapMg(weak(0L), s) * 1.5)
+        assertTrue(cap < IntervalPlan.leftAfterCapMg(strong(0L), s))
+    }
+
+    @Test
+    fun backToBackPouchesAreHeldNoHigherThanATypicalPouchTwoHoursOn() {
         // Two weeks of a pouch every half hour from 08:00 to 14:00: the plan holds no more than one of them leaves after two hours.
         val entries = (5..20).flatMap { d -> (0..12).map { i -> pouch(at(d, 8) + i * 30 * 60_000L) } }
         val now = at(21, 9)

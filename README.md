@@ -212,9 +212,10 @@ without nicotine ([Cosgrove et al. 2009](https://pmc.ncbi.nlm.nih.gov/articles/P
 
 - **Hold**: the next pouch is better after nicotine is back below the level at which you usually take one
   (the median over the last two weeks, leaving out each day's first pouch). That level is capped at what
-  one usual pouch leaves two hours after it goes in (the pouch you used most in those two weeks, kept in
-  for your median time), so a habit of back-to-back pouches is not what Hold holds; the Plan card says
-  when the cap applies.
+  a typical pouch of yours leaves two hours after it goes in: for every pouch of those two weeks, the level
+  it alone would leave by then, with its own strength, release speed and time in the mouth, and the median
+  of those. So a habit of back-to-back pouches is not what Hold holds; the Plan card says when the cap
+  applies.
 - **Lower**: 15 % below that, worked out from the two weeks before Monday, so the gaps grow week by
   week; never below the level at which half of the receptors are free. Until there are two full weeks
   of history before Monday, the two weeks before today stand in.

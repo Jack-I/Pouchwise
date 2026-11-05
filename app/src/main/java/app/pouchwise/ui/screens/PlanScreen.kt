@@ -18,7 +18,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
 import app.pouchwise.R
 import app.pouchwise.data.LogEntry
-import app.pouchwise.data.PouchType
 import app.pouchwise.model.DayKeys
 import app.pouchwise.model.IntervalMode
 import app.pouchwise.model.IntervalPlan
@@ -197,7 +196,7 @@ fun PlanScreen(vm: AppViewModel) {
         SoftCard {
             Text(stringResource(R.string.tolerance_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(10.dp))
-            ToleranceSettings(settings, entries, types.orEmpty(), today) { m -> vm.updateSettings { it.copy(intervalMode = m) } }
+            ToleranceSettings(settings, entries, today) { m -> vm.updateSettings { it.copy(intervalMode = m) } }
         }
     }
 
@@ -254,7 +253,7 @@ private fun DateRow(label: String, value: String, onClick: () -> Unit) {
 
 /** Off / hold / lower, with the levels they mean for this user right now. */
 @Composable
-private fun ToleranceSettings(settings: Settings, entries: List<LogEntry>, types: List<PouchType>, today: Long, onMode: (IntervalMode) -> Unit) {
+private fun ToleranceSettings(settings: Settings, entries: List<LogEntry>, today: Long, onMode: (IntervalMode) -> Unit) {
     fun level(mode: IntervalMode) = IntervalPlan.threshold(entries, settings.copy(intervalMode = mode), System.currentTimeMillis())
     val basis = remember(entries, settings, today) { IntervalPlan.basis(entries, settings, System.currentTimeMillis()) }
     val keep = remember(entries, settings, today) { level(IntervalMode.KEEP) }
@@ -280,8 +279,7 @@ private fun ToleranceSettings(settings: Settings, entries: List<LogEntry>, types
         val cap = basis.capMg
         if (cap != null && cap < usual) {
             Spacer(Modifier.height(6.dp))
-            val name = types.firstOrNull { it.id == basis.pouch?.pouchTypeId }?.name ?: "?"
-            Text(stringResource(R.string.interval_cap, Fmt.oneDecimal(cap), name), style = small)
+            Text(stringResource(R.string.interval_cap, Fmt.oneDecimal(cap)), style = small)
         }
         Spacer(Modifier.height(6.dp))
         Text(stringResource(R.string.interval_keep_rule, Fmt.oneDecimal(keep)), style = small)
