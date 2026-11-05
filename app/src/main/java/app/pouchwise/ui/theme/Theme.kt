@@ -77,6 +77,10 @@ object AppColors {
     val cotinine: Color @Composable get() = MaterialTheme.colorScheme.tertiary
     /** The interval plan: its level on the chart, the "next" row and the early marker. */
     val plan = Color(0xFFFFB300)
+    /** The felt answers by level, nothing to overwhelm: grey, then the nicotine blue faint and full, then orange for too much. */
+    val felt: List<Color> @Composable get() = listOf(
+        MaterialTheme.colorScheme.outline, nicotine.copy(alpha = 0.5f), nicotine, Color(0xFFFB8C00),
+    )
     /** Tile colours for the seven day levels, best to worst: a hue apart each, so neighbours do not blur. */
     val garden = listOf(
         Color(0xFF0277BD), Color(0xFF00897B), Color(0xFF7CB342), Color(0xFFFDD835),

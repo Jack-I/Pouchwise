@@ -81,6 +81,15 @@ object Fmt {
     fun dateShort(epochDay: Long): String =
         DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()).format(LocalDate.ofEpochDay(epochDay))
 
+    /** "19–25 Oct", or "26 Oct – 1 Nov" when the month changes. */
+    fun dayRange(fromDay: Long, toDay: Long): String {
+        val from = LocalDate.ofEpochDay(fromDay)
+        val to = LocalDate.ofEpochDay(toDay)
+        val dayMonth = DateTimeFormatter.ofPattern("d MMM", Locale.getDefault())
+        return if (from.month == to.month && from.year == to.year) "${from.dayOfMonth}–${dayMonth.format(to)}"
+               else "${dayMonth.format(from)} – ${dayMonth.format(to)}"
+    }
+
     fun dateWithWeekday(epochDay: Long): String =
         DateTimeFormatter.ofPattern("EEE, d MMM", Locale.getDefault()).format(LocalDate.ofEpochDay(epochDay))
 

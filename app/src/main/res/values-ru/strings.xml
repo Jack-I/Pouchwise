@@ -335,6 +335,11 @@
     <string name="patterns_gap">Обычный интервал</string>
     <string name="patterns_in_mouth">В среднем во рту</string>
     <string name="patterns_empty">Записей пока мало для закономерностей.</string>
+    <string name="felt_card_title">Как ощущались паучи</string>
+    <string name="felt_card_sub">Последние 30 дней · с ответом: %1$d из %2$d · у пауча считается самый сильный ответ</string>
+    <string name="felt_by_week">По неделям</string>
+    <string name="felt_week_running">%1$s, ещё идёт</string>
+    <string name="felt_first_of_day">Первый пауч за день</string>
     <string name="tolerance_title">Толерантность</string>
     <string name="tolerance_honest">Ни одно исследование не даёт интервала, который держит или снижает толерантность; это правило построено на том, как долго никотин занимает рецепторы.</string>
     <string name="plan_wait_hold">Через %1$s никотин опустится ниже %2$s\u00A0мг (держим толерантность)</string>

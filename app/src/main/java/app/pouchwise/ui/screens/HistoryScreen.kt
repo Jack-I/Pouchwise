@@ -14,17 +14,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
 import app.pouchwise.R
+import app.pouchwise.data.Felt
 import app.pouchwise.model.*
 import app.pouchwise.ui.components.*
+import app.pouchwise.ui.theme.AppColors
 import app.pouchwise.util.Fmt
 import app.pouchwise.util.Money
 import java.time.DayOfWeek
@@ -40,6 +46,7 @@ fun HistoryScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
     val plans by vm.plans.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
+    val feltMarks by vm.feltMarks.collectAsStateWithLifecycle()
 
     val today = DayKeys.epochDay(wallClock(now), settings.dayStartHour)
     val todayDow = LocalDate.ofEpochDay(today).dayOfWeek.value // 1 = Monday
@@ -96,7 +103,11 @@ fun HistoryScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         }
 
         when (section) {
-            1 -> PatternsCard(remember(entries, settings, today) { Patterns.summary(entries, settings, today, System.currentTimeMillis()) })
+            1 -> {
+                PatternsCard(remember(entries, settings, today) { Patterns.summary(entries, settings, today, System.currentTimeMillis()) })
+                val felt = remember(entries, feltMarks, settings, today) { FeltPatterns.summary(entries, feltMarks, settings, today) }
+                if (felt.answered > 0) FeltCard(felt, today)
+            }
             2 -> SpendingCard(remember(entries, settings, today) { Spending.summary(entries, settings, today) }, settings, onEditPouches)
             else -> {
                 SoftCard {
@@ -256,6 +267,59 @@ private fun PatternsCard(p: PatternSummary) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MiniTile(stringResource(R.string.patterns_gap), p.typicalGapMs?.let { durationText(it) } ?: "—", Modifier.weight(1f))
             MiniTile(stringResource(R.string.patterns_in_mouth), p.avgInMouthMs?.let { durationText(it) } ?: "—", Modifier.weight(1f))
+        }
+    }
+}
+
+/** How pouches felt week by week and for the first pouch of the day: a growing share of "nothing" is tolerance going up. */
+@Composable
+private fun FeltCard(f: FeltSummary, today: Long) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val small = MaterialTheme.typography.bodySmall
+    val colors = AppColors.felt
+    val names = Felt.entries.map { stringResource(feltLabel(it)) }
+    SoftCard {
+        Text(stringResource(R.string.felt_card_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.felt_card_sub, f.answered, f.pouches), style = small, color = muted)
+        Spacer(Modifier.height(10.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Felt.entries.forEach { felt ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(10.dp).clip(RoundedCornerShape(3.dp)).background(colors[felt.level]))
+                    Spacer(Modifier.width(4.dp))
+                    Text(names[felt.level], style = small, color = muted)
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(stringResource(R.string.felt_by_week), style = small, color = muted)
+        f.weeks.forEach { w ->
+            val range = Fmt.dayRange(w.fromDay, w.monday + 6)
+            FeltBar(if (w.monday + 6 >= today) stringResource(R.string.felt_week_running, range) else range, w.counts, colors, names)
+        }
+        if (f.firstOfDay.sum() > 0) {
+            Spacer(Modifier.height(12.dp))
+            FeltBar(stringResource(R.string.felt_first_of_day), f.firstOfDay, colors, names)
+        }
+    }
+}
+
+@Composable
+private fun FeltBar(label: String, counts: List<Int>, colors: List<Color>, names: List<String>) {
+    Column(Modifier.padding(top = 8.dp)) {
+        Row {
+            Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text(counts.sum().toString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.height(4.dp))
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .height(10.dp)
+                .clip(RoundedCornerShape(5.dp))
+                .semantics { contentDescription = counts.indices.filter { counts[it] > 0 }.joinToString { "${names[it]} ${counts[it]}" } },
+        ) {
+            counts.forEachIndexed { level, n -> if (n > 0) Box(Modifier.weight(n.toFloat()).fillMaxHeight().background(colors[level])) }
         }
     }
 }

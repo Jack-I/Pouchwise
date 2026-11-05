@@ -1,5 +1,7 @@
 package app.pouchwise.model
 
+import app.pouchwise.data.Felt
+import app.pouchwise.data.FeltMark
 import app.pouchwise.data.LogEntry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -62,5 +64,29 @@ class InsightsTest {
         // Gaps of 2 h and 3 h on Monday and 1 h on Tuesday.
         assertEquals(2 * 3_600_000L, p.typicalGapMs)
         assertEquals(20 * 60_000L, p.avgInMouthMs)
+    }
+
+    @Test
+    fun feltCountsEachPouchOnceByItsStrongestAnswerPerWeekAndForTheDaysFirst() {
+        // Today is Wednesday 4 November; the 30 days go back to Tuesday 6 October.
+        val old = pouch(at(5, 9))
+        val monFirst = pouch(at(19, 8))
+        val monLater = pouch(at(19, 12))
+        val unanswered = pouch(at(20, 9))
+        val nextWeek = pouch(LocalDateTime.of(2026, 11, 2, 10, 0).atZone(zone).toInstant().toEpochMilli())
+        fun mark(e: LogEntry, felt: Felt) = FeltMark(entryId = e.id, level = felt.level, atMs = e.timestamp + 600_000L)
+        val marks = listOf(
+            mark(old, Felt.HIT), mark(monFirst, Felt.A_BIT), mark(monFirst, Felt.HIT),
+            mark(monLater, Felt.HIT), mark(monLater, Felt.NOTHING), mark(nextWeek, Felt.OVERWHELM),
+        ).groupBy { it.entryId }
+        val today = LocalDate.of(2026, 11, 4).toEpochDay()
+        val f = FeltPatterns.summary(listOf(old, monFirst, monLater, unanswered, nextWeek), marks, Settings(), today)
+        assertEquals(3, f.answered)
+        assertEquals(4, f.pouches)
+        assertEquals(listOf(day(19), LocalDate.of(2026, 11, 2).toEpochDay()), f.weeks.map { it.monday })
+        assertEquals(listOf(0, 0, 2, 0), f.weeks[0].counts)
+        assertEquals(listOf(0, 0, 0, 1), f.weeks[1].counts)
+        // Monday the 19th's first pouch and the 2nd's only one; the 20th's first has no answer.
+        assertEquals(listOf(0, 0, 1, 1), f.firstOfDay)
     }
 }

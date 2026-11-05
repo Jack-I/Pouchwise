@@ -1,5 +1,7 @@
 package app.pouchwise.model
 
+import app.pouchwise.data.Felt
+import app.pouchwise.data.FeltMark
 import app.pouchwise.data.LogEntry
 import java.time.Instant
 import java.time.LocalDate
@@ -114,5 +116,33 @@ object Patterns {
             typicalGapMs = Stats.median(gaps)?.roundToLong(),
             avgInMouthMs = inMouth.takeIf { it.isNotEmpty() }?.average()?.roundToLong(),
         )
+    }
+}
+
+/** One Monday-to-Sunday week: answered pouches by their strongest answer, nothing first. */
+data class FeltWeek(val monday: Long, val fromDay: Long, val counts: List<Int>)
+
+data class FeltSummary(
+    /** Oldest first; the first may start inside its week, where the period does. */
+    val weeks: List<FeltWeek>,
+    /** Each day's first pouch, counted the same way. */
+    val firstOfDay: List<Int>,
+    val answered: Int,
+    val pouches: Int,
+)
+
+object FeltPatterns {
+    /** How pouches felt over the last [Patterns.DAYS] days; a pouch counts once, by the strongest of its answers. */
+    fun summary(entries: List<LogEntry>, marks: Map<Long, List<FeltMark>>, s: Settings, today: Long): FeltSummary {
+        val fromDay = today - (Patterns.DAYS - 1)
+        val inWindow = entries.filter { DayKeys.of(it, s.dayStartHour) in fromDay..today }
+        val strongest = inWindow.mapNotNull { e -> marks[e.id]?.maxOfOrNull { it.level }?.let { e to it } }
+        fun counts(levels: List<Int>) = Felt.entries.map { f -> levels.count { it == f.level } }
+        val weeks = strongest
+            .groupBy { (e, _) -> DayKeys.of(e, s.dayStartHour).let { it - (LocalDate.ofEpochDay(it).dayOfWeek.value - 1) } }
+            .toSortedMap()
+            .map { (monday, list) -> FeltWeek(monday, max(monday, fromDay), counts(list.map { it.second })) }
+        val first = IntervalPlan.firstOfDayIds(inWindow, s)
+        return FeltSummary(weeks, counts(strongest.filter { it.first.id in first }.map { it.second }), strongest.size, inWindow.size)
     }
 }

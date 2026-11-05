@@ -327,6 +327,11 @@
     <string name="patterns_gap">Typical gap</string>
     <string name="patterns_in_mouth">Average in mouth</string>
     <string name="patterns_empty">Log a few days to see patterns.</string>
+    <string name="felt_card_title">How pouches felt</string>
+    <string name="felt_card_sub">Last 30 days · answered: %1$d of %2$d pouches · the strongest answer of each counts</string>
+    <string name="felt_by_week">By week</string>
+    <string name="felt_week_running">%1$s, so far</string>
+    <string name="felt_first_of_day">First pouch of the day</string>
     <string name="tolerance_title">Tolerance</string>
     <string name="tolerance_honest">No study gives an interval that holds or lowers tolerance; this rule is built on how long nicotine keeps the receptors busy.</string>
     <string name="plan_wait_hold">In %1$s nicotine drops below %2$s\u00A0mg (holding tolerance)</string>
