@@ -216,9 +216,12 @@ without nicotine ([Cosgrove et al. 2009](https://pmc.ncbi.nlm.nih.gov/articles/P
   it alone would leave by then, with its own strength, release speed and time in the mouth, and the median
   of those. So a habit of back-to-back pouches is not what Hold holds; the Plan card says when the cap
   applies.
-- **Lower**: 15 % below that, worked out from the two weeks before Monday, so the gaps grow week by
+- **Lower**: 17 % below that, worked out from the two weeks before Monday, so the gaps grow week by
   week; never below the level at which half of the receptors are free. Until there are two full weeks
   of history before Monday, the two weeks before today stand in.
+
+The Plan card also puts both levels in time: how long after one typical pouch each mode makes the next
+one better. With the cap in force that is two hours for Hold and about half an hour more for Lower.
 
 Each pouch records the plan level in force when it went in; one taken while the model still had nicotine
 above it is marked *early*, never blocked. Once none of your pouches fits under the day's limit, the Today

@@ -7,6 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDateTime
 import java.time.ZoneId
+import kotlin.math.ln
 import kotlin.math.min
 
 class IntervalPlanTest {
@@ -41,12 +42,12 @@ class IntervalPlanTest {
         val monday = at(19, 0)
         assertEquals(monday, IntervalPlan.weekStartMs(now, 0))
         val lower = IntervalPlan.threshold(entries, s.copy(intervalMode = IntervalMode.LOWER), now)!!
-        assertEquals(min(IntervalPlan.usualLevel(entries, s, monday - IntervalPlan.WINDOW_MS, monday)!!, cap) * 0.85, lower, 1e-12)
+        assertEquals(min(IntervalPlan.usualLevel(entries, s, monday - IntervalPlan.WINDOW_MS, monday)!!, cap) * IntervalPlan.LOWER_SHARE, lower, 1e-12)
         assertNull(IntervalPlan.threshold(entries, s, now))
-        // Without two full weeks before Monday, Lower is 15 % below today's Hold.
+        // Without two full weeks before Monday, Lower is 17 % below today's Hold.
         val lately = entries.filter { it.timestamp >= at(10, 0) }
         val keepLately = IntervalPlan.threshold(lately, s.copy(intervalMode = IntervalMode.KEEP), now)!!
-        assertEquals(keepLately * 0.85, IntervalPlan.threshold(lately, s.copy(intervalMode = IntervalMode.LOWER), now)!!, 1e-12)
+        assertEquals(keepLately * IntervalPlan.LOWER_SHARE, IntervalPlan.threshold(lately, s.copy(intervalMode = IntervalMode.LOWER), now)!!, 1e-12)
     }
 
     @Test
@@ -81,11 +82,16 @@ class IntervalPlanTest {
         assertEquals(cap, basis.capMg!!, 1e-12)
         assertTrue(basis.usualMg!! > 2 * cap)
         assertEquals(cap, IntervalPlan.threshold(entries, s.copy(intervalMode = IntervalMode.KEEP), now)!!, 1e-12)
-        assertEquals(cap * 0.85, IntervalPlan.threshold(entries, s.copy(intervalMode = IntervalMode.LOWER), now)!!, 1e-12)
+        assertEquals(cap * IntervalPlan.LOWER_SHARE, IntervalPlan.threshold(entries, s.copy(intervalMode = IntervalMode.LOWER), now)!!, 1e-12)
         // After one such pouch from nothing, the next is due two hours after it went in.
         val start = at(22, 10)
         val next = IntervalPlan.nextOnPlanMs(listOf(one.copy(timeMs = start)), s.pk, cap, start + 60_000L)!!
         assertEquals((start + 2 * 3_600_000L).toDouble(), next.toDouble(), 60_000.0)
+        // The Plan card's times: two hours with Hold; with Lower, as long again as nicotine takes to lose 17 % (half-life 2 h).
+        val typical = basis.typical!!
+        assertEquals(2 * 3_600_000.0, IntervalPlan.afterAloneMs(typical, cap, s)!!.toDouble(), 60_000.0)
+        val lowerMs = (2 + 2 * ln(1 / IntervalPlan.LOWER_SHARE) / ln(2.0)) * 3_600_000.0
+        assertEquals(lowerMs, IntervalPlan.afterAloneMs(typical, cap * IntervalPlan.LOWER_SHARE, s)!!.toDouble(), 60_000.0)
     }
 
     @Test

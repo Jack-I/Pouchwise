@@ -284,7 +284,20 @@ private fun ToleranceSettings(settings: Settings, entries: List<LogEntry>, today
         Spacer(Modifier.height(6.dp))
         Text(stringResource(R.string.interval_keep_rule, Fmt.oneDecimal(keep)), style = small)
         Spacer(Modifier.height(4.dp))
-        Text(stringResource(R.string.interval_lower_rule, Fmt.oneDecimal(lower ?: keep * IntervalPlan.LOWER_SHARE)), style = small)
+        val lowerMg = lower ?: keep * IntervalPlan.LOWER_SHARE
+        Text(stringResource(R.string.interval_lower_rule, Fmt.oneDecimal(lowerMg), ((1 - IntervalPlan.LOWER_SHARE) * 100).roundToInt()), style = small)
+        // The same levels as time: how long after one typical pouch each mode puts the next, to the nearest five minutes.
+        val times = remember(basis, keep, lowerMg) {
+            basis.typical?.let { p ->
+                listOf(keep, lowerMg).map { IntervalPlan.afterAloneMs(p, it, settings)?.let { ms -> Math.round(ms / 300_000.0) * 300_000L } }
+            }
+        }
+        val keepAfter = times?.get(0)
+        val lowerAfter = times?.get(1)
+        if (keepAfter != null && lowerAfter != null) {
+            Spacer(Modifier.height(4.dp))
+            Text(stringResource(R.string.interval_typical_times, durationText(keepAfter), durationText(lowerAfter)), style = small)
+        }
     }
     Spacer(Modifier.height(6.dp))
     Text(stringResource(R.string.interval_never_blocks), style = small, color = MaterialTheme.colorScheme.onSurfaceVariant)

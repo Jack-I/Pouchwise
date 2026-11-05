@@ -299,7 +299,8 @@
     <string name="interval_usual">Over the last two weeks you took the next pouch at about %1$s\u00A0mg of nicotine in the body (≈\u00A0%2$s\u00A0ng/mL).</string>
     <string name="interval_cap">Never above %1$s\u00A0mg: what a typical pouch of yours leaves two hours after it goes in.</string>
     <string name="interval_keep_rule">Hold: the next one is better after nicotine drops below %1$s\u00A0mg. Days stay as they are.</string>
-    <string name="interval_lower_rule">Lower: 15%% lower, now %1$s\u00A0mg, recalculated every Monday, so the gaps grow week by week.</string>
+    <string name="interval_lower_rule">Lower: %2$d%% lower, now %1$s\u00A0mg, recalculated every Monday, so the gaps grow week by week.</string>
+    <string name="interval_typical_times">After one typical pouch the next one is better in about %1$s with Hold and %2$s with Lower.</string>
     <string name="interval_learning">To learn your usual level the plan needs at least five pouches in the two weeks before today, not counting each day\'s first.</string>
     <string name="interval_never_blocks">A pouch taken earlier is marked, never blocked.</string>
     <string name="settings_spending">Spending</string>
