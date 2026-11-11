@@ -45,6 +45,7 @@ import app.pouchwise.model.DayKeys
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.ui.theme.PaletteOrder
 import app.pouchwise.ui.theme.PouchPalette
+import app.pouchwise.ui.theme.pouchColor
 import java.time.Instant
 import java.time.ZoneId
 
@@ -332,6 +333,13 @@ fun EntryDialog(
     val valid = (durationMs == null || newDurationMs != null) && !endsAfterNow
     val outAt = newDurationMs?.let { start + it }
     fun countsAt(at: Long, recalled: Boolean): Long? = outAt?.let { PouchTiming.recalledAt(at, recalled, it) }
+    // The field changed last wins: more minutes than fit before now move the start back, a later start cuts the minutes.
+    fun setMinutes(text: String) {
+        minutesText = text
+        val ms = text.toIntOrNull()?.takeIf { it in 1..PouchTiming.MAX_POUCH_MINUTES }?.let { it * 60_000L } ?: return
+        val now = System.currentTimeMillis()
+        if (start + ms > now) start = now - ms
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -355,34 +363,7 @@ fun EntryDialog(
                     if (durationMs == null) {
                         Text(stringResource(R.string.still_in), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
-                        val shown = (minutesText.toIntOrNull() ?: initialMinutes ?: 1).coerceIn(1, PouchTiming.MAX_POUCH_MINUTES)
-                        FilledTonalIconButton(onClick = { minutesText = (shown - 1).coerceAtLeast(1).toString() }) {
-                            Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.stepper_less, inMouth))
-                        }
-                        val frame = if (minutes == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                        BasicTextField(
-                            value = minutesText,
-                            onValueChange = { v -> minutesText = v.filter { it.isDigit() }.take(2) },
-                            singleLine = true,
-                            textStyle = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center,
-                                color = if (minutes == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                            ),
-                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier
-                                .semantics { contentDescription = inMouth }
-                                .padding(horizontal = 6.dp)
-                                .width(44.dp)
-                                .border(1.dp, frame, RoundedCornerShape(8.dp))
-                                .padding(vertical = 8.dp),
-                        )
-                        Text(stringResource(R.string.unit_min), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.width(4.dp))
-                        FilledTonalIconButton(onClick = { minutesText = (shown + 1).coerceAtMost(PouchTiming.MAX_POUCH_MINUTES).toString() }) {
-                            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.stepper_more, inMouth))
-                        }
+                        MinutesStepper(minutesText, initialMinutes ?: 1, inMouth, ::setMinutes)
                     }
                 }
                 if (newDurationMs != null) {
@@ -438,7 +419,124 @@ fun EntryDialog(
             initialMs = start,
             onDismiss = { pickTime = false },
             onConfirm = { h, m ->
-                start = DayKeys.nearestPastTimeMs(start, h, m, System.currentTimeMillis())
+                val now = System.currentTimeMillis()
+                start = DayKeys.nearestPastTimeMs(start, h, m, now)
+                newDurationMs?.let { if (start + it > now) minutesText = ((now - start) / 60_000L).coerceAtLeast(1).toString() }
+                pickTime = false
+            },
+        )
+    }
+}
+
+/** Minutes in the mouth as − field +; the field turns red while it holds no valid number. */
+@Composable
+private fun MinutesStepper(text: String, fallback: Int, label: String, onChange: (String) -> Unit) {
+    val minutes = text.toIntOrNull()?.takeIf { it in 1..PouchTiming.MAX_POUCH_MINUTES }
+    val shown = (text.toIntOrNull() ?: fallback).coerceIn(1, PouchTiming.MAX_POUCH_MINUTES)
+    FilledTonalIconButton(onClick = { onChange((shown - 1).coerceAtLeast(1).toString()) }) {
+        Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.stepper_less, label))
+    }
+    val frame = if (minutes == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    BasicTextField(
+        value = text,
+        onValueChange = { v -> onChange(v.filter { it.isDigit() }.take(2)) },
+        singleLine = true,
+        textStyle = MaterialTheme.typography.titleMedium.copy(
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            color = if (minutes == null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+        ),
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        modifier = Modifier
+            .semantics { contentDescription = label }
+            .padding(horizontal = 6.dp)
+            .width(44.dp)
+            .border(1.dp, frame, RoundedCornerShape(8.dp))
+            .padding(vertical = 8.dp),
+    )
+    Text(stringResource(R.string.unit_min), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Spacer(Modifier.width(4.dp))
+    FilledTonalIconButton(onClick = { onChange((shown + 1).coerceAtMost(PouchTiming.MAX_POUCH_MINUTES).toString()) }) {
+        Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.stepper_more, label))
+    }
+}
+
+/**
+ * A pouch logged afterwards: which one, when it went in and how long it stayed. One that would come out after now
+ * is still in and comes out by itself then.
+ */
+@Composable
+fun ForgottenPouchDialog(
+    types: List<PouchType>,
+    initialTypeId: Long?,
+    defaultMinutes: Int,
+    onDismiss: () -> Unit,
+    onSave: (type: PouchType, startMs: Long, durationMs: Long) -> Unit,
+) {
+    var typeId by rememberSaveable { mutableStateOf(initialTypeId ?: types.firstOrNull()?.id) }
+    // By default it came out just now after the usual time.
+    var start by rememberSaveable { mutableLongStateOf(Math.floorDiv(System.currentTimeMillis(), 60_000L) * 60_000L - defaultMinutes * 60_000L) }
+    var minutesText by rememberSaveable { mutableStateOf(defaultMinutes.toString()) }
+    var pickTime by rememberSaveable { mutableStateOf(false) }
+    val minutes = minutesText.toIntOrNull()?.takeIf { it in 1..PouchTiming.MAX_POUCH_MINUTES }
+    val type = types.firstOrNull { it.id == typeId }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.forgotten_title)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    types.forEach { t ->
+                        FilterChip(
+                            selected = t.id == typeId,
+                            onClick = { typeId = t.id },
+                            label = { Text(t.name, maxLines = 1) },
+                            leadingIcon = { ColorDot(pouchColor(t.colorIndex), size = 10) },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.put_in_at), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    FilledTonalButton(onClick = { pickTime = true }) { Text(Fmt.time(start), style = MaterialTheme.typography.titleMedium) }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val inMouth = stringResource(R.string.in_the_mouth)
+                    Text(inMouth, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    MinutesStepper(minutesText, defaultMinutes, inMouth) { minutesText = it }
+                }
+                if (minutes != null) {
+                    val out = start + minutes * 60_000L
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        if (out <= System.currentTimeMillis()) stringResource(R.string.taken_out_at, Fmt.time(out))
+                        else stringResource(R.string.still_in_until, Fmt.time(out)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = type != null && minutes != null,
+                onClick = { if (type != null && minutes != null) onSave(type, start, minutes * 60_000L) },
+            ) { Text(stringResource(R.string.save)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+
+    if (pickTime) {
+        TimeDialog(
+            title = stringResource(R.string.put_in_at),
+            initialMs = start,
+            onDismiss = { pickTime = false },
+            onConfirm = { h, m ->
+                val now = System.currentTimeMillis()
+                start = DayKeys.pastTimeMs(Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).toLocalDate(), h, m, now)
                 pickTime = false
             },
         )

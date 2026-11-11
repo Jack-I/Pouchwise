@@ -43,8 +43,6 @@ import app.pouchwise.ui.theme.pouchColor
 import app.pouchwise.util.Fmt
 import app.pouchwise.util.Money
 import kotlinx.coroutines.delay
-import java.time.Instant
-import java.time.ZoneId
 import kotlin.math.abs
 
 private const val LOG_SPAN_MS = 30 * 3_600_000L
@@ -118,7 +116,8 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
 
     // Earlier days in the log stay folded until tapped; today's pouches are always shown.
     var openDays by rememberSaveable { mutableStateOf(listOf<Long>()) }
-    var timePickFor by remember { mutableStateOf<PouchType?>(null) }
+    var forgottenOpen by remember { mutableStateOf(false) }
+    var forgottenTypeId by remember { mutableStateOf<Long?>(null) }
     var editEntry by remember { mutableStateOf<LogEntry?>(null) }
     var deleteEntry by remember { mutableStateOf<LogEntry?>(null) }
     var addDialog by remember { mutableStateOf(false) }
@@ -184,7 +183,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                     price = type.pricePerPouch()?.let { Fmt.money(it, Money.symbol(settings, context)) },
                     fits = fits,
                     onLog = { vm.logPouch(type, System.currentTimeMillis()) },
-                    onLogAtTime = { timePickFor = type },
+                    onLogAtTime = { forgottenTypeId = type.id; forgottenOpen = true },
                 )
             }
         }
@@ -194,7 +193,15 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                 stringResource(R.string.recent_log),
                 modifier = Modifier.padding(top = 6.dp),
                 style = MaterialTheme.typography.titleMedium,
-            )
+            ) {
+                if (active.isNotEmpty()) {
+                    TextButton(onClick = {
+                        // The kind logged last is the likeliest to have been forgotten.
+                        forgottenTypeId = entries.lastOrNull { e -> active.any { it.id == e.pouchTypeId } }?.pouchTypeId
+                        forgottenOpen = true
+                    }) { Text(stringResource(R.string.add_forgotten)) }
+                }
+            }
         }
         if (logDays.isEmpty()) {
             item { Text(stringResource(R.string.empty_log), color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -245,16 +252,15 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
         }
     }
 
-    timePickFor?.let { type ->
-        TimeDialog(
-            title = stringResource(R.string.pick_time),
-            initialMs = now,
-            onDismiss = { timePickFor = null },
-            onConfirm = { h, m ->
-                val nowMs = System.currentTimeMillis()
-                val todayDate = Instant.ofEpochMilli(nowMs).atZone(ZoneId.systemDefault()).toLocalDate()
-                timePickFor = null
-                vm.logPouch(type, DayKeys.pastTimeMs(todayDate, h, m, nowMs))
+    if (forgottenOpen) {
+        ForgottenPouchDialog(
+            types = active,
+            initialTypeId = forgottenTypeId,
+            defaultMinutes = PouchTiming.newPouchMinutes(settings),
+            onDismiss = { forgottenOpen = false },
+            onSave = { type, start, duration ->
+                vm.logForgottenPouch(type, start, duration)
+                forgottenOpen = false
             },
         )
     }
@@ -564,7 +570,7 @@ private fun PouchTypeRow(type: PouchType, price: String?, fits: Int, onLog: () -
                     .size(48.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .background(MaterialTheme.colorScheme.primary)
-                    .combinedClickable(onClick = onLog, onLongClick = onLogAtTime, onLongClickLabel = stringResource(R.string.log_at_time)),
+                    .combinedClickable(onClick = onLog, onLongClick = onLogAtTime, onLongClickLabel = stringResource(R.string.forgotten_title)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.log_one), tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(28.dp))

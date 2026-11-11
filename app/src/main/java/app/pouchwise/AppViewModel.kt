@@ -149,6 +149,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshWidgets()
     }
 
+    /** A pouch logged afterwards: in at [startMs] for [durationMs]; one that has not come out by now stays in until then. */
+    fun logForgottenPouch(type: PouchType, startMs: Long, durationMs: Long) = viewModelScope.launch {
+        val s = settingsRepo.settings.first()
+        val entry = PouchLog.entry(dao, type, startMs, s)
+        dao.insertEntry(
+            if (startMs + durationMs <= System.currentTimeMillis()) PouchTiming.withTimes(entry, startMs, durationMs, s)
+            else entry.copy(pouchMinutes = ((durationMs + 59_999L) / 60_000L).toInt()),
+        )
+        refreshWidgets()
+    }
+
     /** Takes the pouch out now; absorption stops here. */
     fun finishPouch(entry: LogEntry) = viewModelScope.launch {
         PouchTiming.finish(entry, settingsRepo.settings.first(), System.currentTimeMillis()).endTimestamp?.let { dao.setOut(entry.id, it) }
