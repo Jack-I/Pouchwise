@@ -195,9 +195,11 @@ fun ColorDot(color: Color, size: Int = 12) {
 }
 
 @Composable
-fun LegendSwatch(color: Color, text: String, dashed: Boolean = false) {
+fun LegendSwatch(color: Color, text: String, dashed: Boolean = false, ring: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        if (dashed) {
+        if (ring) {
+            Box(Modifier.size(10.dp).border(2.dp, color, CircleShape))
+        } else if (dashed) {
             Row {
                 repeat(3) { i ->
                     Box(Modifier.width(6.dp).height(3.dp).background(color))

@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import app.pouchwise.model.BodyLevels
 import app.pouchwise.model.DayStat
 import app.pouchwise.model.LimitMode
+import app.pouchwise.model.Pharmacokinetics
 import app.pouchwise.util.Fmt
 import java.time.Instant
 import java.time.LocalDate
@@ -209,9 +210,14 @@ fun ScrollableBodyChart(
     planColor: Color = Color.Unspecified,
     /** Written over the "now" line where it does not run into the axis titles. */
     nowLabel: String = "",
+    /** When the forecast nicotine drops below [Pharmacokinetics.NICOTINE_CLEARED_MG] for good, marked faintly with its time. */
+    nicotineGoneMs: Long? = null,
 ) {
     val measurer = rememberTextMeasurer(cacheSize = 64)
     val labelStyle = TextStyle(fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val goneColor = nicotineColor.copy(alpha = 0.6f)
+    val goneFill = MaterialTheme.colorScheme.surfaceVariant
+    val goneLabelStyle = labelStyle.copy(color = nicotineColor.copy(alpha = 0.75f))
     val nicLabelStyle = labelStyle.copy(color = nicotineColor)
     val cotLabelStyle = labelStyle.copy(color = cotinineColor)
     val planLabelStyle = labelStyle.copy(color = planColor)
@@ -385,6 +391,16 @@ fun ScrollableBodyChart(
                     drawCircle(planColor, radius = 5.dp.toPx(), center = Offset(xp, yp))
                     label(measurer, Fmt.time(nextOnPlanMs), xp, yp + 8.dp.toPx(), planLabelStyle, Align.CENTER)
                 }
+            }
+            if (nicotineGoneMs != null && nicotineGoneMs > nowMs && nicotineGoneMs in t0..t1) {
+                val gone = Offset(x(nicotineGoneMs), yN(Pharmacokinetics.NICOTINE_CLEARED_MG))
+                drawCircle(goneFill, radius = 4.5.dp.toPx(), center = gone)
+                drawCircle(goneColor, radius = 4.5.dp.toPx(), center = gone, style = Stroke(width = 2.dp.toPx()))
+                // Above the curve on its flat side, to the right; to the left near the right edge.
+                val text = measurer.measure(AnnotatedString(Fmt.time(nicotineGoneMs)), style = goneLabelStyle)
+                val gap = 6.dp.toPx()
+                val left = if (gone.x + gap + text.size.width <= padL + w) gone.x + gap else gone.x - gap - text.size.width
+                drawText(text, topLeft = Offset(left, gone.y - gap - text.size.height))
             }
         }
         if (nowMs in t0..t1) {

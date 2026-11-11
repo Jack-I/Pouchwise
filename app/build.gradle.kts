@@ -22,8 +22,8 @@ android {
         applicationId = "app.pouchwise"
         minSdk = 26
         targetSdk = 35
-        versionCode = 42
-        versionName = "0.9.8"
+        versionCode = 43
+        versionName = "0.9.9"
     }
 
     signingConfigs {

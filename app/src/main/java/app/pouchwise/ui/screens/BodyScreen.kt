@@ -100,7 +100,7 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
             val fineFrom = max(from, clock - FINE_BACK_MS)
             val fineTo = min(to, clock + FINE_AHEAD_MS)
             Reach(
-                earliest, latest,
+                earliest, latest, cleared.nicotineClearMs,
                 BodySpan(
                     nowMs = clock,
                     past = points(from, fineFrom, SAMPLE_STEP_MS) + points(fineFrom, clock, FINE_STEP_MS),
@@ -221,6 +221,7 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
                         nextOnPlanMs = nextOnPlan,
                         planColor = AppColors.plan,
                         nowLabel = stringResource(R.string.time_now),
+                        nicotineGoneMs = r.nicotineGoneMs,
                     )
                 }
                 Row(Modifier.fillMaxWidth()) {
@@ -232,6 +233,13 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
                     LegendSwatch(AppColors.nicotine, stringResource(R.string.nicotine))
                     LegendSwatch(AppColors.cotinine, stringResource(R.string.cotinine))
                     LegendSwatch(MaterialTheme.colorScheme.onSurfaceVariant, stringResource(R.string.legend_future), dashed = true)
+                    if (reach?.nicotineGoneMs?.let { it > clock } == true) {
+                        LegendSwatch(
+                            AppColors.nicotine.copy(alpha = 0.6f),
+                            stringResource(R.string.legend_nicotine_gone, Fmt.oneDecimal(Pharmacokinetics.NICOTINE_CLEARED_MG)),
+                            ring = true,
+                        )
+                    }
                     if (planLevel != null) {
                         LegendSwatch(
                             AppColors.plan,
@@ -262,7 +270,7 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
 private const val CLEARED = Long.MIN_VALUE
 
 /** The chart's points and how far it can be dragged: back to [earliestMs], ahead to [latestMs]. */
-private class Reach(val earliestMs: Long, val latestMs: Long, val span: BodySpan)
+private class Reach(val earliestMs: Long, val latestMs: Long, val nicotineGoneMs: Long?, val span: BodySpan)
 
 /** One column of the summary card: how much is in now, the blood level, and when 95 % of it will be gone. */
 @Composable
