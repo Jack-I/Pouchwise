@@ -171,9 +171,12 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             }
         } else {
             item {
-                SectionTitle(stringResource(R.string.your_pouches), style = MaterialTheme.typography.titleMedium) {
-                    TextButton(onClick = onEditPouches) { Text(stringResource(R.string.edit_short)) }
-                    TextButton(onClick = { addDialog = true }) { Text(stringResource(R.string.add_pouch_type)) }
+                Column {
+                    SectionTitle(stringResource(R.string.your_pouches), style = MaterialTheme.typography.titleMedium) {
+                        TextButton(onClick = onEditPouches) { Text(stringResource(R.string.edit_short)) }
+                        TextButton(onClick = { addDialog = true }) { Text(stringResource(R.string.add_pouch_type)) }
+                    }
+                    Text(stringResource(R.string.forgotten_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             items(active, key = { "type-${it.id}" }) { type ->
@@ -258,8 +261,8 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             initialTypeId = forgottenTypeId,
             defaultMinutes = PouchTiming.newPouchMinutes(settings),
             onDismiss = { forgottenOpen = false },
-            onSave = { type, start, duration ->
-                vm.logForgottenPouch(type, start, duration)
+            onSave = { type, start, duration, marks ->
+                vm.logForgottenPouch(type, start, duration, marks)
                 forgottenOpen = false
             },
         )

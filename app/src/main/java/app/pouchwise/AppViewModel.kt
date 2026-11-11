@@ -149,14 +149,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshWidgets()
     }
 
-    /** A pouch logged afterwards: in at [startMs] for [durationMs]; one that has not come out by now stays in until then. */
-    fun logForgottenPouch(type: PouchType, startMs: Long, durationMs: Long) = viewModelScope.launch {
+    /**
+     * A pouch logged afterwards, with its felt answers: in at [startMs] for [durationMs]; one that has not come out by now
+     * stays in until then.
+     */
+    fun logForgottenPouch(type: PouchType, startMs: Long, durationMs: Long, marks: List<FeltMark>) = viewModelScope.launch {
         val s = settingsRepo.settings.first()
-        val entry = PouchLog.entry(dao, type, startMs, s)
-        dao.insertEntry(
-            if (startMs + durationMs <= System.currentTimeMillis()) PouchTiming.withTimes(entry, startMs, durationMs, s)
-            else entry.copy(pouchMinutes = ((durationMs + 59_999L) / 60_000L).toInt()),
-        )
+        val entry = PouchLog.entry(dao, type, startMs, s).let {
+            if (startMs + durationMs <= System.currentTimeMillis()) PouchTiming.withTimes(it, startMs, durationMs, s)
+            else it.copy(pouchMinutes = ((durationMs + 59_999L) / 60_000L).toInt())
+        }
+        db.withTransaction {
+            val saved = entry.copy(id = dao.insertEntry(entry))
+            dao.insertFeltMarks(marks.map { PouchTiming.placeAnswer(it.copy(id = 0, entryId = saved.id), saved, s) })
+        }
         refreshWidgets()
     }
 

@@ -86,6 +86,7 @@
     <string name="add_forgotten">Добавить забытый</string>
     <string name="forgotten_title">Добавить забытый пауч</string>
     <string name="still_in_until">Ещё во рту, выйдет сам в %1$s</string>
+    <string name="forgotten_hint">Долгое нажатие на + — добавить забытый</string>
     <string name="put_in_at">Вкинут в</string>
     <string name="in_the_mouth">Во рту</string>
     <string name="unit_min">мин</string>
@@ -148,7 +149,7 @@
     <string name="range_48h">48\u00A0ч</string>
     <string name="range_7d">7\u00A0д</string>
     <string name="legend_future">если больше не брать</string>
-    <string name="legend_nicotine_gone">никотин выведен, ниже %1$s\u00A0мг</string>
+    <string name="legend_nicotine_gone">никотин на нуле</string>
     <string name="model_summary">t½ никотина %1$s ч · t½ котинина %2$s ч · усваивается %3$d%% вышедшего из пауча</string>
     <string name="no_data_yet">Запишите пауч, чтобы увидеть кривую.</string>
 

@@ -47,6 +47,8 @@ object Pharmacokinetics {
     /** Below these amounts the substance counts as "cleared" (roughly below usual detection in blood). */
     const val NICOTINE_CLEARED_MG = 0.1
     const val COTININE_CLEARED_MG = 0.5
+    /** Practically no nicotine at all: a tenth of [NICOTINE_CLEARED_MG], on the zero line of any chart scale. */
+    const val NICOTINE_NONE_MG = 0.01
 
     /** Apparent volumes of distribution, litres per kg body weight. */
     const val NICOTINE_VD_L_PER_KG = 2.6

@@ -332,7 +332,6 @@ fun EntryDialog(
     val endsAfterNow = newDurationMs != null && start + newDurationMs > System.currentTimeMillis()
     val valid = (durationMs == null || newDurationMs != null) && !endsAfterNow
     val outAt = newDurationMs?.let { start + it }
-    fun countsAt(at: Long, recalled: Boolean): Long? = outAt?.let { PouchTiming.recalledAt(at, recalled, it) }
     // The field changed last wins: more minutes than fit before now move the start back, a later start cuts the minutes.
     fun setMinutes(text: String) {
         minutesText = text
@@ -375,38 +374,14 @@ fun EntryDialog(
                     )
                 }
                 Spacer(Modifier.height(14.dp))
-                Text(stringResource(R.string.felt_label), style = MaterialTheme.typography.bodyLarge)
-                for (answer in answers.sortedBy { (_, at, recalled) -> countsAt(at, recalled) ?: at }) {
-                    val (level, at, recalled) = answer
-                    val felt = Felt.of(level) ?: continue
-                    val pulledOutAt = countsAt(at, recalled)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            if (pulledOutAt != null) stringResource(R.string.felt_mark_recalled_at, stringResource(feltLabel(felt)), feltMinutes(start, pulledOutAt))
-                            else stringResource(R.string.felt_mark_at, stringResource(feltLabel(felt)), feltMinutes(start, at)),
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f),
-                        )
-                        IconButton(onClick = { answers = answers - answer }, modifier = Modifier.size(36.dp)) {
-                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.felt_remove), modifier = Modifier.size(18.dp))
-                        }
-                    }
-                }
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    stringResource(if (countsAt(System.currentTimeMillis(), false) != null) R.string.felt_add_recalled else R.string.felt_add_now),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(2.dp))
-                FeltChips(null, { f -> answers = answers + Triple(f.level, System.currentTimeMillis(), false) })
+                FeltAnswers(answers, start, outAt) { answers = it }
             }
         },
         confirmButton = {
             TextButton(
                 enabled = valid,
                 onClick = {
-                    onSave(start, newDurationMs, answers.map { (level, at, recalled) -> FeltMark(entryId = 0, level = level, atMs = at, recalled = recalled) })
+                    onSave(start, newDurationMs, answers.toMarks())
                 },
             ) { Text(stringResource(R.string.save)) }
         },
@@ -427,6 +402,43 @@ fun EntryDialog(
         )
     }
 }
+
+/**
+ * A pouch's felt answers (level, time, recalled flag): listed with a remove button, and chips that add one now. An answer
+ * given long after [outAt] counts there, as recalled.
+ */
+@Composable
+private fun FeltAnswers(answers: List<Triple<Int, Long, Boolean>>, startMs: Long, outAt: Long?, onChange: (List<Triple<Int, Long, Boolean>>) -> Unit) {
+    fun countsAt(at: Long, recalled: Boolean): Long? = outAt?.let { PouchTiming.recalledAt(at, recalled, it) }
+    Text(stringResource(R.string.felt_label), style = MaterialTheme.typography.bodyLarge)
+    for (answer in answers.sortedBy { (_, at, recalled) -> countsAt(at, recalled) ?: at }) {
+        val (level, at, recalled) = answer
+        val felt = Felt.of(level) ?: continue
+        val pulledOutAt = countsAt(at, recalled)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                if (pulledOutAt != null) stringResource(R.string.felt_mark_recalled_at, stringResource(feltLabel(felt)), feltMinutes(startMs, pulledOutAt))
+                else stringResource(R.string.felt_mark_at, stringResource(feltLabel(felt)), feltMinutes(startMs, at)),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = { onChange(answers - answer) }, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.felt_remove), modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+    Spacer(Modifier.height(6.dp))
+    Text(
+        stringResource(if (countsAt(System.currentTimeMillis(), false) != null) R.string.felt_add_recalled else R.string.felt_add_now),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(Modifier.height(2.dp))
+    FeltChips(null, { f -> onChange(answers + Triple(f.level, System.currentTimeMillis(), false)) })
+}
+
+private fun List<Triple<Int, Long, Boolean>>.toMarks(): List<FeltMark> =
+    map { (level, at, recalled) -> FeltMark(entryId = 0, level = level, atMs = at, recalled = recalled) }
 
 /** Minutes in the mouth as − field +; the field turns red while it holds no valid number. */
 @Composable
@@ -472,9 +484,10 @@ fun ForgottenPouchDialog(
     initialTypeId: Long?,
     defaultMinutes: Int,
     onDismiss: () -> Unit,
-    onSave: (type: PouchType, startMs: Long, durationMs: Long) -> Unit,
+    onSave: (type: PouchType, startMs: Long, durationMs: Long, marks: List<FeltMark>) -> Unit,
 ) {
     var typeId by rememberSaveable { mutableStateOf(initialTypeId ?: types.firstOrNull()?.id) }
+    var answers by rememberSaveable { mutableStateOf(listOf<Triple<Int, Long, Boolean>>()) }
     // By default it came out just now after the usual time.
     var start by rememberSaveable { mutableLongStateOf(Math.floorDiv(System.currentTimeMillis(), 60_000L) * 60_000L - defaultMinutes * 60_000L) }
     var minutesText by rememberSaveable { mutableStateOf(defaultMinutes.toString()) }
@@ -508,8 +521,8 @@ fun ForgottenPouchDialog(
                     Text(inMouth, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                     MinutesStepper(minutesText, defaultMinutes, inMouth) { minutesText = it }
                 }
-                if (minutes != null) {
-                    val out = start + minutes * 60_000L
+                val out = minutes?.let { start + it * 60_000L }
+                if (out != null) {
                     Spacer(Modifier.height(6.dp))
                     Text(
                         if (out <= System.currentTimeMillis()) stringResource(R.string.taken_out_at, Fmt.time(out))
@@ -518,12 +531,14 @@ fun ForgottenPouchDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+                Spacer(Modifier.height(14.dp))
+                FeltAnswers(answers, start, out?.takeIf { it <= System.currentTimeMillis() }) { answers = it }
             }
         },
         confirmButton = {
             TextButton(
                 enabled = type != null && minutes != null,
-                onClick = { if (type != null && minutes != null) onSave(type, start, minutes * 60_000L) },
+                onClick = { if (type != null && minutes != null) onSave(type, start, minutes * 60_000L, answers.toMarks()) },
             ) { Text(stringResource(R.string.save)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },

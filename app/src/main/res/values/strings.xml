@@ -79,6 +79,7 @@
     <string name="add_forgotten">Add forgotten</string>
     <string name="forgotten_title">Add a forgotten pouch</string>
     <string name="still_in_until">Still in; counts as out at %1$s</string>
+    <string name="forgotten_hint">Long-press + to add one you forgot</string>
     <string name="put_in_at">Tossed in at</string>
     <string name="in_the_mouth">In the mouth</string>
     <string name="unit_min">min</string>
@@ -143,7 +144,7 @@
     <string name="range_48h">48\u00A0h</string>
     <string name="range_7d">7\u00A0d</string>
     <string name="legend_future">if you stop now</string>
-    <string name="legend_nicotine_gone">nicotine gone, below %1$s\u00A0mg</string>
+    <string name="legend_nicotine_gone">nicotine at zero</string>
     <string name="model_summary">t½ nicotine %1$s h · t½ cotinine %2$s h · %3$d%% of what leaves the pouch is absorbed</string>
     <string name="no_data_yet">Log a pouch to see the curve.</string>
 

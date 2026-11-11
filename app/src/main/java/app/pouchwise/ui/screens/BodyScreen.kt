@@ -100,7 +100,10 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
             val fineFrom = max(from, clock - FINE_BACK_MS)
             val fineTo = min(to, clock + FINE_AHEAD_MS)
             Reach(
-                earliest, latest, cleared.nicotineClearMs,
+                earliest, latest,
+                Pharmacokinetics.clearance(
+                    clock, doses, pk, nicotineThreshold = Pharmacokinetics.NICOTINE_NONE_MG, cotinineThreshold = Double.POSITIVE_INFINITY,
+                ).nicotineClearMs,
                 BodySpan(
                     nowMs = clock,
                     past = points(from, fineFrom, SAMPLE_STEP_MS) + points(fineFrom, clock, FINE_STEP_MS),
@@ -236,7 +239,7 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
                     if (reach?.nicotineGoneMs?.let { it > clock } == true) {
                         LegendSwatch(
                             AppColors.nicotine.copy(alpha = 0.6f),
-                            stringResource(R.string.legend_nicotine_gone, Fmt.oneDecimal(Pharmacokinetics.NICOTINE_CLEARED_MG)),
+                            stringResource(R.string.legend_nicotine_gone),
                             ring = true,
                         )
                     }

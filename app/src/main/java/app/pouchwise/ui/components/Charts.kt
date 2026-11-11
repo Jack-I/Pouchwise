@@ -210,7 +210,7 @@ fun ScrollableBodyChart(
     planColor: Color = Color.Unspecified,
     /** Written over the "now" line where it does not run into the axis titles. */
     nowLabel: String = "",
-    /** When the forecast nicotine drops below [Pharmacokinetics.NICOTINE_CLEARED_MG] for good, marked faintly with its time. */
+    /** When the forecast nicotine drops below [Pharmacokinetics.NICOTINE_NONE_MG] for good, marked faintly with its time. */
     nicotineGoneMs: Long? = null,
 ) {
     val measurer = rememberTextMeasurer(cacheSize = 64)
@@ -393,7 +393,7 @@ fun ScrollableBodyChart(
                 }
             }
             if (nicotineGoneMs != null && nicotineGoneMs > nowMs && nicotineGoneMs in t0..t1) {
-                val gone = Offset(x(nicotineGoneMs), yN(Pharmacokinetics.NICOTINE_CLEARED_MG))
+                val gone = Offset(x(nicotineGoneMs), yN(Pharmacokinetics.NICOTINE_NONE_MG))
                 drawCircle(goneFill, radius = 4.5.dp.toPx(), center = gone)
                 drawCircle(goneColor, radius = 4.5.dp.toPx(), center = gone, style = Stroke(width = 2.dp.toPx()))
                 // Above the curve on its flat side, to the right; to the left near the right edge.
