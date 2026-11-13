@@ -27,28 +27,26 @@ object DayKeys {
     fun of(e: LogEntry, dayStartHour: Int, zone: ZoneId = ZoneId.systemDefault()): Long =
         e.day ?: epochDay(e.timestamp, dayStartHour, zone)
 
-    /**
-     * [hour]:[minute] on [date], or the same time a day earlier when that would lie in the future. The
-     * minute now running counts as now: a picker shows no seconds.
-     */
+    /** A picked time less than this ahead of now is a slip on the picker and counts as now, not as the day before. */
+    private const val SLIP_MS = 3_600_000L
+
+    /** [hour]:[minute] on [date], or the same time a day earlier when that would lie in the future beyond a slip. */
     fun pastTimeMs(date: LocalDate, hour: Int, minute: Int, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Long {
         val at = date.atTime(hour, minute).atZone(zone).toInstant().toEpochMilli()
-        if (at <= nowMs + 60_000L) return min(at, nowMs)
+        if (at <= nowMs + SLIP_MS) return min(at, nowMs)
         return date.minusDays(1).atTime(hour, minute).atZone(zone).toInstant().toEpochMilli()
     }
 
     /**
-     * [hour]:[minute] on the day before, of or after [aroundMs], whichever is closest to it without lying
-     * in the future: a corrected time is near the old one, even across midnight.
+     * [hour]:[minute] on the day before, of or after [aroundMs], whichever is closest to it: a corrected time is near
+     * the old one, even across midnight. One that would lie in the future is now.
      */
     fun nearestPastTimeMs(aroundMs: Long, hour: Int, minute: Int, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Long {
         val date = Instant.ofEpochMilli(aroundMs).atZone(zone).toLocalDate()
-        val best = (-1L..1L)
+        val nearest = (-1L..1L)
             .map { date.plusDays(it).atTime(hour, minute).atZone(zone).toInstant().toEpochMilli() }
-            .filter { it <= nowMs + 60_000L }
-            .minByOrNull { abs(it - aroundMs) }
-            ?: return pastTimeMs(date, hour, minute, nowMs, zone)
-        return min(best, nowMs)
+            .minBy { abs(it - aroundMs) }
+        return min(nearest, nowMs)
     }
 
     /**

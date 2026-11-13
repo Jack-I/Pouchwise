@@ -116,6 +116,11 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
 
     // Earlier days in the log stay folded until tapped; today's pouches are always shown.
     var openDays by rememberSaveable { mutableStateOf(listOf<Long>()) }
+    // A pouch saved onto an earlier day opens that day, so it does not seem to vanish.
+    fun revealDayOf(ms: Long) {
+        val day = DayKeys.epochDay(ms, settings.dayStartHour)
+        if (day != today && day !in openDays) openDays = openDays + day
+    }
     var forgottenOpen by remember { mutableStateOf(false) }
     var forgottenTypeId by remember { mutableStateOf<Long?>(null) }
     var editEntry by remember { mutableStateOf<LogEntry?>(null) }
@@ -263,6 +268,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             onDismiss = { forgottenOpen = false },
             onSave = { type, start, duration, marks ->
                 vm.logForgottenPouch(type, start, duration, marks)
+                revealDayOf(start)
                 forgottenOpen = false
             },
         )
@@ -280,6 +286,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             onDismiss = { editEntry = null },
             onSave = { start, duration, marks ->
                 vm.editEntry(e, start, duration, marks)
+                revealDayOf(start)
                 editEntry = null
             },
         )

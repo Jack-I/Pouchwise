@@ -63,6 +63,8 @@ class DayKeysTest {
         // Never in the future: the minute about to start counts as now.
         val midMinute = now + 20_000
         assertEquals(midMinute, DayKeys.nearestPastTimeMs(ms(2026, 10, 19, 0, 30), 0, 41, midMinute, zone))
+        // Moved a little past now, the pouch stays now instead of jumping to the day before.
+        assertEquals(now, DayKeys.nearestPastTimeMs(ms(2026, 10, 19, 0, 30), 0, 50, now, zone))
     }
 
     @Test
@@ -71,6 +73,8 @@ class DayKeysTest {
         val today = LocalDateTime.of(2026, 10, 19, 0, 0).toLocalDate()
         assertEquals(now, DayKeys.pastTimeMs(today, 12, 1, now, zone))
         assertEquals(ms(2026, 10, 19, 12, 0), DayKeys.pastTimeMs(today, 12, 0, now, zone))
+        // A few minutes ahead is a slip on the picker: now, not yesterday at that time.
+        assertEquals(now, DayKeys.pastTimeMs(today, 12, 10, now, zone))
     }
 
     @Test
