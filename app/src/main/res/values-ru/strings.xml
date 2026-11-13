@@ -335,7 +335,7 @@
     <string name="patterns_first">Первый пауч за день</string>
     <string name="patterns_later">на %1$s позже, чем месяц назад</string>
     <string name="patterns_earlier">на %1$s раньше, чем месяц назад</string>
-    <string name="patterns_gap">Обычный интервал</string>
+    <string name="patterns_break">Обычный перерыв без пауча</string>
     <string name="patterns_in_mouth">В среднем во рту</string>
     <string name="patterns_empty">Записей пока мало для закономерностей.</string>
     <string name="felt_card_title">Как ощущались паучи</string>

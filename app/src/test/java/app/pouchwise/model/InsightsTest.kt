@@ -61,8 +61,8 @@ class InsightsTest {
         assertEquals(8 * 60 + 30, p.firstNow)
         // Two days are too few for a trend.
         assertNull(p.firstShift)
-        // Gaps of 2 h and 3 h on Monday and 1 h on Tuesday.
-        assertEquals(2 * 3_600_000L, p.typicalGapMs)
+        // Breaks after 20-minute pouches: 1 h 40 min and 2 h 40 min on Monday, 40 min on Tuesday.
+        assertEquals(100 * 60_000L, p.typicalBreakMs)
         assertEquals(20 * 60_000L, p.avgInMouthMs)
     }
 

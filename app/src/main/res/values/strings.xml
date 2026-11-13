@@ -327,7 +327,7 @@
     <string name="patterns_first">First pouch of the day</string>
     <string name="patterns_later">%1$s later than a month ago</string>
     <string name="patterns_earlier">%1$s earlier than a month ago</string>
-    <string name="patterns_gap">Typical gap</string>
+    <string name="patterns_break">Typical break without a pouch</string>
     <string name="patterns_in_mouth">Average in mouth</string>
     <string name="patterns_empty">Log a few days to see patterns.</string>
     <string name="felt_card_title">How pouches felt</string>

@@ -265,7 +265,7 @@ private fun PatternsCard(p: PatternSummary) {
         }
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MiniTile(stringResource(R.string.patterns_gap), p.typicalGapMs?.let { durationText(it) } ?: "—", Modifier.weight(1f))
+            MiniTile(stringResource(R.string.patterns_break), p.typicalBreakMs?.let { durationText(it) } ?: "—", Modifier.weight(1f))
             MiniTile(stringResource(R.string.patterns_in_mouth), p.avgInMouthMs?.let { durationText(it) } ?: "—", Modifier.weight(1f))
         }
     }

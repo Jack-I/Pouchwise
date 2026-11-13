@@ -66,8 +66,8 @@ data class PatternSummary(
     val firstNow: Int?,
     /** How much later (positive) or earlier the first pouch comes now than at the start of the period. */
     val firstShift: Int?,
-    /** Median time between one pouch and the next on the same day. */
-    val typicalGapMs: Long?,
+    /** Median time without a pouch: from one coming out to the next going in on the same day. */
+    val typicalBreakMs: Long?,
     /** Average time a pouch stayed in. */
     val avgInMouthMs: Long?,
 )
@@ -104,7 +104,10 @@ object Patterns {
             (recent.average() - firstPouch.take(TREND_DAYS).average()).roundToInt()
         } else null
 
-        val gaps = perDay.values.flatMap { list -> list.sortedBy { it.timestamp }.zipWithNext { a, b -> (b.timestamp - a.timestamp).toDouble() } }
+        // Two pouches in at once leave no break at all.
+        val breaks = perDay.values.flatMap { list ->
+            list.sortedBy { it.timestamp }.zipWithNext { a, b -> (b.timestamp - PouchTiming.outMs(a, s)).coerceAtLeast(0L).toDouble() }
+        }
         val inMouth = inWindow.filter { !PouchTiming.isActive(it, s, nowMs) && it.timestamp <= nowMs }
             .map { PouchTiming.effectiveDurationMs(it, s) }
         return PatternSummary(
@@ -113,7 +116,7 @@ object Patterns {
             firstPouch = firstPouch,
             firstNow = firstNow,
             firstShift = firstShift,
-            typicalGapMs = Stats.median(gaps)?.roundToLong(),
+            typicalBreakMs = Stats.median(breaks)?.roundToLong(),
             avgInMouthMs = inMouth.takeIf { it.isNotEmpty() }?.average()?.roundToLong(),
         )
     }
