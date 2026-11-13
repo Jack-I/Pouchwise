@@ -10,6 +10,8 @@
     <string name="back">Назад</string>
 
     <string name="cancel">Отмена</string>
+    <string name="wheel_hours">Часы</string>
+    <string name="wheel_minutes">Минуты</string>
     <string name="save">Сохранить</string>
     <string name="delete">Удалить</string>
     <string name="hide">Скрыть</string>

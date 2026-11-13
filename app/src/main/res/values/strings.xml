@@ -12,6 +12,8 @@
 
     <!-- common -->
     <string name="cancel">Cancel</string>
+    <string name="wheel_hours">Hours</string>
+    <string name="wheel_minutes">Minutes</string>
     <string name="save">Save</string>
     <string name="delete">Delete</string>
     <string name="hide">Hide</string>

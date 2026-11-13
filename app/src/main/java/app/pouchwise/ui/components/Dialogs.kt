@@ -3,7 +3,11 @@ package app.pouchwise.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.SnapPosition
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -24,10 +28,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -48,6 +57,11 @@ import app.pouchwise.ui.theme.PouchPalette
 import app.pouchwise.ui.theme.pouchColor
 import java.time.Instant
 import java.time.ZoneId
+import java.util.Locale
+import kotlin.math.abs
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
 
 /** Marker for "a brand that is not in the catalogue" in [BrandPicker]. */
 const val OTHER_BRAND = ""
@@ -273,7 +287,7 @@ private fun ColorGrid(selected: Int, onSelect: (Int) -> Unit) {
 private fun fmtInput(v: Double): String =
     if (v == Math.rint(v)) v.toLong().toString() else v.toString()
 
-/** Hour/minute picker in a dialog that fits narrow screens. */
+/** Hours and minutes on two drums that scroll round, in a dialog that fits narrow screens. */
 @Composable
 fun TimeDialog(
     title: String,
@@ -282,20 +296,90 @@ fun TimeDialog(
     onConfirm: (hour: Int, minute: Int) -> Unit,
 ) {
     val zdt = remember(initialMs) { Instant.ofEpochMilli(initialMs).atZone(ZoneId.systemDefault()) }
-    val state = rememberTimePickerState(initialHour = zdt.hour, initialMinute = zdt.minute, is24Hour = true)
+    var hour by rememberSaveable { mutableIntStateOf(zdt.hour) }
+    var minute by rememberSaveable { mutableIntStateOf(zdt.minute) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
             shape = MaterialTheme.shapes.extraLarge,
             tonalElevation = 6.dp,
             modifier = Modifier.padding(16.dp),
         ) {
-            Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(Modifier.widthIn(min = 280.dp).padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(title, style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(16.dp))
-                TimePicker(state = state)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Wheel(24, hour, stringResource(R.string.wheel_hours)) { hour = it }
+                    Text(":", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(horizontal = 12.dp))
+                    Wheel(60, minute, stringResource(R.string.wheel_minutes)) { minute = it }
+                }
+                Spacer(Modifier.height(12.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
-                    TextButton(onClick = { onConfirm(state.hour, state.minute) }) { Text(stringResource(R.string.ok)) }
+                    TextButton(onClick = { onConfirm(hour, minute) }) { Text(stringResource(R.string.ok)) }
+                }
+            }
+        }
+    }
+}
+
+private const val WHEEL_ROWS = 5
+/** Rounds of numbers on a drum, enough that it never runs out either way. */
+private const val WHEEL_ROUNDS = 400
+
+/** A drum of the numbers 0 until [count] that scrolls round and settles on its middle row; [onValue] gets the number there. */
+@Composable
+private fun Wheel(count: Int, value: Int, label: String, onValue: (Int) -> Unit) {
+    val rowHeight = 44.dp
+    val first = remember { count * (WHEEL_ROUNDS / 2) + value - WHEEL_ROWS / 2 }
+    val state = rememberLazyListState(initialFirstVisibleItemIndex = first)
+    val centre by remember {
+        derivedStateOf {
+            val info = state.layoutInfo
+            val middle = (info.viewportStartOffset + info.viewportEndOffset) / 2
+            info.visibleItemsInfo.minByOrNull { abs(it.offset + it.size / 2 - middle) }?.index ?: (first + WHEEL_ROWS / 2)
+        }
+    }
+    val haptics = LocalHapticFeedback.current
+    val currentOnValue by rememberUpdatedState(onValue)
+    LaunchedEffect(state) {
+        snapshotFlow { centre % count }.distinctUntilChanged().drop(1).collect {
+            currentOnValue(it)
+            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        }
+    }
+    val scope = rememberCoroutineScope()
+    val less = stringResource(R.string.stepper_less, label)
+    val more = stringResource(R.string.stepper_more, label)
+    Box(
+        Modifier
+            .width(72.dp)
+            .height(rowHeight * WHEEL_ROWS)
+            .semantics {
+                contentDescription = label
+                stateDescription = String.format(Locale.getDefault(), "%02d", value)
+                customActions = listOf(
+                    CustomAccessibilityAction(less) { scope.launch { state.animateScrollToItem(centre - 1 - WHEEL_ROWS / 2) }; true },
+                    CustomAccessibilityAction(more) { scope.launch { state.animateScrollToItem(centre + 1 - WHEEL_ROWS / 2) }; true },
+                )
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(Modifier.fillMaxWidth().height(rowHeight).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.secondaryContainer))
+        LazyColumn(
+            state = state,
+            flingBehavior = rememberSnapFlingBehavior(state, SnapPosition.Center),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            items(count * WHEEL_ROUNDS) { i ->
+                val distance = abs(i - centre)
+                Box(Modifier.height(rowHeight).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text(
+                        String.format(Locale.getDefault(), "%02d", i % count),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = if (distance == 0) FontWeight.Bold else FontWeight.Normal,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (distance == 0) 1f else if (distance == 1) 0.55f else 0.25f),
+                    )
                 }
             }
         }
