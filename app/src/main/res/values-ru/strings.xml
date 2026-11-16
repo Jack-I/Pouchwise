@@ -152,7 +152,7 @@
     <string name="range_7d">7\u00A0д</string>
     <string name="legend_future">если больше не брать</string>
     <string name="legend_nicotine_gone">на нуле</string>
-    <string name="legend_nicotine_undetectable">не определяется</string>
+    <string name="legend_nicotine_undetectable">не определяется в крови</string>
     <string name="model_summary">t½ никотина %1$s ч · t½ котинина %2$s ч · усваивается %3$d%% вышедшего из пауча</string>
     <string name="no_data_yet">Запишите пауч, чтобы увидеть кривую.</string>
 
