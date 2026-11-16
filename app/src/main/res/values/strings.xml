@@ -146,7 +146,8 @@
     <string name="range_48h">48\u00A0h</string>
     <string name="range_7d">7\u00A0d</string>
     <string name="legend_future">if you stop now</string>
-    <string name="legend_nicotine_gone">nicotine at zero</string>
+    <string name="legend_nicotine_gone">at zero</string>
+    <string name="legend_nicotine_undetectable">undetectable</string>
     <string name="model_summary">t½ nicotine %1$s h · t½ cotinine %2$s h · %3$d%% of what leaves the pouch is absorbed</string>
     <string name="no_data_yet">Log a pouch to see the curve.</string>
 
@@ -223,7 +224,7 @@
     <string name="settings_data">Data</string>
     <string name="export_csv">Export CSV</string>
     <string name="export_json">Export JSON</string>
-    <string name="export_felt_csv">Export felt answers (CSV)</string>
+    <string name="export_felt_csv">Export only felt answers (CSV)</string>
     <string name="export_hint">Your data stays on this phone. Export it to keep a copy; a JSON export can be imported on another phone.</string>
     <string name="share_export">Share export</string>
     <string name="import_json">Import JSON</string>
@@ -302,10 +303,10 @@
     <string name="interval_keep">Hold</string>
     <string name="interval_lower">Lower</string>
     <string name="interval_usual">Over the last two weeks you took the next pouch at about %1$s\u00A0mg of nicotine in the body (≈\u00A0%2$s\u00A0ng/mL).</string>
-    <string name="interval_cap">Never above %1$s\u00A0mg: what a typical pouch of yours leaves two hours after it goes in.</string>
+    <string name="interval_cap">Never above %1$s\u00A0mg: what you would have before each next one, taking a typical pouch every two hours.</string>
     <string name="interval_keep_rule">Hold: the next one is better after nicotine drops below %1$s\u00A0mg. Days stay as they are.</string>
     <string name="interval_lower_rule">Lower: %2$d%% lower, now %1$s\u00A0mg, recalculated every Monday, so the gaps grow week by week.</string>
-    <string name="interval_typical_times">After one typical pouch the next one is better in about %1$s with Hold and %2$s with Lower.</string>
+    <string name="interval_typical_times">Taking a typical pouch again and again, the next one is better every %1$s with Hold and %2$s with Lower.</string>
     <string name="interval_learning">To learn your usual level the plan needs at least five pouches in the two weeks before today, not counting each day\'s first.</string>
     <string name="interval_never_blocks">A pouch taken earlier is marked, never blocked.</string>
     <string name="settings_spending">Spending</string>

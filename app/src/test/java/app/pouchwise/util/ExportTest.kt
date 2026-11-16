@@ -72,6 +72,8 @@ class ExportTest {
         assertEquals("0", cell(1, "felt_recalled"))
         assertEquals("overwhelm", cell(2, "felt"))
         assertEquals("20", cell(2, "felt_after_min"))
+        assertEquals("nothing@12;a_bit@40", cell(1, "felt_all"))
+        assertEquals("hit@3;overwhelm@20", cell(2, "felt_all"))
         // An answer given long after the pull-out says so.
         val late = marks + FeltMark(entryId = 2, level = Felt.HIT.level, atMs = t0 + 95 * min, recalled = true)
         val lateRows = Export.csv(entries, types, Settings(), late).trim().lines()

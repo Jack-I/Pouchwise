@@ -151,7 +151,8 @@
     <string name="range_48h">48\u00A0ч</string>
     <string name="range_7d">7\u00A0д</string>
     <string name="legend_future">если больше не брать</string>
-    <string name="legend_nicotine_gone">никотин на нуле</string>
+    <string name="legend_nicotine_gone">на нуле</string>
+    <string name="legend_nicotine_undetectable">не определяется</string>
     <string name="model_summary">t½ никотина %1$s ч · t½ котинина %2$s ч · усваивается %3$d%% вышедшего из пауча</string>
     <string name="no_data_yet">Запишите пауч, чтобы увидеть кривую.</string>
 
@@ -226,7 +227,7 @@
     <string name="settings_data">Данные</string>
     <string name="export_csv">Экспорт CSV</string>
     <string name="export_json">Экспорт JSON</string>
-    <string name="export_felt_csv">Экспорт ответов «вштырило» (CSV)</string>
+    <string name="export_felt_csv">Экспорт только ответов (CSV)</string>
     <string name="export_hint">Данные хранятся только на этом телефоне. Экспорт — чтобы сохранить копию; JSON-экспорт можно импортировать на другом телефоне.</string>
     <string name="share_export">Поделиться экспортом</string>
     <string name="import_json">Импорт JSON</string>
@@ -310,10 +311,10 @@
     <string name="interval_keep">Держать</string>
     <string name="interval_lower">Снижать</string>
     <string name="interval_usual">За последние две недели вы брали следующий пауч примерно при %1$s\u00A0мг никотина в организме (≈\u00A0%2$s\u00A0нг/мл).</string>
-    <string name="interval_cap">Не выше %1$s\u00A0мг: столько оставляет ваш типичный пауч через два часа после закладки.</string>
+    <string name="interval_cap">Не выше %1$s\u00A0мг: столько было бы перед каждым следующим, если брать типичный пауч каждые два часа.</string>
     <string name="interval_keep_rule">Держать: следующий лучше после того, как никотин опустится ниже %1$s\u00A0мг. Дни остаются как есть.</string>
     <string name="interval_lower_rule">Снижать: на %2$d%% ниже, сейчас %1$s\u00A0мг, пересчёт по понедельникам — перерывы растут от недели к неделе.</string>
-    <string name="interval_typical_times">После одного типичного пауча следующий лучше примерно через %1$s при «Держать» и через %2$s при «Снижать».</string>
+    <string name="interval_typical_times">Если брать типичный пауч раз за разом, следующий лучше каждые %1$s при «Держать» и %2$s при «Снижать».</string>
     <string name="interval_learning">Чтобы узнать ваш обычный уровень, плану нужно хотя бы пять паучей за две недели до сегодняшнего дня, не считая первого за день.</string>
     <string name="interval_never_blocks">Пауч раньше времени помечается, но не запрещается.</string>
     <string name="settings_spending">Траты</string>

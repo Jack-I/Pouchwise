@@ -286,10 +286,10 @@ private fun ToleranceSettings(settings: Settings, entries: List<LogEntry>, today
         Spacer(Modifier.height(4.dp))
         val lowerMg = lower ?: keep * IntervalPlan.LOWER_SHARE
         Text(stringResource(R.string.interval_lower_rule, Fmt.oneDecimal(lowerMg), ((1 - IntervalPlan.LOWER_SHARE) * 100).roundToInt()), style = small)
-        // The same levels as time: how long after one typical pouch each mode puts the next, to the nearest five minutes.
+        // The same levels as time: how often each mode lets a typical pouch come, to the nearest five minutes.
         val times = remember(basis, keep, lowerMg) {
             basis.typical?.let { p ->
-                listOf(keep, lowerMg).map { IntervalPlan.afterAloneMs(p, it, settings)?.let { ms -> Math.round(ms / 300_000.0) * 300_000L } }
+                listOf(keep, lowerMg).map { IntervalPlan.repeatEveryMs(p, it, settings)?.let { ms -> Math.round(ms / 300_000.0) * 300_000L } }
             }
         }
         val keepAfter = times?.get(0)

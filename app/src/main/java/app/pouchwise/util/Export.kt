@@ -29,13 +29,14 @@ object Export {
 
     fun csv(entries: List<LogEntry>, types: List<PouchType>, settings: Settings, marks: List<FeltMark> = emptyList()): String {
         val byId = types.associateBy { it.id }
-        val latest = marks.groupBy { it.entryId }.mapValues { (_, own) -> own.maxWith(compareBy({ it.atMs }, { it.id })) }
+        val byEntry = marks.groupBy { it.entryId }.mapValues { (_, own) -> own.sortedWith(compareBy({ it.atMs }, { it.id })) }
         val now = System.currentTimeMillis()
         val header = "id,timestamp_iso,epoch_ms,end_epoch_ms,duration_min,pouch,brand,strength_mg,release_k,absorbed_mg,pouch_min,day," +
-            "price,plan_level_mg,felt,felt_after_min,felt_recalled"
+            "price,plan_level_mg,felt,felt_after_min,felt_recalled,felt_all"
         return table(header, entries.map { e ->
             val type = byId[e.pouchTypeId]
-            val last = latest[e.id]
+            val own = byEntry[e.id].orEmpty()
+            val last = own.lastOrNull()
             listOf(
                 e.id, iso(e.timestamp), e.timestamp, e.endTimestamp ?: "", dec(PouchTiming.effectiveDurationMs(e, settings) / 60_000.0, 1),
                 quote(type?.name ?: ""), quote(type?.brand ?: ""), dec(e.strengthMg, 2), dec(e.releaseK, 4),
@@ -44,6 +45,10 @@ object Export {
                 e.pricePerPouch?.let { dec(it, 2) } ?: "", e.planLevelMg?.let { dec(it, 3) } ?: "",
                 last?.let { Felt.of(it.level)?.code } ?: "", last?.let { minutesAfter(e.timestamp, it.atMs) } ?: "",
                 last?.let { if (it.recalled) 1 else 0 } ?: "",
+                // Every answer in order as answer@minutes after the toss-in, a recalled one marked with *.
+                own.mapNotNull { m ->
+                    Felt.of(m.level)?.let { "${it.code}@${minutesAfter(e.timestamp, m.atMs)}${if (m.recalled) "*" else ""}" }
+                }.joinToString(";"),
             )
         })
     }

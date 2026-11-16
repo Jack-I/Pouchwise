@@ -104,6 +104,7 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
                 Pharmacokinetics.clearance(
                     clock, doses, pk, nicotineThreshold = Pharmacokinetics.NICOTINE_NONE_MG, cotinineThreshold = Double.POSITIVE_INFINITY,
                 ).nicotineClearMs,
+                cleared.nicotineClearMs,
                 BodySpan(
                     nowMs = clock,
                     past = points(from, fineFrom, SAMPLE_STEP_MS) + points(fineFrom, clock, FINE_STEP_MS),
@@ -225,6 +226,7 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
                         planColor = AppColors.plan,
                         nowLabel = stringResource(R.string.time_now),
                         nicotineGoneMs = r.nicotineGoneMs,
+                        nicotineUndetectableMs = r.nicotineUndetectableMs,
                     )
                 }
                 Row(Modifier.fillMaxWidth()) {
@@ -236,12 +238,11 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
                     LegendSwatch(AppColors.nicotine, stringResource(R.string.nicotine))
                     LegendSwatch(AppColors.cotinine, stringResource(R.string.cotinine))
                     LegendSwatch(MaterialTheme.colorScheme.onSurfaceVariant, stringResource(R.string.legend_future), dashed = true)
+                    if (reach?.nicotineUndetectableMs?.let { it > clock } == true) {
+                        LegendSwatch(AppColors.nicotine.copy(alpha = 0.6f), stringResource(R.string.legend_nicotine_undetectable), dot = true)
+                    }
                     if (reach?.nicotineGoneMs?.let { it > clock } == true) {
-                        LegendSwatch(
-                            AppColors.nicotine.copy(alpha = 0.6f),
-                            stringResource(R.string.legend_nicotine_gone),
-                            ring = true,
-                        )
+                        LegendSwatch(AppColors.nicotine.copy(alpha = 0.6f), stringResource(R.string.legend_nicotine_gone), ring = true)
                     }
                     if (planLevel != null) {
                         LegendSwatch(
@@ -273,7 +274,7 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
 private const val CLEARED = Long.MIN_VALUE
 
 /** The chart's points and how far it can be dragged: back to [earliestMs], ahead to [latestMs]. */
-private class Reach(val earliestMs: Long, val latestMs: Long, val nicotineGoneMs: Long?, val span: BodySpan)
+private class Reach(val earliestMs: Long, val latestMs: Long, val nicotineGoneMs: Long?, val nicotineUndetectableMs: Long?, val span: BodySpan)
 
 /** One column of the summary card: how much is in now, the blood level, and when 95 % of it will be gone. */
 @Composable

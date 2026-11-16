@@ -7,7 +7,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDateTime
 import java.time.ZoneId
-import kotlin.math.ln
 import kotlin.math.min
 
 class IntervalPlanTest {
@@ -66,32 +65,31 @@ class IntervalPlanTest {
             listOf(weak(at(d, 8)), strong(at(d, 10)), medium(at(d, 12)), weak(at(d, 14)), strong(at(d, 16)), medium(at(d, 18)), weak(at(d, 20)))
         }
         val cap = IntervalPlan.basis(entries, s, at(19, 9)).capMg!!
-        assertEquals(IntervalPlan.leftAfterCapMg(medium(0L), s), cap, 1e-12)
-        assertTrue(cap > IntervalPlan.leftAfterCapMg(weak(0L), s) * 1.5)
-        assertTrue(cap < IntervalPlan.leftAfterCapMg(strong(0L), s))
+        val buildUp = IntervalPlan.buildUp(IntervalPlan.CAP_EVERY_MS, s)
+        assertEquals(IntervalPlan.leftAfterMg(medium(0L), s) * buildUp, cap, 1e-12)
+        assertTrue(cap > IntervalPlan.leftAfterMg(weak(0L), s) * buildUp * 1.5)
+        assertTrue(cap < IntervalPlan.leftAfterMg(strong(0L), s) * buildUp)
     }
 
     @Test
-    fun backToBackPouchesAreHeldNoHigherThanATypicalPouchTwoHoursOn() {
-        // Two weeks of a pouch every half hour from 08:00 to 14:00: the plan holds no more than one of them leaves after two hours.
+    fun backToBackPouchesAreHeldToATypicalPouchEveryTwoHours() {
+        // Two weeks of a pouch every half hour from 08:00 to 14:00: the plan holds what one every two hours would build up to.
         val entries = (5..20).flatMap { d -> (0..12).map { i -> pouch(at(d, 8) + i * 30 * 60_000L) } }
         val now = at(21, 9)
         val one = PouchTiming.toDose(pouch(0L), s)
-        val cap = Pharmacokinetics.levelsAt(2 * 3_600_000L, listOf(one), s.pk).nicotineMg
+        // With a two-hour half-life, what is left two hours on doubles when the pouches keep coming every two hours.
+        assertEquals(2.0, IntervalPlan.buildUp(2 * 3_600_000L, s), 1e-12)
+        val cap = Pharmacokinetics.levelsAt(2 * 3_600_000L, listOf(one), s.pk).nicotineMg * 2
         val basis = IntervalPlan.basis(entries, s, now)
         assertEquals(cap, basis.capMg!!, 1e-12)
-        assertTrue(basis.usualMg!! > 2 * cap)
+        assertTrue(basis.usualMg!! > cap)
         assertEquals(cap, IntervalPlan.threshold(entries, s.copy(intervalMode = IntervalMode.KEEP), now)!!, 1e-12)
         assertEquals(cap * IntervalPlan.LOWER_SHARE, IntervalPlan.threshold(entries, s.copy(intervalMode = IntervalMode.LOWER), now)!!, 1e-12)
-        // After one such pouch from nothing, the next is due two hours after it went in.
-        val start = at(22, 10)
-        val next = IntervalPlan.nextOnPlanMs(listOf(one.copy(timeMs = start)), s.pk, cap, start + 60_000L)!!
-        assertEquals((start + 2 * 3_600_000L).toDouble(), next.toDouble(), 60_000.0)
-        // The Plan card's times: two hours with Hold; with Lower, as long again as nicotine takes to lose 17 % (half-life 2 h).
+        // The Plan card's times: a typical pouch every two hours with Hold, less often with Lower.
         val typical = basis.typical!!
-        assertEquals(2 * 3_600_000.0, IntervalPlan.afterAloneMs(typical, cap, s)!!.toDouble(), 60_000.0)
-        val lowerMs = (2 + 2 * ln(1 / IntervalPlan.LOWER_SHARE) / ln(2.0)) * 3_600_000.0
-        assertEquals(lowerMs, IntervalPlan.afterAloneMs(typical, cap * IntervalPlan.LOWER_SHARE, s)!!.toDouble(), 60_000.0)
+        assertEquals(2 * 3_600_000L, IntervalPlan.repeatEveryMs(typical, cap, s))
+        val lowerEvery = IntervalPlan.repeatEveryMs(typical, cap * IntervalPlan.LOWER_SHARE, s)!!
+        assertTrue(lowerEvery in (2 * 3_600_000L + 1)..(3 * 3_600_000L))
     }
 
     @Test

@@ -11,8 +11,8 @@ import kotlin.math.min
  * Spacing between pouches by nicotine level. "Keep": the next pouch once nicotine is back below the level at
  * which you usually take one (median over the last two weeks). "Lower": 17 % below that, fixed for the week
  * from the two weeks before Monday, and never below the level at which half of the α4β2 receptors are free.
- * Neither goes above what a typical pouch of yours leaves two hours after it goes in: a habit of back-to-back pouches
- * is not what the plan holds.
+ * Neither goes above the level just before each next pouch when a typical pouch of yours comes every two hours: a
+ * habit of back-to-back pouches is not what the plan holds.
  */
 object IntervalPlan {
     /** Plasma nicotine at which half of the brain's α4β2 nicotinic receptors are taken (Brody et al., Arch Gen Psychiatry 2006). */
@@ -21,8 +21,8 @@ object IntervalPlan {
     const val WINDOW_MS = 14L * 24 * 3_600_000L
     /** Entries a plan needs loaded: the week so far, two weeks before it, and the model's lookback. */
     const val DATA_MS = 28L * 24 * 3_600_000L
-    /** The cap is the level a typical pouch has left this long after it went in. */
-    const val CAP_AFTER_MS = 2 * 3_600_000L
+    /** The cap allows a typical pouch this often. */
+    const val CAP_EVERY_MS = 2 * 3_600_000L
     private const val MIN_SAMPLES = 5
     private const val MINUTE_MS = 60_000L
 
@@ -49,26 +49,46 @@ object IntervalPlan {
         return if (levels.size < MIN_SAMPLES) null else Stats.median(levels)
     }
 
-    /** Nicotine (mg) [pouch] alone has left [CAP_AFTER_MS] after it went in, with its own strength, release and time in. */
-    fun leftAfterCapMg(pouch: LogEntry, s: Settings): Double =
-        Pharmacokinetics.levelsAt(pouch.timestamp + CAP_AFTER_MS, listOf(PouchTiming.toDose(pouch, s)), s.pk).nicotineMg
+    /** Nicotine (mg) [pouch] alone has left [afterMs] after it went in, with its own strength, release and time in. */
+    fun leftAfterMg(pouch: LogEntry, s: Settings, afterMs: Long = CAP_EVERY_MS): Double =
+        Pharmacokinetics.levelsAt(pouch.timestamp + afterMs, listOf(PouchTiming.toDose(pouch, s)), s.pk).nicotineMg
+
+    /**
+     * How much more there is before each next pouch when the same one comes every [everyMs] for good than after one alone:
+     * what is left of every earlier pouch adds up, by the nicotine half-life.
+     */
+    fun buildUp(everyMs: Long, s: Settings): Double =
+        1 / (1 - Math.pow(0.5, everyMs / (s.pk.nicotineHalfLifeHours * 3_600_000.0)))
 
     /** What the day of [nowMs] goes by, from the two weeks before it: the usual level, the cap and the pouch it stands for. */
     class Basis(val usualMg: Double?, val capMg: Double?, val typical: LogEntry?)
 
-    /** The cap is the median of [leftAfterCapMg] over every pouch of those two weeks, so no one kind sets it. */
+    /**
+     * The cap is the level before each next pouch when a typical one comes every [CAP_EVERY_MS]: the median over every pouch of
+     * those two weeks of what it leaves by then, so no one kind sets it, built up as by [buildUp].
+     */
     fun basis(entries: List<LogEntry>, s: Settings, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): Basis {
         val recent = entries.filter { it.timestamp in nowMs - DATA_MS..nowMs }
         val dayStart = DayKeys.startOfDayMs(DayKeys.epochDay(nowMs, s.dayStartHour, zone), s.dayStartHour, zone)
-        val left = recent.filter { it.timestamp in dayStart - WINDOW_MS until dayStart }.map { it to leftAfterCapMg(it, s) }
-        val cap = Stats.median(left.map { it.second })
-        val typical = cap?.let { c -> left.minBy { abs(it.second - c) }.first }
-        return Basis(usualLevel(recent, s, dayStart - WINDOW_MS, dayStart), cap, typical)
+        val left = recent.filter { it.timestamp in dayStart - WINDOW_MS until dayStart }.map { it to leftAfterMg(it, s) }
+        val median = Stats.median(left.map { it.second })
+        val typical = median?.let { m -> left.minBy { abs(it.second - m) }.first }
+        return Basis(usualLevel(recent, s, dayStart - WINDOW_MS, dayStart), median?.let { it * buildUp(CAP_EVERY_MS, s) }, typical)
     }
 
-    /** How long after [pouch] goes in, with nothing else in the body, nicotine stays below [levelMg]; null if it never gets above. */
-    fun afterAloneMs(pouch: LogEntry, levelMg: Double, s: Settings): Long? =
-        nextOnPlanMs(listOf(PouchTiming.toDose(pouch, s)), s.pk, levelMg, pouch.timestamp)?.let { it - pouch.timestamp }
+    /**
+     * How often [pouch] can come again and again with nicotine just before each next one at or below [levelMg]: the shortest
+     * such interval in five-minute steps, from the pouch's own time in the mouth up to half a day; null if not even then.
+     */
+    fun repeatEveryMs(pouch: LogEntry, levelMg: Double, s: Settings): Long? {
+        val step = 5 * MINUTE_MS
+        var every = (PouchTiming.effectiveDurationMs(pouch, s) + step - 1) / step * step
+        while (every <= 12 * 3_600_000L) {
+            if (leftAfterMg(pouch, s, every) * buildUp(every, s) <= levelMg) return every
+            every += step
+        }
+        return null
+    }
 
     /**
      * Level (mg) below which the next pouch is due at [nowMs]; null with the plan off or too little data yet. It is fixed

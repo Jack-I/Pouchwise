@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -210,8 +211,10 @@ fun ScrollableBodyChart(
     planColor: Color = Color.Unspecified,
     /** Written over the "now" line where it does not run into the axis titles. */
     nowLabel: String = "",
-    /** When the forecast nicotine drops below [Pharmacokinetics.NICOTINE_NONE_MG] for good, marked faintly with its time. */
+    /** When the forecast nicotine drops below [Pharmacokinetics.NICOTINE_NONE_MG] for good, marked faintly with a ring and its time. */
     nicotineGoneMs: Long? = null,
+    /** The same below [Pharmacokinetics.NICOTINE_CLEARED_MG], about where blood tests stop finding it, marked with a dot. */
+    nicotineUndetectableMs: Long? = null,
 ) {
     val measurer = rememberTextMeasurer(cacheSize = 64)
     val labelStyle = TextStyle(fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -392,16 +395,29 @@ fun ScrollableBodyChart(
                     label(measurer, Fmt.time(nextOnPlanMs), xp, yp + 8.dp.toPx(), planLabelStyle, Align.CENTER)
                 }
             }
-            if (nicotineGoneMs != null && nicotineGoneMs > nowMs && nicotineGoneMs in t0..t1) {
-                val gone = Offset(x(nicotineGoneMs), yN(Pharmacokinetics.NICOTINE_NONE_MG))
-                drawCircle(goneFill, radius = 4.5.dp.toPx(), center = gone)
-                drawCircle(goneColor, radius = 4.5.dp.toPx(), center = gone, style = Stroke(width = 2.dp.toPx()))
-                // Above the curve on its flat side, to the right; to the left near the right edge.
-                val text = measurer.measure(AnnotatedString(Fmt.time(nicotineGoneMs)), style = goneLabelStyle)
+            fun mark(atMs: Long?, levelMg: Double, ring: Boolean, toLeft: Boolean, clear: Rect? = null): Rect? {
+                if (atMs == null || atMs <= nowMs || atMs !in t0..t1) return null
+                val at = Offset(x(atMs), yN(levelMg))
+                if (ring) {
+                    drawCircle(goneFill, radius = 4.5.dp.toPx(), center = at)
+                    drawCircle(goneColor, radius = 4.5.dp.toPx(), center = at, style = Stroke(width = 2.dp.toPx()))
+                } else {
+                    drawCircle(goneColor, radius = 3.5.dp.toPx(), center = at)
+                }
+                // Above the curve, which is all but flat down here; on the other side where the chart ends.
+                val text = measurer.measure(AnnotatedString(Fmt.time(atMs)), style = goneLabelStyle)
                 val gap = 6.dp.toPx()
-                val left = if (gone.x + gap + text.size.width <= padL + w) gone.x + gap else gone.x - gap - text.size.width
-                drawText(text, topLeft = Offset(left, gone.y - gap - text.size.height))
+                val onLeft = at.x - gap - text.size.width
+                val fitsRight = at.x + gap + text.size.width <= padL + w
+                val left = if (toLeft && onLeft >= padL || !fitsRight) onLeft else at.x + gap
+                var box = Rect(Offset(left, at.y - gap - text.size.height), Size(text.size.width.toFloat(), text.size.height.toFloat()))
+                if (clear != null && box.overlaps(clear)) box = box.translate(0f, clear.top - gap / 3 - box.bottom)
+                drawText(text, topLeft = box.topLeft)
+                return box
             }
+            val zeroLabel = mark(nicotineGoneMs, Pharmacokinetics.NICOTINE_NONE_MG, ring = true, toLeft = false)
+            // Its time on the left, so the two stay apart when a wide view puts the marks close together.
+            mark(nicotineUndetectableMs, Pharmacokinetics.NICOTINE_CLEARED_MG, ring = false, toLeft = true, clear = zeroLabel)
         }
         if (nowMs in t0..t1) {
             val xn = x(nowMs)
