@@ -23,6 +23,7 @@
     <string name="mg_value">%1$s\u00A0мг</string>
     <string name="duration_m">%1$d\u00A0мин</string>
     <string name="duration_h_m">%1$d\u00A0ч\u00A0%2$d\u00A0мин</string>
+    <string name="duration_h_mm">%1$d\u00A0ч\u00A0%2$02d</string>
     <string name="duration_d_h">%1$d\u00A0д\u00A0%2$d\u00A0ч</string>
     <string name="time_now">сейчас</string>
     <string name="stepper_less">%1$s: меньше</string>
@@ -181,6 +182,11 @@
     <string name="legend_usage">Использовано</string>
     <string name="legend_limit">Дневной лимит</string>
     <string name="chart_earlier_days">← раньше</string>
+    <string name="rest_chart_title">Отдых рецепторов</string>
+    <string name="rest_chart_sub">Время за день, когда никотин ниже %1$s\u00A0нг/мл и большинство рецепторов свободны.</string>
+    <string name="legend_rest">Отдых</string>
+    <string name="legend_rest_week">Среднее за неделю</string>
+    <string name="unit_hours">ч</string>
     <string name="chart_plan_ahead">план вперёд →</string>
 
     <string name="plan_title">Мой план</string>

@@ -49,18 +49,23 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.pouchwise.model.BodyLevels
 import app.pouchwise.model.DayStat
 import app.pouchwise.model.LimitMode
 import app.pouchwise.model.Pharmacokinetics
+import app.pouchwise.model.RestDay
+import app.pouchwise.model.RestWeek
 import app.pouchwise.util.Fmt
 import java.time.Instant
 import java.time.LocalDate
@@ -502,8 +507,117 @@ private fun slice(points: List<Pair<Long, BodyLevels>>, t0: Long, t1: Long): Lis
     return points.subList(from, to + 1)
 }
 
-/** Width of one day in [DailyBarChart]: about a dozen days fit on a phone. */
+/** Width of one day in the day charts: about a dozen days fit on a phone. */
 private const val DAY_SLOT_DP = 22
+
+/** What a day chart shows now: [offset] is the fractional slot at the left edge and [shown] how many slots fit. */
+private class DayWindow(val slot: Float, val padL: Float, val offset: Float, val shown: Float) {
+    fun x(i: Int): Float = padL + (i - offset) * slot + slot / 2f
+
+    /** The slots in view, with one more on each side. */
+    fun visible(days: Int): IntRange = (floor(offset).toInt() - 1).coerceAtLeast(0)..min(days - 1, ceil(offset + shown).toInt())
+}
+
+/** Text styles of the day labels under a day chart. */
+private class DayAxis(val plain: TextStyle, val today: TextStyle, val ahead: TextStyle, val locale: Locale) {
+    private val monthFmt = DateTimeFormatter.ofPattern("LLLL", locale)
+    fun monthName(d: LocalDate): String = monthFmt.format(d).replaceFirstChar { it.titlecase(locale) }
+}
+
+@Composable
+private fun rememberDayAxis(): DayAxis {
+    val plain = TextStyle(fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val today = plain.copy(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+    val locale = remember { Locale.getDefault() }
+    return remember(plain, today, locale) { DayAxis(plain, today, plain.copy(color = plain.color.copy(alpha = 0.6f)), locale) }
+}
+
+/**
+ * A canvas of [days] day slots dragged sideways. Once its width is known, the slot at the left edge is [place] of the
+ * number of slots that fit.
+ */
+@Composable
+private fun DayStripCanvas(
+    days: Int,
+    height: Dp,
+    place: (shown: Float) -> Float,
+    modifier: Modifier = Modifier,
+    draw: DrawScope.(DayWindow) -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val slot = with(density) { DAY_SLOT_DP.dp.toPx() }
+    val padL = with(density) { 36.dp.toPx() }
+    var widthPx by remember { mutableIntStateOf(0) }
+    val shown = if (widthPx > padL) (widthPx - padL) / slot else 0f
+    // The slot at the left edge, fractional; dragging moves it.
+    val first = remember { Animatable(0f) }
+    var placed by remember { mutableStateOf(false) }
+    LaunchedEffect(days, shown) {
+        if (shown <= 0f) return@LaunchedEffect
+        first.updateBounds(0f, max(days - shown, 0f))
+        if (!placed) {
+            first.snapTo(place(shown))
+            placed = true
+        }
+    }
+    Canvas(
+        modifier
+            .fillMaxWidth()
+            .height(height)
+            .onSizeChanged { widthPx = it.width }
+            .draggable(
+                state = rememberDraggableState { delta -> scope.launch { first.snapTo(first.value - delta / slot) } },
+                orientation = Orientation.Horizontal,
+                onDragStopped = { velocity -> first.animateDecay(-velocity / slot, exponentialDecay()) },
+            ),
+    ) { draw(DayWindow(slot, padL, first.value, shown)) }
+}
+
+/** Grid lines from 0 to [top] every [step], each with its value left of [padL]. */
+private fun DrawScope.drawScale(measurer: TextMeasurer, step: Double, top: Double, padL: Float, y: (Double) -> Float, style: TextStyle, color: Color) {
+    var v = 0.0
+    while (v <= top + 1e-9) {
+        val yy = y(v)
+        drawLine(color, Offset(padL, yy), Offset(size.width, yy), strokeWidth = 1f)
+        label(measurer, tickLabel(v), padL - 6.dp.toPx(), yy - 7.sp.toPx(), style, Align.END)
+        v += step
+    }
+}
+
+/**
+ * Every day in view carries its date and weekday from [top] down. The month of the leftmost day stays over the left
+ * edge; the next one's name stands over its first day once that is clear of it.
+ */
+private fun DrawScope.drawDayLabels(measurer: TextMeasurer, axis: DayAxis, win: DayWindow, firstDay: Long, days: Int, todayIdx: Int, top: Float) {
+    val leftMonth = axis.monthName(LocalDate.ofEpochDay(firstDay + floor(win.offset).toInt().coerceIn(0, days - 1)))
+    val leftEnd = win.padL + 2.dp.toPx() + measurer.measure(AnnotatedString(leftMonth), style = axis.plain).size.width + 8.dp.toPx()
+    label(measurer, leftMonth, win.padL + 2.dp.toPx(), 0f, axis.plain)
+    for (i in win.visible(days)) {
+        val date = LocalDate.ofEpochDay(firstDay + i)
+        val style = when {
+            i == todayIdx -> axis.today
+            i > todayIdx -> axis.ahead
+            else -> axis.plain
+        }
+        val xc = win.x(i)
+        label(measurer, date.dayOfMonth.toString(), xc, top + 6.dp.toPx(), style, Align.CENTER)
+        label(
+            measurer, date.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, axis.locale),
+            xc, top + 20.dp.toPx(), style.copy(fontSize = 10.sp), Align.CENTER,
+        )
+        val monthAt = xc - win.slot / 2f + 2.dp.toPx()
+        if (date.dayOfMonth == 1 && monthAt >= leftEnd) label(measurer, axis.monthName(date), monthAt, 0f, axis.plain)
+    }
+}
+
+/** A dashed line down today's slot to the axis. */
+private fun DrawScope.drawTodayLine(x: Float, top: Float, bottom: Float, color: Color) {
+    drawLine(
+        color, Offset(x, top - 6.dp.toPx()), Offset(x, bottom), strokeWidth = 1.5.dp.toPx(),
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx())),
+    )
+}
 
 /**
  * Bars of daily usage with the limit as a line, dragged sideways through the whole history and the days of
@@ -523,21 +637,10 @@ fun DailyBarChart(
 ) {
     fun value(st: DayStat): Double = if (mode == LimitMode.COUNT) st.count.toDouble() else st.mg
     val measurer = rememberTextMeasurer(cacheSize = 64)
-    val labelStyle = TextStyle(fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    val todayStyle = labelStyle.copy(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-    val aheadStyle = labelStyle.copy(color = labelStyle.color.copy(alpha = 0.6f))
+    val axis = rememberDayAxis()
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val overColor = MaterialTheme.colorScheme.error
-    val locale = remember { Locale.getDefault() }
-    val monthFmt = remember { DateTimeFormatter.ofPattern("LLLL", locale) }
-    fun monthName(d: LocalDate) = monthFmt.format(d).replaceFirstChar { it.titlecase(locale) }
-    val scope = rememberCoroutineScope()
-    val density = LocalDensity.current
-    val slot = with(density) { DAY_SLOT_DP.dp.toPx() }
-    val padL = with(density) { 36.dp.toPx() }
-    var widthPx by remember { mutableIntStateOf(0) }
     val days = stats.size + futureLimits.size
-    val shown = if (widthPx > padL) (widthPx - padL) / slot else 0f
     val todayIdx = stats.indexOfFirst { it.epochDay == todayDay }.takeIf { it >= 0 } ?: stats.lastIndex
 
     val scale = remember(stats, futureLimits, mode) {
@@ -548,62 +651,29 @@ fun DailyBarChart(
         step to ceil(rawMax * 1.1 / step) * step
     }
 
-    // The slot at the left edge, fractional; dragging moves it.
-    val first = remember { Animatable(0f) }
-    var placed by remember { mutableStateOf(false) }
-    LaunchedEffect(days, shown) {
-        if (shown <= 0f) return@LaunchedEffect
-        first.updateBounds(0f, max(days - shown, 0f))
-        if (!placed) {
-            first.snapTo(todayIdx + 0.5f - shown * 2f / 3f)
-            placed = true
-        }
-    }
-
-    Canvas(
-        modifier
-            .fillMaxWidth()
-            .height(232.dp)
-            .onSizeChanged { widthPx = it.width }
-            .draggable(
-                state = rememberDraggableState { delta -> scope.launch { first.snapTo(first.value - delta / slot) } },
-                orientation = Orientation.Horizontal,
-                onDragStopped = { velocity -> first.animateDecay(-velocity / slot, exponentialDecay()) },
-            ),
-    ) {
-        if (stats.isEmpty()) return@Canvas
+    DayStripCanvas(days, 232.dp, place = { shown -> todayIdx + 0.5f - shown * 2f / 3f }, modifier) { win ->
+        if (stats.isEmpty()) return@DayStripCanvas
         val padT = 22.dp.toPx()
         val padB = 36.dp.toPx()
         val h = size.height - padT - padB
         val (step, yMax) = scale
-        val firstDay = stats.first().epochDay
-        val offset = first.value
-        val barW = slot * 0.55f
+        val barW = win.slot * 0.55f
 
-        fun xCenter(i: Int) = padL + (i - offset) * slot + slot / 2f
         fun y(v: Double) = padT + h - (v / yMax).toFloat() * h
         fun limitAt(i: Int): Int? =
             if (i < stats.size) stats[i].takeIf { it.mode == mode }?.limit else futureLimits[i - stats.size].second
 
-        var v = 0.0
-        while (v <= yMax + 1e-9) {
-            val yy = y(v)
-            drawLine(gridColor, Offset(padL, yy), Offset(size.width, yy), strokeWidth = 1f)
-            label(measurer, tickLabel(v), padL - 6.dp.toPx(), yy - 7.sp.toPx(), labelStyle, Align.END)
-            v += step
-        }
-
-        val from = (floor(offset).toInt() - 1).coerceAtLeast(0)
-        val to = min(days - 1, ceil(offset + shown).toInt())
-        clipRect(left = padL, top = 0f, right = size.width, bottom = size.height) {
-            for (i in from..min(to, stats.lastIndex)) {
+        drawScale(measurer, step, yMax, win.padL, { y(it) }, axis.plain, gridColor)
+        val visible = win.visible(days)
+        clipRect(left = win.padL, top = 0f, right = size.width, bottom = size.height) {
+            for (i in visible.first..min(visible.last, stats.lastIndex)) {
                 val st = stats[i]
                 if (value(st) <= 0) continue
                 val top = y(value(st))
                 // Colour by the day's own verdict, made under the plan of that day.
                 drawRoundRect(
                     color = if (st.withinLimit) barColor else overColor,
-                    topLeft = Offset(xCenter(i) - barW / 2f, top),
+                    topLeft = Offset(win.x(i) - barW / 2f, top),
                     size = Size(barW, padT + h - top),
                     cornerRadius = CornerRadius(barW / 2.5f, barW / 2.5f),
                 )
@@ -612,51 +682,121 @@ fun DailyBarChart(
             // limit line; gaps where a past day counted in the other unit
             val limitPath = Path()
             var penDown = false
-            for (i in from..to) {
+            for (i in visible) {
                 val lim = limitAt(i)
                 if (lim == null) {
                     penDown = false
                     continue
                 }
-                val px = xCenter(i)
+                val px = win.x(i)
                 val py = y(lim.toDouble())
                 if (penDown) limitPath.lineTo(px, py) else limitPath.moveTo(px, py)
                 penDown = true
             }
             drawPath(limitPath, lineColor, style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round))
 
-            if (todayIdx in from..to) {
-                val xt = xCenter(todayIdx)
-                drawLine(
-                    gridColor, Offset(xt, padT - 6.dp.toPx()), Offset(xt, padT + h), strokeWidth = 1.5.dp.toPx(),
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 6.dp.toPx())),
-                )
+            if (todayIdx in visible) {
+                val xt = win.x(todayIdx)
+                drawTodayLine(xt, padT, padT + h, gridColor)
                 val lim = stats[todayIdx].limit
                 drawCircle(lineColor, radius = 5.dp.toPx(), center = Offset(xt, y(lim.toDouble())))
-                label(measurer, Fmt.mg(lim.toDouble()), xt, y(lim.toDouble()) - 20.sp.toPx(), labelStyle.copy(color = lineColor), Align.CENTER)
+                label(measurer, Fmt.mg(lim.toDouble()), xt, y(lim.toDouble()) - 20.sp.toPx(), axis.plain.copy(color = lineColor), Align.CENTER)
             }
 
-            // The month of the leftmost day stays over the left edge; the next one's name stands over its first
-            // day once that is clear of it.
-            val leftMonth = monthName(LocalDate.ofEpochDay(firstDay + floor(offset).toInt().coerceIn(0, days - 1)))
-            val leftEnd = padL + 2.dp.toPx() + measurer.measure(AnnotatedString(leftMonth), style = labelStyle).size.width + 8.dp.toPx()
-            label(measurer, leftMonth, padL + 2.dp.toPx(), 0f, labelStyle)
-            for (i in from..to) {
-                val date = LocalDate.ofEpochDay(firstDay + i)
-                val style = when {
-                    i == todayIdx -> todayStyle
-                    i > todayIdx -> aheadStyle
-                    else -> labelStyle
-                }
-                val xc = xCenter(i)
-                label(measurer, date.dayOfMonth.toString(), xc, padT + h + 6.dp.toPx(), style, Align.CENTER)
-                label(
-                    measurer, date.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, locale),
-                    xc, padT + h + 20.dp.toPx(), style.copy(fontSize = 10.sp), Align.CENTER,
-                )
-                val monthAt = xc - slot / 2f + 2.dp.toPx()
-                if (date.dayOfMonth == 1 && monthAt >= leftEnd) label(measurer, monthName(date), monthAt, 0f, labelStyle)
-            }
+            drawDayLabels(measurer, axis, win, stats.first().epochDay, days, todayIdx, padT + h)
         }
     }
 }
+
+/**
+ * Receptor rest per day as bars, dragged sideways like [DailyBarChart] with today at the right edge, and a line across
+ * each week at its average, [weekLabels] at the line's end. Today, still running, is faded.
+ */
+@Composable
+fun DailyRestChart(
+    days: List<RestDay>,
+    weeks: List<RestWeek>,
+    weekLabels: List<String>,
+    barColor: Color,
+    lineColor: Color,
+    /** The card behind the chart, under each week's label so bars do not run through it. */
+    haloColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    val measurer = rememberTextMeasurer(cacheSize = 64)
+    val axis = rememberDayAxis()
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
+    val weekStyle = axis.plain.copy(color = lineColor, fontWeight = FontWeight.Bold)
+    val scale = remember(days) {
+        val rawMax = max(days.maxOfOrNull { it.restMs / HOUR_MS } ?: 0.0, 1.0)
+        val step = niceStep(rawMax, whole = true)
+        step to ceil(rawMax * 1.1 / step) * step
+    }
+    val description = restDescription(weeks, weekLabels, Fmt::dayRange)
+    val described = if (description.isEmpty()) modifier else modifier.semantics { contentDescription = description }
+
+    DayStripCanvas(days.size, 200.dp, place = { shown -> days.size - shown }, described) { win ->
+        if (days.isEmpty()) return@DayStripCanvas
+        val padT = 22.dp.toPx()
+        val padB = 36.dp.toPx()
+        val h = size.height - padT - padB
+        val (step, yMax) = scale
+        val barW = win.slot * 0.55f
+        val firstDay = days.first().epochDay
+        val todayIdx = days.indexOfLast { it.running }.takeIf { it >= 0 } ?: days.size
+
+        fun y(hours: Double) = padT + h - (hours / yMax).toFloat() * h
+
+        drawScale(measurer, step, yMax, win.padL, { y(it) }, axis.plain, gridColor)
+        val visible = win.visible(days.size)
+        clipRect(left = win.padL, top = 0f, right = size.width, bottom = size.height) {
+            for (i in visible) {
+                val day = days[i]
+                if (day.restMs <= 0) continue
+                val top = y(day.restMs / HOUR_MS)
+                drawRoundRect(
+                    color = if (day.running) barColor.copy(alpha = 0.45f) else barColor,
+                    topLeft = Offset(win.x(i) - barW / 2f, top),
+                    size = Size(barW, padT + h - top),
+                    cornerRadius = CornerRadius(barW / 2.5f, barW / 2.5f),
+                )
+            }
+            if (todayIdx in visible) drawTodayLine(win.x(todayIdx), padT, padT + h, gridColor)
+
+            val gap = 2.dp.toPx()
+            val pad = 3.dp.toPx()
+            weeks.forEachIndexed { k, week ->
+                val slots = weekSlots(week.monday, firstDay, days.lastIndex)
+                if (slots.isEmpty()) return@forEachIndexed
+                val left = win.x(slots.first) - win.slot / 2f + gap
+                val right = win.x(slots.last) + win.slot / 2f - gap
+                if (right < win.padL || left > size.width) return@forEachIndexed
+                val yw = y(week.avgMs / HOUR_MS)
+                drawLine(lineColor, Offset(left, yw), Offset(right, yw), strokeWidth = 2.5.dp.toPx(), cap = StrokeCap.Round)
+                val text = measurer.measure(AnnotatedString(weekLabels[k]), style = weekStyle)
+                val tx = labelLeft(left, right, text.size.width.toFloat()) ?: return@forEachIndexed
+                val ty = yw - 4.dp.toPx() - text.size.height
+                drawRoundRect(
+                    haloColor, Offset(tx - pad, ty), Size(text.size.width + 2 * pad, text.size.height.toFloat()),
+                    CornerRadius(4.dp.toPx()),
+                )
+                drawText(text, topLeft = Offset(tx, ty))
+            }
+
+            drawDayLabels(measurer, axis, win, firstDay, days.size, todayIdx, padT + h)
+        }
+    }
+}
+
+private const val HOUR_MS = 3_600_000.0
+
+/** The slots of the week from [monday]; the running week's stop at [lastIdx], today. */
+internal fun weekSlots(monday: Long, firstDay: Long, lastIdx: Int): IntRange =
+    (monday - firstDay).toInt()..min((monday + 6 - firstDay).toInt(), lastIdx)
+
+/** Where a label right-aligned at the end of a line starts; null when it is wider than the line. */
+internal fun labelLeft(lineLeft: Float, lineRight: Float, width: Float): Float? = (lineRight - width).takeIf { it >= lineLeft }
+
+/** The last two weeks for TalkBack, each as its [range] and label. */
+internal fun restDescription(weeks: List<RestWeek>, labels: List<String>, range: (Long, Long) -> String): String =
+    weeks.zip(labels).takeLast(2).joinToString("; ") { (w, text) -> "${range(w.monday, w.monday + 6)}: $text" }

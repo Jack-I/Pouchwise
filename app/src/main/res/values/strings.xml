@@ -25,6 +25,7 @@
     <string name="mg_value">%1$s\u00A0mg</string>
     <string name="duration_m">%1$d\u00A0min</string>
     <string name="duration_h_m">%1$d\u00A0h\u00A0%2$d\u00A0min</string>
+    <string name="duration_h_mm">%1$d\u00A0h\u00A0%2$02d</string>
     <string name="duration_d_h">%1$d\u00A0d\u00A0%2$d\u00A0h</string>
     <string name="time_now">now</string>
     <string name="stepper_less">%1$s: less</string>
@@ -178,6 +179,11 @@
     <string name="legend_usage">Usage</string>
     <string name="legend_limit">Daily limit</string>
     <string name="chart_earlier_days">← earlier days</string>
+    <string name="rest_chart_title">Receptors at rest</string>
+    <string name="rest_chart_sub">Time a day with nicotine below %1$s\u00A0ng/mL, when most of them are free.</string>
+    <string name="legend_rest">Rest</string>
+    <string name="legend_rest_week">Week average</string>
+    <string name="unit_hours">h</string>
     <string name="chart_plan_ahead">plan ahead →</string>
 
     <!-- plan -->

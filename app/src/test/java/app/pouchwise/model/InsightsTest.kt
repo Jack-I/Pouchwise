@@ -89,4 +89,49 @@ class InsightsTest {
         // Monday the 19th's first pouch and the 2nd's only one; the 20th's first has no answer.
         assertEquals(listOf(0, 0, 1, 1), f.firstOfDay)
     }
+
+    private val hour = 3_600_000L
+    private val oneAm = Settings(dayStartHour = 1, bodyWeightKg = 72.0)
+    private fun pouchFiled(ms: Long) = LogEntry(
+        id = nextId++, pouchTypeId = 1, timestamp = ms, strengthMg = 6.0, pouchMinutes = 30, day = DayKeys.epochDay(ms, 1),
+    )
+
+    @Test
+    fun restLeavesOutTheFirstDayAndCountsTodayUpToNow() {
+        // The 00:30 pouch on the 12th belongs to the 11th, whose day runs to 01:00.
+        val entries = listOf(pouchFiled(at(10, 22)), pouchFiled(at(12, 0, 30)))
+        assertEquals(day(11)..day(13), ReceptorRest.days(entries, oneAm, day(13)))
+        val doses = entries.map { PouchTiming.toDose(it, oneAm) }
+        val rest = ReceptorRest.byDay(doses, oneAm, day(11)..day(13), at(13, 7))
+        assertEquals(listOf(day(11), day(12), day(13)), rest.map { it.epochDay })
+        assertEquals(listOf(false, false, true), rest.map { it.running })
+        // Each morning waits for the night's pouch to clear.
+        rest.take(2).forEach { assertTrue("${it.restMs / 60_000} min", it.restMs in 16 * hour until 24 * hour) }
+        assertEquals(6 * hour, rest[2].restMs)
+    }
+
+    @Test
+    fun aDayWithoutPouchesRestsWholeAndAClockChangeDayIsLonger() {
+        // Cyprus turns the clocks back on Sunday 25 October 2026.
+        val rest = ReceptorRest.byDay(emptyList(), oneAm, day(24)..day(25), Long.MAX_VALUE, ZoneId.of("Asia/Nicosia"))
+        assertEquals(listOf(24 * hour, 25 * hour), rest.map { it.restMs })
+    }
+
+    @Test
+    fun weekAveragesUseFinishedDaysOnly() {
+        val days = listOf(
+            RestDay(day(18), 6 * hour, running = false),
+            RestDay(day(19), 2 * hour, running = false),
+            RestDay(day(20), 4 * hour, running = false),
+            RestDay(day(21), 1 * hour, running = true),
+        )
+        assertEquals(listOf(RestWeek(day(12), 6 * hour), RestWeek(day(19), 3 * hour)), ReceptorRest.weeks(days))
+        assertEquals(emptyList<RestWeek>(), ReceptorRest.weeks(listOf(RestDay(day(19), hour, running = true))))
+    }
+
+    @Test
+    fun noDayToShowWithoutAnEarlierDay() {
+        assertTrue(ReceptorRest.days(listOf(pouchFiled(at(13, 9))), oneAm, day(13)).isEmpty())
+        assertTrue(ReceptorRest.days(emptyList(), oneAm, day(13)).isEmpty())
+    }
 }

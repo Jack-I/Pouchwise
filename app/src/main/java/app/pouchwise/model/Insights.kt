@@ -149,3 +149,33 @@ object FeltPatterns {
         return FeltSummary(weeks, counts(strongest.filter { it.first.id in first }.map { it.second }), strongest.size, inWindow.size)
     }
 }
+
+/** Receptor rest on one tracking day; a [running] day counts only up to now. */
+data class RestDay(val epochDay: Long, val restMs: Long, val running: Boolean)
+
+/** Average rest a day over the finished days of the Monday-to-Sunday week from [monday]. */
+data class RestWeek(val monday: Long, val avgMs: Long)
+
+/** The Body screen's "Receptors at rest today", day by day. */
+object ReceptorRest {
+    /** From the day after the first logged one, whose night before is unknown, through [today]. */
+    fun days(entries: List<LogEntry>, s: Settings, today: Long): LongRange =
+        entries.minOfOrNull { DayKeys.of(it, s.dayStartHour) }?.let { it + 1..today } ?: LongRange.EMPTY
+
+    /** Each of [days] from its start to the next day's start or [nowMs], whichever comes first. */
+    fun byDay(doses: List<Dose>, s: Settings, days: LongRange, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): List<RestDay> {
+        val level = IntervalPlan.restLevelMg(s)
+        return days.map { day ->
+            val start = DayKeys.startOfDayMs(day, s.dayStartHour, zone)
+            val end = DayKeys.endOfDayMs(day, s.dayStartHour, zone)
+            RestDay(day, IntervalPlan.restMs(doses, s.pk, level, start, min(end, nowMs)), running = end > nowMs)
+        }
+    }
+
+    /** Oldest first. */
+    fun weeks(days: List<RestDay>): List<RestWeek> =
+        days.filterNot { it.running }
+            .groupBy { it.epochDay - (LocalDate.ofEpochDay(it.epochDay).dayOfWeek.value - 1) }
+            .toSortedMap()
+            .map { (monday, own) -> RestWeek(monday, own.sumOf { it.restMs } / own.size) }
+}

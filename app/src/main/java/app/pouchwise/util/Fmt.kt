@@ -32,6 +32,13 @@ object Fmt {
 
     fun percent(ratio: Double): String = String.format(Locale.getDefault(), "%d%%", (ratio * 100).roundToInt())
 
+    /** "2 h 36" or "36 min" through the two formats; never "now" or days, unlike `durationText`. */
+    fun hoursMinutes(ms: Long, hoursFormat: String, minutesFormat: String): String {
+        val minutes = (ms / 60_000L).coerceAtLeast(0)
+        return if (minutes < 60) String.format(Locale.getDefault(), minutesFormat, minutes)
+        else String.format(Locale.getDefault(), hoursFormat, minutes / 60, minutes % 60)
+    }
+
     /** "2 pouches left today", "1 pouch over the limit", "35 mg left today"… */
     fun leftToday(res: Resources, mode: LimitMode, limit: Int, count: Int, mg: Double): String {
         val left = Limits.left(mode, limit, count, mg)

@@ -18,6 +18,17 @@ class FmtTest {
     }
 
     @Test
+    fun hoursAndMinutesNeverReadNowOrDays() = inUk {
+        val h = "%1\$d h %2\$02d"
+        val m = "%1\$d min"
+        assertEquals("0 min", Fmt.hoursMinutes(0, h, m))
+        assertEquals("0 min", Fmt.hoursMinutes(59_000, h, m))
+        assertEquals("36 min", Fmt.hoursMinutes(36 * 60_000L, h, m))
+        assertEquals("2 h 36", Fmt.hoursMinutes((2 * 60 + 36) * 60_000L, h, m))
+        assertEquals("24 h 00", Fmt.hoursMinutes(24 * 3_600_000L, h, m))
+    }
+
+    @Test
     fun theCurrencySymbolNeverWrapsAwayFromItsNumber() = inUk {
         assertEquals("1.58 €", Fmt.money(1.58, "€"))
         assertEquals("2,480 ₽", Fmt.money(2480.0, "₽"))

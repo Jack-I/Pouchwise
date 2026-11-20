@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
 import app.pouchwise.R
 import app.pouchwise.data.Felt
+import app.pouchwise.data.LogEntry
 import app.pouchwise.model.*
 import app.pouchwise.ui.components.*
 import app.pouchwise.ui.theme.AppColors
@@ -37,6 +38,8 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private const val WEEKS = 5
 
@@ -186,8 +189,49 @@ fun HistoryScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                         Text(stringResource(R.string.chart_plan_ahead), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
+
+                RestCard(entries, settings, today, now)
             }
         }
+    }
+}
+
+/** Receptor rest day by day; finished days are worked out again only when the log, the settings or the day change. */
+@Composable
+private fun RestCard(entries: List<LogEntry>, settings: Settings, today: Long, now: Long) {
+    val days = remember(entries, settings.dayStartHour, today) { ReceptorRest.days(entries, settings, today) }
+    if (days.isEmpty()) return
+    val doses = remember(entries, settings) { entries.map { PouchTiming.toDose(it, settings) } }
+    val finished by produceState<List<RestDay>?>(null, doses, settings, days) {
+        value = withContext(Dispatchers.Default) { ReceptorRest.byDay(doses, settings, days.first until today, System.currentTimeMillis()) }
+    }
+    val running by produceState<RestDay?>(null, doses, settings, today, now) {
+        value = withContext(Dispatchers.Default) { ReceptorRest.byDay(doses, settings, today..today, wallClock(now)).firstOrNull() }
+    }
+    val shown = finished?.plus(listOfNotNull(running)) ?: return
+    val weeks = remember(shown) { ReceptorRest.weeks(shown) }
+    val hoursFormat = stringResource(R.string.duration_h_mm)
+    val minutesFormat = stringResource(R.string.duration_m)
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    SoftCard {
+        Text(stringResource(R.string.rest_chart_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.rest_chart_sub, Fmt.ngMl(IntervalPlan.RECEPTOR_HALF_NG_ML)), style = MaterialTheme.typography.bodySmall, color = muted)
+        Spacer(Modifier.height(4.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            LegendSwatch(MaterialTheme.colorScheme.secondary, stringResource(R.string.legend_rest))
+            LegendSwatch(MaterialTheme.colorScheme.onSurface, stringResource(R.string.legend_rest_week))
+        }
+        Text("${stringResource(R.string.unit_hours)} / ${stringResource(R.string.per_day)}", style = MaterialTheme.typography.bodySmall, color = muted)
+        Spacer(Modifier.height(8.dp))
+        DailyRestChart(
+            days = shown,
+            weeks = weeks,
+            weekLabels = weeks.map { Fmt.hoursMinutes(it.avgMs, hoursFormat, minutesFormat) },
+            barColor = MaterialTheme.colorScheme.secondary,
+            lineColor = MaterialTheme.colorScheme.onSurface,
+            haloColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
+        Text(stringResource(R.string.chart_earlier_days), style = MaterialTheme.typography.labelSmall, color = muted)
     }
 }
 
