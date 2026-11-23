@@ -22,7 +22,7 @@ android {
         applicationId = "app.pouchwise"
         minSdk = 26
         targetSdk = 35
-        versionCode = 51
+        versionCode = 52
         versionName = "0.9.9"
     }
 

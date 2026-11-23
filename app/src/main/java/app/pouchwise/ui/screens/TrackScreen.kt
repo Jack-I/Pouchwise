@@ -309,6 +309,8 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             onDismiss = { addDialog = false },
             currency = Money.symbol(settings, context),
             onSave = { vm.addType(it); addDialog = false },
+            types = types,
+            onRestore = { vm.restoreType(it); addDialog = false },
         )
     }
 }

@@ -48,6 +48,12 @@ fun PouchType.edited(e: PouchEdit): PouchType = copy(
     pricePerCan = e.pricePerCan, pouchesPerCan = e.pouchesPerCan,
 )
 
+/** The flavour or line: the name after the brand; none for rows from before brands were stored, whose name is all brand. */
+fun PouchType.variant(): String {
+    val b = brand.trim()
+    return if (b.isEmpty()) "" else (if (name.startsWith(b, ignoreCase = true)) name.substring(b.length) else name).trim()
+}
+
 /** What one pouch of this kind costs, or null without a price. */
 fun PouchType.pricePerPouch(): Double? = pricePerCan?.takeIf { pouchesPerCan > 0 }?.div(pouchesPerCan)
 

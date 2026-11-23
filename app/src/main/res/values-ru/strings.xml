@@ -125,6 +125,9 @@
     <string name="edit_pouch">Изменить пауч</string>
     <string name="archived">Скрытые</string>
     <string name="restore">Вернуть</string>
+    <string name="hidden_match_q">%1$s есть в скрытых</string>
+    <string name="hidden_match_restore">Вернуть из скрытых</string>
+    <string name="hidden_match_add">Добавить, это другой</string>
     <string name="delete_type_q">Удалить %1$s?</string>
     <string name="hide_type_q">Скрыть %1$s?</string>
     <string name="delete_type_body">Пауч пропадёт с экрана учёта, история останется. Его можно вернуть.</string>

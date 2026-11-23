@@ -165,6 +165,8 @@ fun PouchTypesScreen(vm: AppViewModel, onBack: () -> Unit) {
             onDismiss = { adding = false },
             currency = Money.symbol(settings, context),
             onSave = { vm.addType(it); adding = false },
+            types = types,
+            onRestore = { vm.restoreType(it); adding = false },
         )
     }
     editing?.let { t ->

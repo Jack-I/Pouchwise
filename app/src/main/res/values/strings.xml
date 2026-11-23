@@ -119,6 +119,9 @@
     <string name="edit_pouch">Edit pouch</string>
     <string name="archived">Hidden</string>
     <string name="restore">Show again</string>
+    <string name="hidden_match_q">%1$s is in Hidden</string>
+    <string name="hidden_match_restore">Restore from Hidden</string>
+    <string name="hidden_match_add">Add, it\'s a different one</string>
     <string name="delete_type_q">Delete %1$s?</string>
     <string name="hide_type_q">Hide %1$s?</string>
     <string name="delete_type_body">It leaves the Track screen; its history stays. You can bring it back later.</string>

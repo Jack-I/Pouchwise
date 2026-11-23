@@ -49,8 +49,10 @@ import app.pouchwise.data.FeltMark
 import app.pouchwise.data.PouchType
 import app.pouchwise.util.Fmt
 import app.pouchwise.data.PouchEdit
+import app.pouchwise.data.variant
 import app.pouchwise.model.Brands
 import app.pouchwise.model.DayKeys
+import app.pouchwise.model.HiddenMatch
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.ui.theme.PaletteOrder
 import app.pouchwise.ui.theme.PouchPalette
@@ -68,9 +70,6 @@ const val OTHER_BRAND = ""
 
 /** A typed number, or null for anything else, including "NaN" and "Infinity", which Kotlin would otherwise accept. */
 fun parseDecimal(text: String): Double? = text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() }
-
-private fun String.removePrefixIgnoringCase(prefix: String): String =
-    if (startsWith(prefix, ignoreCase = true)) substring(prefix.length) else this
 
 /**
  * Brand chips from the catalogue plus "Other" with a free-text name, and a one-line note on how fast
@@ -127,22 +126,22 @@ fun PouchTypeDialog(
     onDismiss: () -> Unit,
     currency: String,
     onSave: (PouchEdit) -> Unit,
+    /** All pouches: adding one that is already hidden asks whether to restore it instead. */
+    types: List<PouchType> = emptyList(),
+    onRestore: (PouchType) -> Unit = {},
 ) {
     val initialKnown = initial?.brand?.let { Brands.find(it)?.name }
     var brandSel by rememberSaveable { mutableStateOf(initialKnown ?: OTHER_BRAND) }
     var custom by rememberSaveable {
         mutableStateOf(if (initial == null || initialKnown != null) "" else initial.brand.ifBlank { initial.name })
     }
-    var variant by rememberSaveable {
-        mutableStateOf(
-            if (initial == null || initial.brand.isBlank()) "" else initial.name.removePrefixIgnoringCase(initial.brand.trim()).trim(),
-        )
-    }
+    var variant by rememberSaveable { mutableStateOf(initial?.variant() ?: "") }
     var strength by rememberSaveable { mutableStateOf(initial?.let { fmtInput(it.strengthMg) } ?: "") }
     var color by rememberSaveable { mutableIntStateOf(initial?.colorIndex ?: 0) }
     var fast by rememberSaveable { mutableStateOf(initial?.fastRelease ?: false) }
     var price by rememberSaveable { mutableStateOf(initial?.pricePerCan?.let { fmtInput(it) } ?: "") }
     var perCan by rememberSaveable { mutableStateOf((initial?.pouchesPerCan ?: 20).toString()) }
+    var hiddenMatch by remember { mutableStateOf<Pair<PouchEdit, PouchType>?>(null) }
     val mg = parseDecimal(strength)
     val brand = resolveBrand(brandSel, custom)
     val priceValue = parseDecimal(price)
@@ -245,7 +244,9 @@ fun PouchTypeDialog(
             TextButton(
                 enabled = valid,
                 onClick = {
-                    onSave(PouchEdit(brand, variant.trim(), mg ?: 0.0, color, fast, priceValue.takeIf { price.isNotBlank() }, perCanValue ?: 20))
+                    val edit = PouchEdit(brand, variant.trim(), mg ?: 0.0, color, fast, priceValue.takeIf { price.isNotBlank() }, perCanValue ?: 20)
+                    val match = if (initial == null) HiddenMatch.find(edit, types) else null
+                    if (match != null) hiddenMatch = edit to match else onSave(edit)
                 },
             ) {
                 Text(stringResource(R.string.save))
@@ -255,6 +256,18 @@ fun PouchTypeDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
+    hiddenMatch?.let { (edit, match) ->
+        AlertDialog(
+            onDismissRequest = { hiddenMatch = null },
+            title = { Text(stringResource(R.string.hidden_match_q, "${match.name} ${stringResource(R.string.mg_value, Fmt.mg(match.strengthMg))}")) },
+            confirmButton = {
+                TextButton(onClick = { hiddenMatch = null; onRestore(match) }) { Text(stringResource(R.string.hidden_match_restore)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { hiddenMatch = null; onSave(edit) }) { Text(stringResource(R.string.hidden_match_add)) }
+            },
+        )
+    }
 }
 
 /** The palette in rows of seven around the colour wheel; the circles shrink to fit a narrow dialog. */
