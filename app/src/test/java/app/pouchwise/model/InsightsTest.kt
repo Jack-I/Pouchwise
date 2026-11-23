@@ -90,6 +90,22 @@ class InsightsTest {
         assertEquals(listOf(0, 0, 1, 1), f.firstOfDay)
     }
 
+    @Test
+    fun aDoubleDeckerCountsOnceByItsStrongestAnswer() {
+        // Wednesday 4 November: two pouches in together as the day's first, answered apart.
+        val first = pouch(LocalDateTime.of(2026, 11, 4, 9, 0).atZone(zone).toInstant().toEpochMilli())
+        val second = pouch(first.timestamp + 10 * 60_000L)
+        val marks = listOf(
+            FeltMark(entryId = first.id, level = Felt.A_BIT.level, atMs = first.timestamp + 15 * 60_000L),
+            FeltMark(entryId = second.id, level = Felt.NOTHING.level, atMs = first.timestamp + 15 * 60_000L),
+        ).groupBy { it.entryId }
+        val f = FeltPatterns.summary(listOf(first, second), marks, Settings(), LocalDate.of(2026, 11, 4).toEpochDay())
+        assertEquals(1, f.answered)
+        assertEquals(1, f.pouches)
+        assertEquals(listOf(0, 1, 0, 0), f.weeks.single().counts)
+        assertEquals(listOf(0, 1, 0, 0), f.firstOfDay)
+    }
+
     private val hour = 3_600_000L
     private val oneAm = Settings(dayStartHour = 1, bodyWeightKg = 72.0)
     private fun pouchFiled(ms: Long) = LogEntry(

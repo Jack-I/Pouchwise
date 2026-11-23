@@ -63,6 +63,21 @@ class ExportTest {
     }
 
     @Test
+    fun anAnswerListsThePouchesInWithIt() {
+        // A third pouch in from 10 to 40 minutes, over the first one's last 20.
+        val third = LogEntry(id = 3, pouchTypeId = 2, timestamp = t0 + 10 * min, strengthMg = 6.5, releaseK = Brands.kFor("ZYN"), pouchMinutes = 30, day = day)
+        val marks = listOf(
+            FeltMark(entryId = 1, level = Felt.HIT.level, atMs = t0 + 12 * min),
+            FeltMark(entryId = 1, level = Felt.OVERWHELM.level, atMs = t0 + 30 * min, recalled = true),
+            FeltMark(entryId = 3, level = Felt.HIT.level, atMs = t0 + 35 * min),
+        )
+        val rows = Export.feltCsv(entries + third, types, Settings(bodyWeightKg = 72.0), marks).trim().lines()
+        val names = rows[0].split(',')
+        fun cell(row: Int, name: String) = rows[row].split(',')[names.indexOf(name)]
+        assertEquals(listOf("3", "3", ""), (1..3).map { cell(it, "others_in_mouth") })
+    }
+
+    @Test
     fun thePouchCsvShowsTheLatestAnswer() {
         val rows = Export.csv(entries, types, Settings(), marks).trim().lines()
         val names = rows[0].split(',')

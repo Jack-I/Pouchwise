@@ -340,7 +340,7 @@
     <string name="patterns_in_mouth">Average in mouth</string>
     <string name="patterns_empty">Log a few days to see patterns.</string>
     <string name="felt_card_title">How pouches felt</string>
-    <string name="felt_card_sub">Last 30 days · answered: %1$d of %2$d pouches · the strongest answer of each counts</string>
+    <string name="felt_card_sub">Last 30 days · answered: %1$d of %2$d · the strongest answer of each counts, a double-decker once</string>
     <string name="felt_by_week">By week</string>
     <string name="felt_week_running">%1$s, so far</string>
     <string name="felt_first_of_day">First pouch of the day</string>

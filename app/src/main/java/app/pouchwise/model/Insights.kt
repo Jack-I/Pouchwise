@@ -135,18 +135,22 @@ data class FeltSummary(
 )
 
 object FeltPatterns {
-    /** How pouches felt over the last [Patterns.DAYS] days; a pouch counts once, by the strongest of its answers. */
+    /**
+     * How pouches felt over the last [Patterns.DAYS] days. Pouches in the mouth together count once, as [SharedFelt.groups],
+     * by the strongest answer of any of them.
+     */
     fun summary(entries: List<LogEntry>, marks: Map<Long, List<FeltMark>>, s: Settings, today: Long): FeltSummary {
         val fromDay = today - (Patterns.DAYS - 1)
         val inWindow = entries.filter { DayKeys.of(it, s.dayStartHour) in fromDay..today }
-        val strongest = inWindow.mapNotNull { e -> marks[e.id]?.maxOfOrNull { it.level }?.let { e to it } }
+        val groups = SharedFelt.groups(inWindow, s)
+        val strongest = groups.mapNotNull { g -> g.mapNotNull { e -> marks[e.id]?.maxOfOrNull { it.level } }.maxOrNull()?.let { g to it } }
         fun counts(levels: List<Int>) = Felt.entries.map { f -> levels.count { it == f.level } }
         val weeks = strongest
-            .groupBy { (e, _) -> DayKeys.of(e, s.dayStartHour).let { it - (LocalDate.ofEpochDay(it).dayOfWeek.value - 1) } }
+            .groupBy { (g, _) -> DayKeys.of(g.first(), s.dayStartHour).let { it - (LocalDate.ofEpochDay(it).dayOfWeek.value - 1) } }
             .toSortedMap()
             .map { (monday, list) -> FeltWeek(monday, max(monday, fromDay), counts(list.map { it.second })) }
         val first = IntervalPlan.firstOfDayIds(inWindow, s)
-        return FeltSummary(weeks, counts(strongest.filter { it.first.id in first }.map { it.second }), strongest.size, inWindow.size)
+        return FeltSummary(weeks, counts(strongest.filter { (g, _) -> g.any { it.id in first } }.map { it.second }), strongest.size, groups.size)
     }
 }
 

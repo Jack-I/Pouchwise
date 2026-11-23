@@ -348,7 +348,7 @@
     <string name="patterns_in_mouth">В среднем во рту</string>
     <string name="patterns_empty">Записей пока мало для закономерностей.</string>
     <string name="felt_card_title">Как ощущались паучи</string>
-    <string name="felt_card_sub">Последние 30 дней · с ответом: %1$d из %2$d · у пауча считается самый сильный ответ</string>
+    <string name="felt_card_sub">Последние 30 дней · с ответом: %1$d из %2$d · считается самый сильный ответ, даблдекер — один раз</string>
     <string name="felt_by_week">По неделям</string>
     <string name="felt_week_running">%1$s, ещё идёт</string>
     <string name="felt_first_of_day">Первый пауч за день</string>

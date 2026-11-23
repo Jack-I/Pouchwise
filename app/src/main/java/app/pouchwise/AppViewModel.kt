@@ -25,6 +25,7 @@ import app.pouchwise.model.LimitMode
 import app.pouchwise.model.PlanHistory
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.model.Settings
+import app.pouchwise.model.SharedFelt
 import app.pouchwise.util.Export
 import app.pouchwise.widget.WidgetUpdater
 import kotlinx.coroutines.CancellationException
@@ -198,13 +199,23 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshWidgets()
     }
 
-    /** Records how the pouch feels now. */
+    /** Records how it feels now on every pouch in the mouth: two in at once are one feeling. */
     fun addFelt(entry: LogEntry, felt: Felt) = viewModelScope.launch {
-        dao.insertFeltMark(FeltMark(entryId = entry.id, level = felt.level, atMs = System.currentTimeMillis()))
+        val now = System.currentTimeMillis()
+        val marks = SharedFelt.toAdd(inMouthWith(entry, now), dao.allFeltMarks().groupBy { it.entryId }, felt, now)
+        if (marks.isNotEmpty()) dao.insertFeltMarks(marks)
     }
 
+    /** Takes back [entry]'s latest answer and the same answer given with it to other pouches. */
     fun takeBackFelt(entry: LogEntry) = viewModelScope.launch {
-        dao.deleteLatestFeltMark(entry.id)
+        val marks = SharedFelt.toTakeBack(entry, dao.allFeltMarks().groupBy { it.entryId })
+        if (marks.isNotEmpty()) dao.deleteFeltMarks(marks.map { it.id })
+    }
+
+    /** The pouches in the mouth at [nowMs], and [entry], whose card was tapped. */
+    private suspend fun inMouthWith(entry: LogEntry, nowMs: Long): List<LogEntry> {
+        val s = settingsRepo.settings.first()
+        return listOf(entry) + entries.value.filter { it.id != entry.id && PouchTiming.isActive(it, s, nowMs) }
     }
 
     fun updateSettings(transform: (Settings) -> Settings) = viewModelScope.launch {

@@ -135,14 +135,10 @@ interface PouchDao {
     suspend fun allFeltMarks(): List<FeltMark>
 
     @Insert
-    suspend fun insertFeltMark(mark: FeltMark): Long
-
-    @Insert
     suspend fun insertFeltMarks(marks: List<FeltMark>)
 
-    /** Takes back the pouch's latest answer. */
-    @Query("DELETE FROM felt_marks WHERE id = (SELECT id FROM felt_marks WHERE entryId = :entryId ORDER BY atMs DESC, id DESC LIMIT 1)")
-    suspend fun deleteLatestFeltMark(entryId: Long)
+    @Query("DELETE FROM felt_marks WHERE id IN (:ids)")
+    suspend fun deleteFeltMarks(ids: List<Long>)
 
     @Query("DELETE FROM felt_marks WHERE entryId = :entryId")
     suspend fun deleteFeltMarksOf(entryId: Long)

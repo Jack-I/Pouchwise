@@ -16,6 +16,7 @@ import app.pouchwise.model.Levels
 import app.pouchwise.model.Pharmacokinetics
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.model.Settings
+import app.pouchwise.model.SharedFelt
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -66,7 +67,7 @@ object Export {
         fun freePct(nicotineNg: Double) = dec(100.0 * (1.0 - Levels.receptorsBusy(nicotineNg)), 0)
         val header = "entry_id,pouch,brand,strength_mg,release_k,toss_in_iso,mark_iso,min_after_toss_in,in_mouth,felt,recalled," +
             "nicotine_ng_ml,cotinine_ng_ml,receptors_free_pct,nicotine_at_toss_in_ng_ml,receptors_free_at_toss_in_pct," +
-            "nicotine_at_pull_out_ng_ml,receptors_free_at_pull_out_pct,min_since_prev_pouch,first_of_day"
+            "nicotine_at_pull_out_ng_ml,receptors_free_at_pull_out_pct,min_since_prev_pouch,first_of_day,others_in_mouth"
         return table(header, marks.sortedWith(compareBy({ it.atMs }, { it.id })).mapNotNull { m ->
             val e = entryById[m.entryId] ?: return@mapNotNull null
             val felt = Felt.of(m.level) ?: return@mapNotNull null
@@ -83,6 +84,7 @@ object Export {
                 dec(nicotine, 1), dec(ng(atMark.cotinineMg, Pharmacokinetics.COTININE_VD_L_PER_KG), 1), freePct(nicotine),
                 dec(atStart, 1), freePct(atStart), dec(atOut, 1), freePct(atOut),
                 previous[e.id]?.let { minutesAfter(it.timestamp, e.timestamp) } ?: "", if (e.id in firsts) 1 else 0,
+                SharedFelt.othersInMouth(e.id, m.atMs, sorted, settings).joinToString(";"),
             )
         })
     }
