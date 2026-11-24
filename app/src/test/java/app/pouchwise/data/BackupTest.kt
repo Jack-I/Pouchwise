@@ -26,6 +26,10 @@ class BackupTest {
             id = 7, name = "Vont", strengthMg = 7.0, colorIndex = 5, sortOrder = 0, archived = true,
             createdAt = 1_700_000_100_000L, brand = "Vont", releaseK = 0.0624,
         ),
+        PouchType(
+            id = 9, name = "Camo zesty orange", strengthMg = 6.0, colorIndex = 4, sortOrder = 2,
+            createdAt = 1_700_000_200_000L, brand = "Camo", releaseK = Brands.SLOW_K, slowRelease = true,
+        ),
     )
     private val entries = listOf(
         LogEntry(id = 10, pouchTypeId = 3, timestamp = 1_760_000_000_000L, strengthMg = 10.0, endTimestamp = 1_760_000_900_000L, releaseK = 0.10, pouchMinutes = 25),
@@ -133,6 +137,7 @@ class BackupTest {
         val contents = Backup.parse(old)
         assertTrue(contents.types[0].fastRelease) // Velo's own rate is below the fast-release one
         assertFalse(contents.types[1].fastRelease)
+        assertFalse(contents.types.any { it.slowRelease })
         assertEquals(listOf(0, 1), contents.types.map { it.sortOrder })
         assertNull(contents.entries[0].endTimestamp)
 

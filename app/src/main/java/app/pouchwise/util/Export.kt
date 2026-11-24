@@ -118,7 +118,7 @@ object Export {
                     put("id", t.id); put("name", t.name); put("strengthMg", t.strengthMg)
                     put("colorIndex", t.colorIndex); put("sortOrder", t.sortOrder); put("archived", t.archived)
                     put("createdAt", t.createdAt); put("brand", t.brand); put("releaseK", t.releaseK)
-                    put("fastRelease", t.fastRelease)
+                    put("fastRelease", t.fastRelease); put("slowRelease", t.slowRelease)
                     put("pricePerCan", t.pricePerCan ?: JSONObject.NULL); put("pouchesPerCan", t.pouchesPerCan)
                 })
             }

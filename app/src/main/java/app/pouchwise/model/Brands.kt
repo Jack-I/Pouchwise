@@ -5,6 +5,9 @@ import kotlin.math.roundToInt
 
 data class BrandInfo(val name: String, val kPerMin: Double, val inStudy: Boolean = true)
 
+/** How fast a pouch line gives up nicotine next to its brand, as the user sets it on the pouch. */
+enum class Release { SLOW, NORMAL, FAST }
+
 /**
  * First-order nicotine release constants per brand, from in-vitro dissolution of commercial pouches
  * in artificial saliva (Platt et al., Sci Rep 2026, USP-4 flow-through, 60 min). Brands that were not measured
@@ -28,12 +31,18 @@ object Brands {
     /** Rate used for a pouch marked "fast release": ZYN-like, applied when the brand's own rate is lower. */
     const val FAST_K = 0.10
 
+    /** Rate used for a pouch marked "slow release": ZYN Wet's, applied when the brand's own rate is higher. */
+    val SLOW_K: Double = known.first { it.name == "ZYN Wet" }.kPerMin
+
     fun find(brand: String): BrandInfo? = known.firstOrNull { it.name.equals(brand.trim(), ignoreCase = true) }
 
     fun kFor(brand: String): Double = find(brand)?.kPerMin ?: averageK
 
-    fun effectiveK(brand: String, fastRelease: Boolean): Double =
-        if (fastRelease) maxOf(kFor(brand), FAST_K) else kFor(brand)
+    fun effectiveK(brand: String, release: Release): Double = when (release) {
+        Release.SLOW -> minOf(kFor(brand), SLOW_K)
+        Release.NORMAL -> kFor(brand)
+        Release.FAST -> maxOf(kFor(brand), FAST_K)
+    }
 
     /** Share of the 60-minute release that is out after 20 minutes, in percent — a feel for the speed. */
     fun percentBy20Min(kPerMin: Double): Int =

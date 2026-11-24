@@ -8,4 +8,9 @@ class PaletteTest {
     fun thePickerShowsEveryColourOnce() {
         assertEquals(PouchPalette.indices.toList(), PaletteOrder.sorted())
     }
+
+    @Test
+    fun everyPickerRowIsAFullRainbow() {
+        assertEquals(0, PaletteOrder.size % 7)
+    }
 }

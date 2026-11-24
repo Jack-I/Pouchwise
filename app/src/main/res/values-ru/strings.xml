@@ -116,8 +116,13 @@
     <string name="brand_speed_short">%1$d%% за 20 мин</string>
     <string name="pouch_strength">Крепость, мг на пауч</string>
     <string name="strong_warning">Вы просрали свою толерантность. Переключитесь на более слабые паучи.</string>
-    <string name="fast_release">Быстрая отдача</string>
-    <string name="fast_release_hint">Для мини, сухих слимов и сильно щиплющих: они отдают никотин быстро, как ZYN, и время во рту для них значит меньше.</string>
+    <string name="release_title">Отдача никотина</string>
+    <string name="release_slow">Медленная</string>
+    <string name="release_normal">Обычная</string>
+    <string name="release_fast">Быстрая</string>
+    <string name="release_slow_hint">Для паучей, которые не чувствуются на заявленную крепость: они отдают никотин медленно, как ZYN Wet.</string>
+    <string name="release_normal_hint">Скорость бренда, как указано выше.</string>
+    <string name="release_fast_hint">Для мини, сухих слимов и сильно щиплющих: они отдают никотин быстро, как ZYN.</string>
     <string name="pouch_color">Цвет</string>
     <string name="absorbed_today">≈\u00A0%1$s\u00A0мг усвоено сегодня</string>
     <string name="absorbed_short">≈\u00A0%1$s\u00A0мг\u00A0усвоено</string>

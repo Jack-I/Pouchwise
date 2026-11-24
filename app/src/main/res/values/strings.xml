@@ -110,8 +110,13 @@
     <string name="brand_speed_short">%1$d%% in 20 min</string>
     <string name="pouch_strength">Strength, mg per pouch</string>
     <string name="strong_warning">You\'ve blown your tolerance. Switch to weaker pouches.</string>
-    <string name="fast_release">Fast release</string>
-    <string name="fast_release_hint">For minis, dry slims and pouches that tingle hard: they give up nicotine fast, like ZYN, so time in the mouth matters less.</string>
+    <string name="release_title">Nicotine release</string>
+    <string name="release_slow">Slow</string>
+    <string name="release_normal">Normal</string>
+    <string name="release_fast">Fast</string>
+    <string name="release_slow_hint">For pouches that don\'t feel as strong as their label: they give up nicotine slowly, like ZYN Wet.</string>
+    <string name="release_normal_hint">The brand\'s own rate, as above.</string>
+    <string name="release_fast_hint">For minis, dry slims and pouches that tingle hard: they give up nicotine fast, like ZYN.</string>
     <string name="pouch_color">Colour</string>
     <string name="absorbed_today">≈\u00A0%1$s\u00A0mg absorbed today</string>
     <string name="absorbed_short">≈\u00A0%1$s\u00A0mg\u00A0absorbed</string>

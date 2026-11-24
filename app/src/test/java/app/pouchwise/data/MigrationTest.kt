@@ -42,7 +42,7 @@ class MigrationTest {
             migrate(db, from = 1)
             val entry = rows(db, "SELECT pouchTypeId, timestamp, strengthMg, releaseK, endTimestamp FROM log_entries").single()
             assertEquals(listOf<Any?>(1L, 1000L, 6.0, 0.0624, null), entry)
-            assertEquals(listOf<Any?>(20L, 0L, ""), rows(db, "SELECT pouchesPerCan, fastRelease, brand FROM pouch_types").single())
+            assertEquals(listOf<Any?>(20L, 0L, 0L, ""), rows(db, "SELECT pouchesPerCan, fastRelease, slowRelease, brand FROM pouch_types").single())
             assertEquals(0, rows(db, "SELECT * FROM felt_marks").size)
         }
     }
@@ -205,7 +205,7 @@ class MigrationTest {
     private fun JSONArray.strings(): List<String> = (0 until length()).map { getString(it) }
 
     private companion object {
-        const val SCHEMA = "schemas/app.pouchwise.data.AppDatabase/11.json"
+        const val SCHEMA = "schemas/app.pouchwise.data.AppDatabase/12.json"
 
         /** Columns each migration added, by the version it leads to. */
         val ADDED = mapOf(
@@ -218,6 +218,7 @@ class MigrationTest {
             8 to mapOf("pouch_types" to setOf("pricePerCan", "pouchesPerCan"), "log_entries" to setOf("pricePerPouch", "planLevelMg")),
             9 to mapOf("log_entries" to setOf("felt", "feltAt")),
             11 to mapOf("felt_marks" to setOf("recalled")),
+            12 to mapOf("pouch_types" to setOf("slowRelease")),
         )
 
         /** Tables that a later version brought in. */

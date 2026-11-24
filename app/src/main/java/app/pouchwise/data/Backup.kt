@@ -101,6 +101,9 @@ object Backup {
     private fun type(o: JSONObject, index: Int): PouchType {
         val brand = o.text("brand")
         val releaseK = o.finite("releaseK", Brands.kFor(brand)).takeIf { it > 0.0 && it <= 1.0 } ?: Brands.kFor(brand)
+        // Exports from 0.7.0 lack the tick; the release constant gives it away.
+        val fast = if (o.has("fastRelease")) o.getBoolean("fastRelease")
+                   else releaseK >= Brands.FAST_K - 1e-9 && Brands.kFor(brand) < Brands.FAST_K
         return PouchType(
             id = o.getLong("id"),
             name = o.getString("name"),
@@ -111,9 +114,8 @@ object Backup {
             createdAt = o.optLong("createdAt", 0L),
             brand = brand,
             releaseK = releaseK,
-            // Exports from 0.7.0 lack the tick; the release constant gives it away.
-            fastRelease = if (o.has("fastRelease")) o.getBoolean("fastRelease")
-                          else releaseK >= Brands.FAST_K - 1e-9 && Brands.kFor(brand) < Brands.FAST_K,
+            fastRelease = fast,
+            slowRelease = !fast && o.optBoolean("slowRelease", false),
             pricePerCan = o.amount("pricePerCan"),
             pouchesPerCan = o.optInt("pouchesPerCan", 20).coerceIn(1, 1_000),
         )

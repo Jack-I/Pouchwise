@@ -24,6 +24,7 @@ import app.pouchwise.model.DayKeys
 import app.pouchwise.model.LimitMode
 import app.pouchwise.model.PlanHistory
 import app.pouchwise.model.PouchTiming
+import app.pouchwise.model.Release
 import app.pouchwise.model.Settings
 import app.pouchwise.model.SharedFelt
 import app.pouchwise.util.Export
@@ -245,7 +246,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun completeOnboarding(brand: String, strengthNow: Double, perDayNow: Int, perDayTarget: Int, strengthTarget: Double) =
         viewModelScope.launch {
-            insertType(PouchEdit(brand, variant = "", strengthNow, colorIndex = 0, fastRelease = false, pricePerCan = null, pouchesPerCan = 20))
+            insertType(PouchEdit(brand, variant = "", strengthNow, colorIndex = 0, release = Release.NORMAL, pricePerCan = null, pouchesPerCan = 20))
             val (before, after) = settingsRepo.update { s ->
                 val today = DayKeys.epochDay(System.currentTimeMillis(), s.dayStartHour)
                 val targetDay = DayKeys.localDate(today).plusMonths(2).toEpochDay()

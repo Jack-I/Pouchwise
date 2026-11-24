@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -32,7 +31,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -49,11 +47,13 @@ import app.pouchwise.data.FeltMark
 import app.pouchwise.data.PouchType
 import app.pouchwise.util.Fmt
 import app.pouchwise.data.PouchEdit
+import app.pouchwise.data.release
 import app.pouchwise.data.variant
 import app.pouchwise.model.Brands
 import app.pouchwise.model.DayKeys
 import app.pouchwise.model.HiddenMatch
 import app.pouchwise.model.PouchTiming
+import app.pouchwise.model.Release
 import app.pouchwise.ui.theme.PaletteOrder
 import app.pouchwise.ui.theme.PouchPalette
 import app.pouchwise.ui.theme.pouchColor
@@ -117,6 +117,38 @@ fun BrandPicker(
 fun resolveBrand(selected: String, custom: String): String =
     if (selected != OTHER_BRAND) selected else custom.trim()
 
+/** Slow, normal or fast release next to the brand's own rate, with a line on the chosen one. */
+@Composable
+fun ReleasePicker(selected: Release, onSelect: (Release) -> Unit) {
+    val options = listOf(
+        Release.SLOW to R.string.release_slow,
+        Release.NORMAL to R.string.release_normal,
+        Release.FAST to R.string.release_fast,
+    )
+    Column {
+        Text(stringResource(R.string.release_title), style = MaterialTheme.typography.labelLarge)
+        Spacer(Modifier.height(4.dp))
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            options.forEachIndexed { i, (release, label) ->
+                SegmentedButton(
+                    selected = selected == release,
+                    onClick = { onSelect(release) },
+                    shape = SegmentedButtonDefaults.itemShape(index = i, count = options.size),
+                    colors = SegmentedButtonDefaults.colors(inactiveContainerColor = Color.Transparent),
+                    icon = {},
+                ) { FittingText(stringResource(label)) }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        val hint = when (selected) {
+            Release.SLOW -> R.string.release_slow_hint
+            Release.NORMAL -> R.string.release_normal_hint
+            Release.FAST -> R.string.release_fast_hint
+        }
+        Text(stringResource(hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
 /** Above this labelled strength the dialog shows the tolerance warning. */
 const val STRONG_POUCH_MG = 12.0
 
@@ -138,7 +170,7 @@ fun PouchTypeDialog(
     var variant by rememberSaveable { mutableStateOf(initial?.variant() ?: "") }
     var strength by rememberSaveable { mutableStateOf(initial?.let { fmtInput(it.strengthMg) } ?: "") }
     var color by rememberSaveable { mutableIntStateOf(initial?.colorIndex ?: 0) }
-    var fast by rememberSaveable { mutableStateOf(initial?.fastRelease ?: false) }
+    var release by rememberSaveable { mutableStateOf(initial?.release() ?: Release.NORMAL) }
     var price by rememberSaveable { mutableStateOf(initial?.pricePerCan?.let { fmtInput(it) } ?: "") }
     var perCan by rememberSaveable { mutableStateOf((initial?.pouchesPerCan ?: 20).toString()) }
     var hiddenMatch by remember { mutableStateOf<Pair<PouchEdit, PouchType>?>(null) }
@@ -191,21 +223,8 @@ fun PouchTypeDialog(
                     )
                 }
                 Spacer(Modifier.height(12.dp))
-                Row(
-                    Modifier.toggleable(value = fast, role = Role.Checkbox, onValueChange = { fast = it }),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Checkbox(checked = fast, onCheckedChange = null)
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.fast_release), style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            stringResource(R.string.fast_release_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
+                ReleasePicker(release, onSelect = { release = it })
+                Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
                         value = price,
@@ -244,7 +263,7 @@ fun PouchTypeDialog(
             TextButton(
                 enabled = valid,
                 onClick = {
-                    val edit = PouchEdit(brand, variant.trim(), mg ?: 0.0, color, fast, priceValue.takeIf { price.isNotBlank() }, perCanValue ?: 20)
+                    val edit = PouchEdit(brand, variant.trim(), mg ?: 0.0, color, release, priceValue.takeIf { price.isNotBlank() }, perCanValue ?: 20)
                     val match = if (initial == null) HiddenMatch.find(edit, types) else null
                     if (match != null) hiddenMatch = edit to match else onSave(edit)
                 },
@@ -270,7 +289,7 @@ fun PouchTypeDialog(
     }
 }
 
-/** The palette in rows of seven around the colour wheel; the circles shrink to fit a narrow dialog. */
+/** The palette in its rainbow rows of seven; the circles shrink to fit a narrow dialog. */
 @Composable
 private fun ColorGrid(selected: Int, onSelect: (Int) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

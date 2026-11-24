@@ -5,6 +5,7 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import app.pouchwise.model.Brands
+import app.pouchwise.model.Release
 
 /** A kind of pouch the user buys: brand plus nicotine strength. */
 @Entity(tableName = "pouch_types")
@@ -21,10 +22,12 @@ data class PouchType(
     val releaseSpeed: Int = 1,
     /** Brand as picked from the catalogue or typed by the user; empty for rows created before 0.4. */
     val brand: String = "",
-    /** First-order nicotine release constant, per minute (see [Brands]); already includes [fastRelease]. */
+    /** First-order nicotine release constant, per minute (see [Brands]); already includes [release]. */
     val releaseK: Double = Brands.averageK,
     /** User marked this line as fast-releasing (mini, dry-slim, strong tingle). */
     val fastRelease: Boolean = false,
+    /** User marked this line as slow-releasing (feels weaker than its label); never set together with [fastRelease]. */
+    val slowRelease: Boolean = false,
     /** Price of a can in the user's currency; null until entered. */
     val pricePerCan: Double? = null,
     val pouchesPerCan: Int = 20,
@@ -36,7 +39,7 @@ data class PouchEdit(
     val variant: String,
     val strengthMg: Double,
     val colorIndex: Int,
-    val fastRelease: Boolean,
+    val release: Release,
     val pricePerCan: Double?,
     val pouchesPerCan: Int,
 )
@@ -44,9 +47,16 @@ data class PouchEdit(
 /** This kind with what the pouch editor handed back; its id, order and history stay. */
 fun PouchType.edited(e: PouchEdit): PouchType = copy(
     name = Brands.displayName(e.brand, e.variant), strengthMg = e.strengthMg, colorIndex = e.colorIndex,
-    brand = e.brand.trim(), releaseK = Brands.effectiveK(e.brand, e.fastRelease), fastRelease = e.fastRelease,
+    brand = e.brand.trim(), releaseK = Brands.effectiveK(e.brand, e.release),
+    fastRelease = e.release == Release.FAST, slowRelease = e.release == Release.SLOW,
     pricePerCan = e.pricePerCan, pouchesPerCan = e.pouchesPerCan,
 )
+
+fun PouchType.release(): Release = when {
+    fastRelease -> Release.FAST
+    slowRelease -> Release.SLOW
+    else -> Release.NORMAL
+}
 
 /** The flavour or line: the name after the brand; none for rows from before brands were stored, whose name is all brand. */
 fun PouchType.variant(): String {

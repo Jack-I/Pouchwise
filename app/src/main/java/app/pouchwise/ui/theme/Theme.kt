@@ -93,11 +93,17 @@ val PouchPalette = listOf(
     Color(0xFF1E88E5), Color(0xFF43A047), Color(0xFFFB8C00), Color(0xFF8E24AA),
     Color(0xFFE53935), Color(0xFF00ACC1), Color(0xFF6D4C41), Color(0xFF546E7A),
     Color(0xFFFDD835), Color(0xFFF48FB1), Color(0xFF1DE9B6), Color(0xFFE040FB),
-    Color(0xFF90CAF9), Color(0xFF304FFE),
+    Color(0xFF90CAF9), Color(0xFF304FFE), Color(0xFFF9C09E), Color(0xFF6FD525),
+    Color(0xFFB995F6), Color(0xFFB8A000), Color(0xFFA81032), Color(0xFF7E6F08),
+    Color(0xFF0F6722),
 )
 
-/** [PouchPalette] indices around the colour wheel from red, the muted brown and blue-grey last. */
-val PaletteOrder = listOf(4, 2, 8, 1, 10, 5, 12, 0, 13, 3, 11, 9, 6, 7)
+/** [PouchPalette] indices in three rainbow rows, red to violet: light, medium, dark. */
+val PaletteOrder = listOf(
+    9, 14, 8, 15, 10, 12, 16,
+    4, 2, 17, 1, 5, 0, 11,
+    18, 6, 19, 20, 7, 13, 3,
+)
 
 fun pouchColor(index: Int): Color = PouchPalette[Math.floorMod(index, PouchPalette.size)]
 

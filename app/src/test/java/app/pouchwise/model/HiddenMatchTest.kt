@@ -11,7 +11,7 @@ class HiddenMatchTest {
         PouchType(id = id, name = Brands.displayName(brand, flavour), brand = brand, strengthMg = mg, archived = archived, createdAt = createdAt)
 
     private fun edit(brand: String, flavour: String, mg: Double) =
-        PouchEdit(brand, flavour, mg, colorIndex = 0, fastRelease = false, pricePerCan = null, pouchesPerCan = 20)
+        PouchEdit(brand, flavour, mg, colorIndex = 0, release = Release.NORMAL, pricePerCan = null, pouchesPerCan = 20)
 
     @Test
     fun aTypoInTheFlavourStillFindsIt() {

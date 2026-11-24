@@ -26,10 +26,19 @@ class BrandsTest {
 
     @Test
     fun fastReleaseRaisesSlowBrandsOnly() {
-        assertEquals(Brands.FAST_K, Brands.effectiveK("Velo", true), 1e-12)
-        assertEquals(Brands.FAST_K, Brands.effectiveK("Zeus", true), 1e-12)
-        assertEquals(0.103, Brands.effectiveK("ZYN", true), 1e-12)   // already faster than the flag
-        assertEquals(0.057, Brands.effectiveK("Velo", false), 1e-12)
+        assertEquals(Brands.FAST_K, Brands.effectiveK("Velo", Release.FAST), 1e-12)
+        assertEquals(Brands.FAST_K, Brands.effectiveK("Zeus", Release.FAST), 1e-12)
+        assertEquals(0.103, Brands.effectiveK("ZYN", Release.FAST), 1e-12)   // already faster than the flag
+        assertEquals(0.057, Brands.effectiveK("Velo", Release.NORMAL), 1e-12)
+    }
+
+    @Test
+    fun slowReleaseCountsLikeZynWetAndLowersFastBrandsOnly() {
+        assertEquals(Brands.kFor("ZYN Wet"), Brands.SLOW_K, 1e-12)
+        assertEquals(Brands.SLOW_K, Brands.effectiveK("Camo", Release.SLOW), 1e-12)
+        assertEquals(Brands.SLOW_K, Brands.effectiveK("ZYN", Release.SLOW), 1e-12)
+        assertEquals(0.021, Brands.effectiveK("Loop", Release.SLOW), 1e-12)   // already slower than the flag
+        assertEquals(55, Brands.percentBy20Min(Brands.SLOW_K))
     }
 
     @Test
