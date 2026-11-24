@@ -320,6 +320,8 @@
     <string name="interval_cap">Never above %1$s\u00A0mg: what you would have before each next one, taking a typical pouch every two hours.</string>
     <string name="interval_keep_rule">Hold: the next one is better after nicotine drops below %1$s\u00A0mg. Days stay as they are.</string>
     <string name="interval_lower_rule">Lower: %2$d%% lower, now %1$s\u00A0mg, recalculated every Monday, so the gaps grow week by week.</string>
+    <!-- The hour here and in plan_break_* is IntervalPlan.MIN_BREAK_MS. -->
+    <string name="interval_min_break">In both modes the break after a pouch is at least 1\u00A0h.</string>
     <string name="interval_typical_times">Taking a typical pouch again and again, the next one is better every %1$s with Hold and %2$s with Lower.</string>
     <string name="interval_learning">To learn your usual level the plan needs at least five pouches in the two weeks before today, not counting each day\'s first.</string>
     <string name="interval_never_blocks">A pouch taken earlier is marked, never blocked.</string>
@@ -358,6 +360,8 @@
     <string name="plan_wait_lower">In %1$s nicotine drops below %2$s\u00A0mg (lowering tolerance)</string>
     <string name="plan_kept_hold">Nicotine is below %1$s\u00A0mg (holding tolerance)</string>
     <string name="plan_kept_lower">Nicotine is below %1$s\u00A0mg (lowering tolerance)</string>
+    <string name="plan_break_hold">A break of at least 1\u00A0h after a pouch (holding tolerance)</string>
+    <string name="plan_break_lower">A break of at least 1\u00A0h after a pouch (lowering tolerance)</string>
     <string name="chart_hold">Holding tolerance: %1$s\u00A0mg of nicotine</string>
     <string name="chart_lower">Lowering tolerance: %1$s\u00A0mg of nicotine</string>
     <string name="history_days">Days</string>

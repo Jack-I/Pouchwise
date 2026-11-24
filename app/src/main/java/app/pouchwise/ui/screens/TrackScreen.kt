@@ -105,11 +105,11 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
             }
     }
     val pouchInNow = activeEntries.isNotEmpty()
-    // The interval plan: the level below which the next pouch is due, and when the forecast gets there.
+    // The interval plan: the level below which the next pouch is due, and when the next one is better after.
     val doses = remember(entries, settings) { entries.map { PouchTiming.toDose(it, settings) } }
     val planLevel = remember(entries, settings, today) { IntervalPlan.threshold(entries, settings, wallNow) }
     val nextOnPlan = remember(doses, settings, planLevel, now) {
-        planLevel?.let { IntervalPlan.nextOnPlanMs(doses, settings.pk, it, System.currentTimeMillis()) }
+        planLevel?.let { IntervalPlan.next(doses, settings.pk, it, System.currentTimeMillis()) }
     }
     val spentToday = todaysAsc.mapNotNull { it.pricePerPouch }.takeIf { it.isNotEmpty() }?.sum()
     val lastOutMs = PouchTiming.lastOutMs(entries, settings, clock)
@@ -139,7 +139,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                 lastOutMs = lastOutMs, pouchInNow = pouchInNow, nowMs = clock,
                 money = spentToday?.let { Fmt.money(it, Money.symbol(settings, context)) },
                 plan = if (settings.intervalMode == IntervalMode.OFF) null else PlanInfo(
-                    settings.intervalMode, planLevel, nextOnPlan,
+                    settings.intervalMode, planLevel, nextOnPlan?.atMs, byBreak = nextOnPlan?.byBreak == true,
                     noneFit = Limits.noneFit(settings, limit, count, mg, active.map { it.strengthMg }),
                 ),
             )
@@ -415,10 +415,10 @@ private fun TodayCard(
 }
 
 /**
- * What the interval plan says now: its mode, its level (null while it is still learning), when the next is due,
- * and whether the day's limit leaves room for none of the pouches.
+ * What the interval plan says now: its mode, its level (null while it is still learning), when the next is due and
+ * whether the break after the last pouch sets that, and whether the day's limit leaves room for none of the pouches.
  */
-private class PlanInfo(val mode: IntervalMode, val levelMg: Double?, val nextMs: Long?, val noneFit: Boolean)
+private class PlanInfo(val mode: IntervalMode, val levelMg: Double?, val nextMs: Long?, val byBreak: Boolean, val noneFit: Boolean)
 
 @Composable
 private fun PlanRow(plan: PlanInfo, nowMs: Long) {
@@ -434,6 +434,7 @@ private fun PlanRow(plan: PlanInfo, nowMs: Long) {
     val detail = when {
         plan.noneFit -> null
         level == null -> stringResource(R.string.plan_learning_hint)
+        waiting && plan.byBreak -> stringResource(if (lower) R.string.plan_break_lower else R.string.plan_break_hold)
         waiting -> stringResource(
             if (lower) R.string.plan_wait_lower else R.string.plan_wait_hold,
             durationText((plan.nextMs!! - nowMs).coerceAtLeast(60_000L)), Fmt.oneDecimal(level),

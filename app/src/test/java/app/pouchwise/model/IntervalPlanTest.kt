@@ -2,6 +2,7 @@ package app.pouchwise.model
 
 import app.pouchwise.data.LogEntry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -154,5 +155,119 @@ class IntervalPlanTest {
         // Without a plan level nothing is early.
         val unplanned = day.map { it.copy(planLevelMg = null) }
         assertTrue(IntervalPlan.earlyIds(unplanned, unplanned, s).isEmpty())
+    }
+
+    private val minute = 60_000L
+    private fun doses(vararg es: LogEntry) = es.map { PouchTiming.toDose(it, s) }
+    /** A pouch logged under a plan level nicotine never reaches, so only the break can make it early. */
+    private fun planned(ms: Long) = pouch(ms).copy(planLevelMg = 100.0)
+
+    @Test
+    fun theNextOneWaitsAnHourAfterThePullOutEvenWithNicotineLow() {
+        // Out by its own time at 08:30; nicotine never gets to 5 mg, so the break alone sets the time.
+        val morning = pouch(at(10, 8))
+        assertEquals(IntervalPlan.Next(at(10, 9, 30), byBreak = true), IntervalPlan.next(doses(morning), s.pk, 5.0, at(10, 8, 35)))
+    }
+
+    @Test
+    fun aHigherLevelSetsTheTimeInstead() {
+        val morning = pouch(at(10, 8))
+        val now = at(10, 8, 35)
+        val byLevel = IntervalPlan.nextOnPlanMs(doses(morning), s.pk, 0.5, now)!!
+        assertTrue(byLevel > at(10, 9, 30))
+        assertEquals(IntervalPlan.Next(byLevel, byBreak = false), IntervalPlan.next(doses(morning), s.pk, 0.5, now))
+    }
+
+    @Test
+    fun theBreakCountsFromAPouchStillInAndFromTheLastOneOutOfADoubleDecker() {
+        val now = at(10, 8, 10)
+        val stillIn = pouch(at(10, 8))
+        // Still in: from its own time up at 08:30. Pulled out now: from now.
+        assertEquals(at(10, 9, 30), IntervalPlan.breakOverMs(doses(stillIn), now))
+        assertEquals(at(10, 9, 10), IntervalPlan.breakOverMs(doses(PouchTiming.finish(stillIn, s, now)), now))
+        // A second one put in at 08:10 comes out last, at 08:40.
+        assertEquals(at(10, 9, 40), IntervalPlan.breakOverMs(doses(stillIn, pouch(now)), now))
+    }
+
+    @Test
+    fun nothingToWaitForOnceBothArePast() {
+        assertNull(IntervalPlan.next(doses(pouch(at(10, 8))), s.pk, 5.0, at(10, 10)))
+        assertNull(IntervalPlan.breakOverMs(emptyList(), at(10, 10)))
+    }
+
+    @Test
+    fun theBreakEndsOnTheWholeMinute() {
+        val out = pouch(at(10, 8)).copy(endTimestamp = at(10, 8, 20) + 20_000L)
+        assertEquals(at(10, 9, 21), IntervalPlan.breakOverMs(doses(out), at(10, 8, 40)))
+    }
+
+    @Test
+    fun aPouchSoonerThanAnHourAfterTheLastOneOutIsEarlyEvenWithNicotineLow() {
+        val first = planned(at(10, 8)) // out 08:30
+        val soon = planned(at(10, 9, 20)) // 50 min later; out 09:50
+        val later = planned(at(10, 11)) // 70 min later
+        val day = listOf(first, soon, later)
+        assertEquals(setOf(soon.id), IntervalPlan.earlyIds(day, day, s))
+        // The minute shown is not early; a second before it is.
+        val out = planned(at(10, 8)).copy(endTimestamp = at(10, 8, 20) + 20_000L)
+        val onTheMinute = planned(at(10, 9, 21))
+        val justBefore = planned(at(10, 9, 21) - 1_000L)
+        assertTrue(IntervalPlan.earlyIds(listOf(out, onTheMinute), listOf(out, onTheMinute), s).isEmpty())
+        assertEquals(setOf(justBefore.id), IntervalPlan.earlyIds(listOf(out, justBefore), listOf(out, justBefore), s))
+    }
+
+    @Test
+    fun aPouchJoiningOneStillInIsNotEarlyByTheBreakAndTheDaysFirstNeverIs() {
+        val first = planned(at(10, 8))
+        val joining = planned(at(10, 8, 12))
+        assertTrue(IntervalPlan.earlyIds(listOf(first, joining), listOf(first, joining), s).isEmpty())
+        // Twenty minutes after a late pouch the night before, the day's first is still not early.
+        val lateNight = planned(at(9, 23, 40))
+        val morning = planned(at(10, 0, 30))
+        assertTrue(IntervalPlan.earlyIds(listOf(morning), listOf(lateNight, morning), s).isEmpty())
+        val unplanned = listOf(pouch(at(10, 8)), pouch(at(10, 8, 40)))
+        assertTrue(IntervalPlan.earlyIds(unplanned, unplanned, s).isEmpty())
+    }
+
+    @Test
+    fun twoPouchesPutInAtTheSameMinuteAreOneDoubleDecker() {
+        // Logged afterwards, a double-decker has one start for both: only the first of the pair is judged by the break.
+        val out = planned(at(10, 8))
+        val one = planned(at(10, 9))
+        val two = planned(at(10, 9))
+        assertEquals(setOf(one.id), IntervalPlan.earlyIds(listOf(out, one, two), listOf(out, one, two), s))
+        // The day's first pair after a late pouch, in either order: the first is never early and the other joins it.
+        val lateNight = planned(at(9, 23, 40))
+        val a = planned(at(10, 0, 30))
+        val b = planned(at(10, 0, 30))
+        assertTrue(IntervalPlan.earlyIds(listOf(a, b), listOf(lateNight, a, b), s).isEmpty())
+        assertTrue(IntervalPlan.earlyIds(listOf(b, a), listOf(lateNight, b, a), s).isEmpty())
+    }
+
+    @Test
+    fun aPouchAtTheTimeShownIsNotEarlyWhicheverRuleSetsIt() {
+        val morning = pouch(at(10, 8))
+        val now = at(10, 8, 40)
+        // Nicotine drops below the level right after now, so the break sets the time; at 0.5 mg the level does.
+        val low = Pharmacokinetics.levelsAt(now, doses(morning), s.pk).nicotineMg
+        val byBreak = IntervalPlan.next(doses(morning), s.pk, low, now)!!
+        val byLevel = IntervalPlan.next(doses(morning), s.pk, 0.5, now)!!
+        assertTrue(byBreak.byBreak)
+        assertFalse(byLevel.byBreak)
+        for ((next, level) in listOf(byBreak to low, byLevel to 0.5)) {
+            val first = morning.copy(planLevelMg = level)
+            fun earlyAt(ms: Long): Boolean {
+                val p = pouch(ms).copy(planLevelMg = level)
+                return p.id in IntervalPlan.earlyIds(listOf(first, p), listOf(first, p), s)
+            }
+            assertFalse(earlyAt(next.atMs))
+            assertTrue(earlyAt(next.atMs - 10 * minute))
+        }
+    }
+
+    @Test
+    fun theTypicalTimesLeaveAtLeastTheBreak() {
+        // A level no pouch gets near: the time in the mouth and the break alone set how often it can come.
+        assertEquals(30 * minute + IntervalPlan.MIN_BREAK_MS, IntervalPlan.repeatEveryMs(pouch(0L), 50.0, s))
     }
 }

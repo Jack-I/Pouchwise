@@ -82,7 +82,7 @@ fun BodyScreen(vm: AppViewModel, onOpenLevels: () -> Unit) {
         }
     }
     val planLevel = remember(entries, settings, today) { IntervalPlan.threshold(entries, settings, clock) }
-    val nextOnPlan = remember(doses, pk, planLevel, clock) { planLevel?.let { IntervalPlan.nextOnPlanMs(doses, pk, it, clock) } }
+    val nextOnPlan = remember(doses, pk, planLevel, clock) { planLevel?.let { IntervalPlan.next(doses, pk, it, clock)?.atMs } }
 
     // The chart can be dragged back to the first pouch and ahead until both have cleared; one set of points
     // serves every window size.

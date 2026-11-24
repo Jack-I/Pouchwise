@@ -95,7 +95,7 @@ object WidgetData {
         val doses = recent.map { PouchTiming.toDose(it, settings) }
         val nicotine = Pharmacokinetics.levelsAt(now, doses, settings.pk).nicotineMg
         val nextOnPlan = if (settings.intervalMode == IntervalMode.OFF) null else {
-            IntervalPlan.threshold(recent, settings, now)?.let { IntervalPlan.nextOnPlanMs(doses, settings.pk, it, now) }
+            IntervalPlan.threshold(recent, settings, now)?.let { IntervalPlan.next(doses, settings.pk, it, now)?.atMs }
         }
         val count = entries.size
         val mg = entries.sumOf { it.strengthMg }

@@ -328,6 +328,8 @@
     <string name="interval_cap">Не выше %1$s\u00A0мг: столько было бы перед каждым следующим, если брать типичный пауч каждые два часа.</string>
     <string name="interval_keep_rule">Держать: следующий лучше после того, как никотин опустится ниже %1$s\u00A0мг. Дни остаются как есть.</string>
     <string name="interval_lower_rule">Снижать: на %2$d%% ниже, сейчас %1$s\u00A0мг, пересчёт по понедельникам — перерывы растут от недели к неделе.</string>
+    <!-- Час здесь и в plan_break_* — это IntervalPlan.MIN_BREAK_MS. -->
+    <string name="interval_min_break">В обоих режимах перерыв после пауча — не меньше часа.</string>
     <string name="interval_typical_times">Если брать типичный пауч раз за разом, следующий лучше каждые %1$s при «Держать» и %2$s при «Снижать».</string>
     <string name="interval_learning">Чтобы узнать ваш обычный уровень, плану нужно хотя бы пять паучей за две недели до сегодняшнего дня, не считая первого за день.</string>
     <string name="interval_never_blocks">Пауч раньше времени помечается, но не запрещается.</string>
@@ -366,6 +368,8 @@
     <string name="plan_wait_lower">Через %1$s никотин опустится ниже %2$s\u00A0мг (снижаем толерантность)</string>
     <string name="plan_kept_hold">Никотин ниже %1$s\u00A0мг (держим толерантность)</string>
     <string name="plan_kept_lower">Никотин ниже %1$s\u00A0мг (снижаем толерантность)</string>
+    <string name="plan_break_hold">Перерыв после пауча — не меньше часа (держим толерантность)</string>
+    <string name="plan_break_lower">Перерыв после пауча — не меньше часа (снижаем толерантность)</string>
     <string name="chart_hold">Держим толерантность: %1$s\u00A0мг никотина</string>
     <string name="chart_lower">Снижаем толерантность: %1$s\u00A0мг никотина</string>
     <string name="history_days">Дни</string>

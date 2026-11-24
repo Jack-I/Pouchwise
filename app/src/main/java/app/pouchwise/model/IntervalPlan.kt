@@ -12,7 +12,7 @@ import kotlin.math.min
  * which you usually take one (median over the last two weeks). "Lower": 17 % below that, fixed for the week
  * from the two weeks before Monday, and never below the level at which half of the α4β2 receptors are free.
  * Neither goes above the level just before each next pouch when a typical pouch of yours comes every two hours: a
- * habit of back-to-back pouches is not what the plan holds.
+ * habit of back-to-back pouches is not what the plan holds. In both, the next one also waits [MIN_BREAK_MS] after the last.
  */
 object IntervalPlan {
     /** Plasma nicotine at which half of the brain's α4β2 nicotinic receptors are taken (Brody et al., Arch Gen Psychiatry 2006). */
@@ -78,11 +78,12 @@ object IntervalPlan {
 
     /**
      * How often [pouch] can come again and again with nicotine just before each next one at or below [levelMg]: the shortest
-     * such interval in five-minute steps, from the pouch's own time in the mouth up to half a day; null if not even then.
+     * such interval in five-minute steps, from the pouch's own time in the mouth and [MIN_BREAK_MS] up to half a day; null if
+     * not even then.
      */
     fun repeatEveryMs(pouch: LogEntry, levelMg: Double, s: Settings): Long? {
         val step = 5 * MINUTE_MS
-        var every = (PouchTiming.effectiveDurationMs(pouch, s) + step - 1) / step * step
+        var every = (PouchTiming.effectiveDurationMs(pouch, s) + MIN_BREAK_MS + step - 1) / step * step
         while (every <= 12 * 3_600_000L) {
             if (leftAfterMg(pouch, s, every) * buildUp(every, s) <= levelMg) return every
             every += step
@@ -131,13 +132,51 @@ object IntervalPlan {
             stepMs = MINUTE_MS,
         ).nicotineClearMs
 
-    /** Pouches that went in while nicotine was still at or above their plan level; the day's first never counts. */
+    /** However low nicotine is, the next pouch is better no sooner than this after the last one comes out. */
+    const val MIN_BREAK_MS = 3_600_000L
+
+    /** When the next pouch is better, and whether the break after the last one, not the level, sets that time. */
+    data class Next(val atMs: Long, val byBreak: Boolean)
+
+    /**
+     * When [MIN_BREAK_MS] after the last pouch out is over, on the next whole minute: from its own time up while it is still
+     * in, from the last one out of a double-decker. Null when it already is.
+     */
+    fun breakOverMs(doses: List<Dose>, nowMs: Long): Long? {
+        val lastOut = doses.filter { it.timeMs <= nowMs }.maxOfOrNull { it.timeMs + it.durationMs } ?: return null
+        return (Math.floorDiv(lastOut + MIN_BREAK_MS + MINUTE_MS - 1, MINUTE_MS) * MINUTE_MS).takeIf { it > nowMs }
+    }
+
+    /** The later of [nextOnPlanMs] and [breakOverMs]; null when neither is still ahead. */
+    fun next(doses: List<Dose>, p: PkParams, levelMg: Double, nowMs: Long): Next? {
+        val byLevel = nextOnPlanMs(doses, p, levelMg, nowMs)
+        val byBreak = breakOverMs(doses, nowMs)
+        return when {
+            byBreak != null && (byLevel == null || byBreak > byLevel) -> Next(byBreak, byBreak = true)
+            byLevel != null -> Next(byLevel, byBreak = false)
+            else -> null
+        }
+    }
+
+    /**
+     * Pouches that went in while nicotine was still at or above their plan level, or with none in the mouth before
+     * [breakOverMs]; one joining a pouch still in is a double-decker, not a short break. The day's first never counts.
+     */
     fun earlyIds(dayEntries: List<LogEntry>, allEntries: List<LogEntry>, s: Settings): Set<Long> {
         if (dayEntries.none { it.planLevelMg != null }) return emptySet()
         val doses = allEntries.map { PouchTiming.toDose(it, s) }
-        val first = dayEntries.minByOrNull { it.timestamp }?.id
+        // A double-decker logged afterwards has one start for both pouches: ties go by id.
+        val order = compareBy<LogEntry>({ it.timestamp }, { it.id })
+        val first = dayEntries.minWithOrNull(order)?.id
+        fun breakTooShort(e: LogEntry): Boolean {
+            val before = allEntries.zip(doses).filter { order.compare(it.first, e) < 0 }.map { it.second }
+            return before.none { it.timeMs + it.durationMs > e.timestamp } && breakOverMs(before, e.timestamp) != null
+        }
         return dayEntries
-            .filter { e -> e.id != first && e.planLevelMg != null && Pharmacokinetics.levelsAt(e.timestamp, doses, s.pk).nicotineMg >= e.planLevelMg }
+            .filter { e ->
+                e.id != first && e.planLevelMg != null &&
+                    (Pharmacokinetics.levelsAt(e.timestamp, doses, s.pk).nicotineMg >= e.planLevelMg || breakTooShort(e))
+            }
             .map { it.id }
             .toSet()
     }

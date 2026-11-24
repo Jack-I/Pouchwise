@@ -210,7 +210,7 @@ fun ScrollableBodyChart(
     leftAxisTitle: String,
     rightAxisTitle: String,
     modifier: Modifier = Modifier,
-    /** The tolerance plan's level (mg), drawn as a line, and when the forecast drops below it. */
+    /** The tolerance plan's level (mg), drawn as a line, and the time the next pouch is better after, marked on it. */
     planLevelMg: Double? = null,
     nextOnPlanMs: Long? = null,
     planColor: Color = Color.Unspecified,
