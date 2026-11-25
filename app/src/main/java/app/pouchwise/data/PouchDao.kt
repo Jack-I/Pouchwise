@@ -134,6 +134,13 @@ interface PouchDao {
     @Query("SELECT * FROM felt_marks ORDER BY atMs, id")
     suspend fun allFeltMarks(): List<FeltMark>
 
+    @Query("SELECT * FROM felt_marks WHERE entryId IN (:entryIds) ORDER BY atMs, id")
+    suspend fun feltMarksOf(entryIds: List<Long>): List<FeltMark>
+
+    /** All answers of the pouches that got one at [atMs]. */
+    @Query("SELECT * FROM felt_marks WHERE entryId IN (SELECT entryId FROM felt_marks WHERE atMs = :atMs) ORDER BY atMs, id")
+    suspend fun feltMarksOfPouchesAnsweredAt(atMs: Long): List<FeltMark>
+
     @Insert
     suspend fun insertFeltMarks(marks: List<FeltMark>)
 

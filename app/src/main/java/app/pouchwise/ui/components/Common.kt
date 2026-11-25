@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -272,11 +273,11 @@ fun feltLabel(felt: Felt): Int = when (felt) {
 /** Whole minutes from the toss-in to an answer. */
 fun feltMinutes(startMs: Long, atMs: Long): Int = ((atMs - startMs) / 60_000.0).roundToInt().coerceAtLeast(0)
 
-/** Overwhelm / Hit / A bit / Nothing in one row, [selected] filled. */
+/** Overwhelm / Hit / A bit / Nothing in one row, [selected] filled; with [adds], each is a button that adds an answer. */
 @Composable
-fun FeltChips(selected: Felt?, onTap: (Felt) -> Unit, modifier: Modifier = Modifier) {
+fun FeltChips(selected: Felt?, onTap: (Felt) -> Unit, modifier: Modifier = Modifier, adds: Boolean = false) {
     val shape = RoundedCornerShape(10.dp)
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(modifier.fillMaxWidth().then(if (adds) Modifier else Modifier.selectableGroup()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         for (f in Felt.strongestFirst) {
             val on = f == selected
             Box(
@@ -288,7 +289,10 @@ fun FeltChips(selected: Felt?, onTap: (Felt) -> Unit, modifier: Modifier = Modif
                         if (on) Modifier.background(MaterialTheme.colorScheme.primary)
                         else Modifier.border(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f), shape),
                     )
-                    .selectable(selected = on, role = Role.RadioButton) { onTap(f) },
+                    .then(
+                        if (adds) Modifier.clickable(role = Role.Button) { onTap(f) }
+                        else Modifier.selectable(selected = on, role = Role.RadioButton) { onTap(f) },
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 FittingText(

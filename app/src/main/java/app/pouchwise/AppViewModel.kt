@@ -26,6 +26,7 @@ import app.pouchwise.model.PlanHistory
 import app.pouchwise.model.PouchTiming
 import app.pouchwise.model.Release
 import app.pouchwise.model.Settings
+import app.pouchwise.model.RestCache
 import app.pouchwise.model.SharedFelt
 import app.pouchwise.util.Export
 import app.pouchwise.widget.WidgetUpdater
@@ -40,6 +41,8 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.time.ZoneId
 import kotlin.math.abs
@@ -49,6 +52,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val db = AppDatabase.get(app)
     private val dao = db.dao()
     private val settingsRepo = SettingsRepository(app)
+    private val feltTaps = Mutex()
+
+    /** History's receptor rest, kept between visits; used from the main thread. */
+    val restCache = RestCache()
 
     /** Home-screen widgets mirror today's state; refresh them after anything that changes it. */
     private suspend fun refreshWidgets() {
@@ -200,23 +207,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshWidgets()
     }
 
-    /** Records how it feels now on every pouch in the mouth: two in at once are one feeling. */
-    fun addFelt(entry: LogEntry, felt: Felt) = viewModelScope.launch {
+    /**
+     * A tap on an answer on [entry]'s card, which showed [shown] chosen: see [SharedFelt.tap]. Taps go one at a time against
+     * the stored answers, so two quick ones neither add the same answer twice nor take back more than one.
+     */
+    fun tapFelt(entry: LogEntry, felt: Felt, shown: Felt?) = viewModelScope.launch {
         val now = System.currentTimeMillis()
-        val marks = SharedFelt.toAdd(inMouthWith(entry, now), dao.allFeltMarks().groupBy { it.entryId }, felt, now)
-        if (marks.isNotEmpty()) dao.insertFeltMarks(marks)
-    }
-
-    /** Takes back [entry]'s latest answer and the same answer given with it to other pouches. */
-    fun takeBackFelt(entry: LogEntry) = viewModelScope.launch {
-        val marks = SharedFelt.toTakeBack(entry, dao.allFeltMarks().groupBy { it.entryId })
-        if (marks.isNotEmpty()) dao.deleteFeltMarks(marks.map { it.id })
-    }
-
-    /** The pouches in the mouth at [nowMs], and [entry], whose card was tapped. */
-    private suspend fun inMouthWith(entry: LogEntry, nowMs: Long): List<LogEntry> {
-        val s = settingsRepo.settings.first()
-        return listOf(entry) + entries.value.filter { it.id != entry.id && PouchTiming.isActive(it, s, nowMs) }
+        val inMouth = SharedFelt.inMouthWith(entry, entries.value, settingsRepo.settings.first(), now)
+        feltTaps.withLock {
+            db.withTransaction {
+                val inMouthMarks = dao.feltMarksOf(inMouth.map { it.id })
+                val latestAt = inMouthMarks.filter { it.entryId == entry.id }.maxOfOrNull { it.atMs }
+                val marks = (inMouthMarks + latestAt?.let { dao.feltMarksOfPouchesAnsweredAt(it) }.orEmpty())
+                    .distinctBy { it.id }.groupBy { it.entryId }
+                val tap = SharedFelt.tap(entry, inMouth, marks, felt, now, shown)
+                if (tap.remove.isNotEmpty()) dao.deleteFeltMarks(tap.remove.map { it.id })
+                if (tap.add.isNotEmpty()) dao.insertFeltMarks(tap.add)
+            }
+        }
     }
 
     fun updateSettings(transform: (Settings) -> Settings) = viewModelScope.launch {
@@ -321,14 +329,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 dao.insertFeltMarks(marks)
             }
         }.isSuccess
-        if (ok) {
-            runCatching { settingsRepo.update { contents.settingsOver(it).copy(onboarded = true, taperStartAlt = null, taperTargetAlt = null) } }
-            refreshWidgets()
-        }
+        val settingsOk = ok && runCatching {
+            settingsRepo.update { contents.settingsOver(it).copy(onboarded = true, taperStartAlt = null, taperTargetAlt = null) }
+        }.isSuccess
+        if (ok) refreshWidgets()
         val res = appContext.resources
         val text = if (ok) {
             res.getString(
-                R.string.import_done,
+                if (settingsOk) R.string.import_done else R.string.import_done_settings_not,
                 res.getQuantityString(R.plurals.count_pouches, contents.types.count { !it.archived }, contents.types.count { !it.archived }),
                 res.getQuantityString(R.plurals.count_entries, contents.entries.size, contents.entries.size),
             )

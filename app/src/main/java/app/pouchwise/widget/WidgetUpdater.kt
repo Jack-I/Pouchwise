@@ -43,13 +43,10 @@ object WidgetUpdater {
                 return@withContext
             }
             try {
-                val state = WidgetData.load(app)
+                val (state, cover) = WidgetData.load(app, withCover = coverIds.isNotEmpty())
                 ringIds.forEach { id -> updateRing(app, manager, id, state) }
                 wideIds.forEach { manager.updateAppWidget(it, WidgetRenderer.wideViews(app, state)) }
-                if (coverIds.isNotEmpty()) {
-                    val cover = WidgetData.loadCover(app)
-                    coverIds.forEach { manager.updateAppWidget(it, WidgetRenderer.coverViews(app, state, cover)) }
-                }
+                cover?.let { c -> coverIds.forEach { manager.updateAppWidget(it, WidgetRenderer.coverViews(app, state, c)) } }
                 // The 1×1 shows only today's numbers; the others also show the pouch that is in, the next one on the plan
                 // and the nicotine now.
                 val detailed = wideIds.isNotEmpty() || coverIds.isNotEmpty()

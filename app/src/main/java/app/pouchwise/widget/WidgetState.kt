@@ -82,7 +82,8 @@ fun widgetLabel(type: PouchType?): String =
     type?.brand?.trim()?.takeIf { it.isNotEmpty() } ?: type?.name ?: "?"
 
 object WidgetData {
-    suspend fun load(context: Context): WidgetState {
+    /** What the widgets show and, [withCover], what the cover widget adds, from one read of the settings and pouches. */
+    suspend fun load(context: Context, withCover: Boolean): Pair<WidgetState, CoverState?> {
         val dao = AppDatabase.get(context).dao()
         val settings = SettingsRepository(context).settings.first()
         val now = System.currentTimeMillis()
@@ -101,7 +102,7 @@ object WidgetData {
         val mg = entries.sumOf { it.strengthMg }
         val limit = Limits.limitForDayRounded(settings, day)
         val types = dao.activeTypes()
-        return WidgetState(
+        val state = WidgetState(
             mode = settings.limitMode,
             count = count,
             mg = mg,
@@ -121,19 +122,13 @@ object WidgetData {
                 else -> null
             },
         )
-    }
-
-    suspend fun loadCover(context: Context): CoverState {
-        val dao = AppDatabase.get(context).dao()
-        val settings = SettingsRepository(context).settings.first()
-        val now = System.currentTimeMillis()
-        val uses = dao.usageSince(now - QUICK_LOOKBACK_MS).associate { it.pouchTypeId to it.uses }
-        return CoverState(
-            inNow = pouchesInNow(context, settings, now),
+        val cover = if (!withCover) null else CoverState(
+            inNow = inNow,
             // The last few are enough: a pouch that came out last went in among them, however long ago that was.
             lastOutMs = PouchTiming.lastOutMs(dao.latestEntries(10), settings, now),
-            quick = quickPicks(dao.activeTypes(), uses),
+            quick = quickPicks(types, dao.usageSince(now - QUICK_LOOKBACK_MS).associate { it.pouchTypeId to it.uses }),
         )
+        return state to cover
     }
 
     private const val NICOTINE_IN_REFRESH_MS = 30 * 60_000L

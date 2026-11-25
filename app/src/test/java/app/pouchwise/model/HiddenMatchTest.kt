@@ -82,4 +82,50 @@ class HiddenMatchTest {
         val newer = hidden(4, "Velo", "tropical mango", 6.0, createdAt = 2)
         assertEquals(newer, HiddenMatch.find(edit("Velo", "tropical mango", 6.0), listOf(older, newer)))
     }
+
+    @Test
+    fun shortIAndYiAreLettersOfTheirOwn() {
+        val moi = hidden(1, "Мои", "мята", 6.0)
+        val izhak = hidden(2, "Іжак", "м'ята", 6.0)
+        val moy = hidden(3, "Мой", "мята", 6.0)
+        assertNull(HiddenMatch.find(edit("Мой", "мята", 6.0), listOf(moi)))
+        assertNull(HiddenMatch.find(edit("Їжак", "м'ята", 6.0), listOf(izhak)))
+        assertEquals(moy, HiddenMatch.find(edit("МОЙ", "мята", 6.0), listOf(moy)))
+    }
+
+    @Test
+    fun aBrandWithNoLettersMatchesOnlyItself() {
+        val fire = hidden(1, "🔥", "", 6.0)
+        assertNull(HiddenMatch.find(edit("💧", "", 6.0), listOf(fire)))
+        assertNull(HiddenMatch.find(edit("!!!", "", 6.0), listOf(fire)))
+        assertEquals(fire, HiddenMatch.find(edit("🔥", "", 6.0), listOf(fire)))
+    }
+
+    @Test
+    fun anotherNumberIsAnotherPouch() {
+        val mint17 = hidden(1, "Loop", "Mint 17", 6.0)
+        assertNull(HiddenMatch.find(edit("Loop", "Mint 11", 6.0), listOf(mint17)))
+        assertNull(HiddenMatch.find(edit("Loop", "Mint 7", 6.0), listOf(mint17)))
+        assertEquals(mint17, HiddenMatch.find(edit("Loop", "Mnit 17", 6.0), listOf(mint17)))
+    }
+
+    @Test
+    fun theTyposAllowedGrowAtEightAndSixteenLetters() {
+        fun check(flavour: String, ok: String, tooMany: String) {
+            val t = hidden(1, "Velo", flavour, 6.0)
+            assertEquals(flavour, t, HiddenMatch.find(edit("Velo", ok, 6.0), listOf(t)))
+            assertNull(flavour, HiddenMatch.find(edit("Velo", tooMany, 6.0), listOf(t)))
+        }
+        check("abcdefg", ok = "abcdefx", tooMany = "abcdexx")
+        check("abcdefgh", ok = "abcdefxx", tooMany = "abcdexxx")
+        check("abcdefghijklmno", ok = "abcdefghijklmxx", tooMany = "abcdefghijklxxx")
+        check("abcdefghijklmnop", ok = "abcdefghijklmxxx", tooMany = "abcdefghijklxxxx")
+    }
+
+    @Test
+    fun aPouchFromBeforeBrandsDoesNotMatchAFlavourOrAnotherBrand() {
+        val old = PouchType(id = 1, name = "Siberia", brand = "", strengthMg = 43.0, archived = true)
+        assertNull(HiddenMatch.find(edit("Siberia", "white dry", 43.0), listOf(old)))
+        assertNull(HiddenMatch.find(edit("Odens", "", 43.0), listOf(old)))
+    }
 }

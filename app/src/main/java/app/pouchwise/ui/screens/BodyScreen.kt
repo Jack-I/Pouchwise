@@ -300,14 +300,14 @@ private fun SubstanceSummary(
         val small = MaterialTheme.typography.bodySmall
         val muted = MaterialTheme.colorScheme.onSurfaceVariant
         Text(stringResource(R.string.approx_ng_ml, Fmt.ngMl(ngMl)), style = small, color = muted)
-        // Always two lines, so the card keeps its height whatever they say.
+        // Room for the first to wrap, so the card keeps its height whatever they say.
         val (first, second) = when {
             until == null -> "" to ""
             until == CLEARED || until <= nowMs -> stringResource(reachedRes) to ""
             else -> stringResource(untilRes, durationText((until - nowMs).coerceAtLeast(60_000L))) to
                 stringResource(R.string.gone_by, Fmt.timeOrDayTime(until, nowMs))
         }
-        Text(first, style = small, color = muted)
+        Text(first, style = small, color = muted, minLines = 2)
         Text(second, style = small, color = muted)
     }
 }

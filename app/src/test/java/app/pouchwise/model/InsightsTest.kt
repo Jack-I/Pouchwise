@@ -6,6 +6,7 @@ import app.pouchwise.data.LogEntry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -92,12 +93,12 @@ class InsightsTest {
 
     @Test
     fun aDoubleDeckerCountsOnceByItsStrongestAnswer() {
-        // Wednesday 4 November: two pouches in together as the day's first, answered apart.
+        // Wednesday 4 November: two pouches in together as the day's first, answered apart, the stronger on the second.
         val first = pouch(LocalDateTime.of(2026, 11, 4, 9, 0).atZone(zone).toInstant().toEpochMilli())
         val second = pouch(first.timestamp + 10 * 60_000L)
         val marks = listOf(
-            FeltMark(entryId = first.id, level = Felt.A_BIT.level, atMs = first.timestamp + 15 * 60_000L),
-            FeltMark(entryId = second.id, level = Felt.NOTHING.level, atMs = first.timestamp + 15 * 60_000L),
+            FeltMark(entryId = first.id, level = Felt.NOTHING.level, atMs = first.timestamp + 15 * 60_000L),
+            FeltMark(entryId = second.id, level = Felt.A_BIT.level, atMs = first.timestamp + 15 * 60_000L),
         ).groupBy { it.entryId }
         val f = FeltPatterns.summary(listOf(first, second), marks, Settings(), LocalDate.of(2026, 11, 4).toEpochDay())
         assertEquals(1, f.answered)
@@ -149,5 +150,38 @@ class InsightsTest {
     fun noDayToShowWithoutAnEarlierDay() {
         assertTrue(ReceptorRest.days(listOf(pouchFiled(at(13, 9))), oneAm, day(13)).isEmpty())
         assertTrue(ReceptorRest.days(emptyList(), oneAm, day(13)).isEmpty())
+    }
+
+    @Test
+    fun restStartsTheDayAfterTheFirstPouchByTheDayStartNowInUse() {
+        // Put in at 02:00 on the 12th while days started at 04:00, so filed under the 11th; days now start at 01:00,
+        // and the 12th began an hour before that pouch.
+        val first = pouchFiled(at(12, 2)).copy(day = DayKeys.epochDay(at(12, 2), 4))
+        assertEquals(day(13)..day(14), ReceptorRest.days(listOf(first), oneAm, day(14)))
+    }
+
+    @Test
+    fun todayJoinsTheFinishedDaysOnlyRightAfterThem() {
+        val finished = listOf(RestDay(day(11), 1, running = false), RestDay(day(12), 2, running = false))
+        val today = RestDay(day(13), 3, running = true)
+        assertEquals(listOf(day(11), day(12), day(13)), ReceptorRest.joined(finished, today, day(11)).map { it.epochDay })
+        // Just past midnight the 13th is not worked out as finished yet, so the new day waits rather than take its slot.
+        assertEquals(listOf(day(11), day(12)), ReceptorRest.joined(finished, RestDay(day(14), 0, running = true), day(11)).map { it.epochDay })
+        // Nor does a day left running from before midnight show twice.
+        assertEquals(3, ReceptorRest.joined(finished + RestDay(day(13), 3, running = false), today, day(11)).size)
+        assertEquals(listOf(day(13)), ReceptorRest.joined(emptyList(), today, day(13)).map { it.epochDay })
+    }
+
+    @Test
+    fun theRestCacheWorksOutOnlyDaysItHasNotSeen() = runBlocking {
+        val cache = RestCache()
+        val asked = mutableListOf<LongRange>()
+        val compute: suspend (LongRange) -> List<RestDay> = { r -> asked += r; r.map { RestDay(it, it, running = false) } }
+        val doses = listOf(PouchTiming.toDose(pouchFiled(at(9, 9)), oneAm))
+        assertEquals((day(10)..day(12)).toList(), cache.get(doses, oneAm, day(10)..day(12), compute).map { it.epochDay })
+        cache.get(doses, oneAm, day(10)..day(12), compute)
+        assertEquals((day(10)..day(13)).toList(), cache.get(doses, oneAm, day(10)..day(13), compute).map { it.epochDay })
+        cache.get(doses + doses, oneAm, day(10)..day(13), compute)
+        assertEquals(listOf(day(10)..day(12), day(13)..day(13), day(10)..day(13)), asked)
     }
 }

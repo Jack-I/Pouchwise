@@ -47,6 +47,7 @@ import app.pouchwise.data.FeltMark
 import app.pouchwise.data.PouchType
 import app.pouchwise.util.Fmt
 import app.pouchwise.data.PouchEdit
+import app.pouchwise.data.brandOrName
 import app.pouchwise.data.release
 import app.pouchwise.data.variant
 import app.pouchwise.model.Brands
@@ -158,14 +159,14 @@ fun PouchTypeDialog(
     onDismiss: () -> Unit,
     currency: String,
     onSave: (PouchEdit) -> Unit,
-    /** All pouches: adding one that is already hidden asks whether to restore it instead. */
+    /** All pouches: adding one that is already hidden asks whether to restore it instead, when [onRestore] is given. */
     types: List<PouchType> = emptyList(),
-    onRestore: (PouchType) -> Unit = {},
+    onRestore: ((PouchType) -> Unit)? = null,
 ) {
     val initialKnown = initial?.brand?.let { Brands.find(it)?.name }
     var brandSel by rememberSaveable { mutableStateOf(initialKnown ?: OTHER_BRAND) }
     var custom by rememberSaveable {
-        mutableStateOf(if (initial == null || initialKnown != null) "" else initial.brand.ifBlank { initial.name })
+        mutableStateOf(if (initial == null || initialKnown != null) "" else initial.brandOrName())
     }
     var variant by rememberSaveable { mutableStateOf(initial?.variant() ?: "") }
     var strength by rememberSaveable { mutableStateOf(initial?.let { fmtInput(it.strengthMg) } ?: "") }
@@ -264,7 +265,7 @@ fun PouchTypeDialog(
                 enabled = valid,
                 onClick = {
                     val edit = PouchEdit(brand, variant.trim(), mg ?: 0.0, color, release, priceValue.takeIf { price.isNotBlank() }, perCanValue ?: 20)
-                    val match = if (initial == null) HiddenMatch.find(edit, types) else null
+                    val match = if (initial == null && onRestore != null) HiddenMatch.find(edit, types) else null
                     if (match != null) hiddenMatch = edit to match else onSave(edit)
                 },
             ) {
@@ -280,7 +281,7 @@ fun PouchTypeDialog(
             onDismissRequest = { hiddenMatch = null },
             title = { Text(stringResource(R.string.hidden_match_q, "${match.name} ${stringResource(R.string.mg_value, Fmt.mg(match.strengthMg))}")) },
             confirmButton = {
-                TextButton(onClick = { hiddenMatch = null; onRestore(match) }) { Text(stringResource(R.string.hidden_match_restore)) }
+                TextButton(onClick = { hiddenMatch = null; onRestore?.invoke(match) }) { Text(stringResource(R.string.hidden_match_restore)) }
             },
             dismissButton = {
                 TextButton(onClick = { hiddenMatch = null; onSave(edit) }) { Text(stringResource(R.string.hidden_match_add)) }
@@ -550,7 +551,7 @@ private fun FeltAnswers(answers: List<Triple<Int, Long, Boolean>>, startMs: Long
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Spacer(Modifier.height(2.dp))
-    FeltChips(null, { f -> onChange(answers + Triple(f.level, System.currentTimeMillis(), false)) })
+    FeltChips(null, { f -> onChange(answers + Triple(f.level, System.currentTimeMillis(), false)) }, adds = true)
 }
 
 private fun List<Triple<Int, Long, Boolean>>.toMarks(): List<FeltMark> =

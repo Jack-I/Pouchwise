@@ -253,6 +253,7 @@
     <string name="import_restore">Restore</string>
     <string name="import_done">Restored: %1$s, %2$s</string>
     <string name="import_failed">Import failed, nothing was changed.</string>
+    <string name="import_done_settings_not">Restored: %1$s, %2$s. The settings could not be saved: check them in Settings.</string>
     <string name="export_failed">Export failed.</string>
     <string name="import_cant">Can\'t import</string>
     <string name="import_not_export">This isn\'t a Pouchwise export file.</string>

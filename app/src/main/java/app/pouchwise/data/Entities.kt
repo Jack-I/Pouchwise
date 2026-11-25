@@ -6,6 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import app.pouchwise.model.Brands
 import app.pouchwise.model.Release
+import kotlin.math.abs
 
 /** A kind of pouch the user buys: brand plus nicotine strength. */
 @Entity(tableName = "pouch_types")
@@ -55,8 +56,14 @@ fun PouchType.edited(e: PouchEdit): PouchType = copy(
 fun PouchType.release(): Release = when {
     fastRelease -> Release.FAST
     slowRelease -> Release.SLOW
+    // 0.3.0 kept the choice only as one of these two rates (see MIGRATION_3_4).
+    abs(releaseK - 0.095) < 1e-9 -> Release.FAST
+    abs(releaseK - 0.030) < 1e-9 -> Release.SLOW
     else -> Release.NORMAL
 }
+
+/** The brand; for rows from before brands were stored, the whole name. */
+fun PouchType.brandOrName(): String = brand.ifBlank { name }
 
 /** The flavour or line: the name after the brand; none for rows from before brands were stored, whose name is all brand. */
 fun PouchType.variant(): String {

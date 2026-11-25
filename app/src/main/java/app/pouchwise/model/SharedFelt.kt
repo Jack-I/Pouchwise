@@ -7,6 +7,24 @@ import kotlin.math.max
 
 /** One feeling for all pouches in the mouth at once: a double-decker is answered, and counted, as one. */
 object SharedFelt {
+    /** What a tap on an answer on a pouch card changes. */
+    data class Tap(val add: List<FeltMark> = emptyList(), val remove: List<FeltMark> = emptyList())
+
+    /**
+     * A tap on [felt] on [entry]'s card, which showed [shown] chosen: taking it back when that was [felt] and it is still
+     * the latest answer, otherwise giving [felt] to every pouch [inMouth]. A second tap before the card changes does nothing.
+     */
+    fun tap(entry: LogEntry, inMouth: List<LogEntry>, marks: Map<Long, List<FeltMark>>, felt: Felt, atMs: Long, shown: Felt?): Tap =
+        when {
+            shown != felt -> Tap(add = toAdd(inMouth, marks, felt, atMs))
+            latest(marks, entry.id)?.level == felt.level -> Tap(remove = toTakeBack(entry, marks))
+            else -> Tap()
+        }
+
+    /** [entry], whose card was tapped, and the other pouches in the mouth at [nowMs]. */
+    fun inMouthWith(entry: LogEntry, entries: List<LogEntry>, s: Settings, nowMs: Long): List<LogEntry> =
+        listOf(entry) + entries.filter { it.id != entry.id && PouchTiming.isActive(it, s, nowMs) }
+
     /** [felt] at [atMs] for each pouch of [inMouth] whose latest answer is not [felt] already. */
     fun toAdd(inMouth: List<LogEntry>, marks: Map<Long, List<FeltMark>>, felt: Felt, atMs: Long): List<FeltMark> =
         inMouth.filter { latest(marks, it.id)?.level != felt.level }

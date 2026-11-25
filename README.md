@@ -244,7 +244,7 @@ as on the Body screen. "Receptors at rest" is the time today with nicotine below
 The rule throughout: whatever shapes the past is recorded when it happens, and settings only shape the
 future.
 
-- Database `pouchwise.db` (Room, schema v11). `pouch_types` and `log_entries`; an entry stores the
+- Database `pouchwise.db` (Room, schema v12). `pouch_types` and `log_entries`; an entry stores the
   strength, release constant, pouch time (`pouchMinutes`), tracking day (`day`), price (`pricePerPouch`) and
   tolerance plan level (`planLevelMg`) at log time, so
   editing a pouch or the pouch time never rewrites old entries. A new day-start hour or time zone

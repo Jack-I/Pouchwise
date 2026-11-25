@@ -39,6 +39,7 @@ import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 private const val WEEKS = 5
@@ -190,26 +191,29 @@ fun HistoryScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                     }
                 }
 
-                RestCard(entries, settings, today, now)
+                RestCard(vm, entries, settings, today, now)
             }
         }
     }
 }
 
-/** Receptor rest day by day; finished days are worked out again only when the log, the settings or the day change. */
+/** Receptor rest day by day; finished days are kept between visits and worked out again only when the log or the settings change. */
 @Composable
-private fun RestCard(entries: List<LogEntry>, settings: Settings, today: Long, now: Long) {
+private fun RestCard(vm: AppViewModel, entries: List<LogEntry>, settings: Settings, today: Long, now: Long) {
     val days = remember(entries, settings.dayStartHour, today) { ReceptorRest.days(entries, settings, today) }
     if (days.isEmpty()) return
     val doses = remember(entries, settings) { entries.map { PouchTiming.toDose(it, settings) } }
     val finished by produceState<List<RestDay>?>(null, doses, settings, days) {
-        value = withContext(Dispatchers.Default) { ReceptorRest.byDay(doses, settings, days.first until today, System.currentTimeMillis()) }
+        value = vm.restCache.get(doses, settings, days.first until today) { range ->
+            withContext(Dispatchers.Default) { ReceptorRest.byDay(doses, settings, range, System.currentTimeMillis()) { ensureActive() } }
+        }
     }
     val running by produceState<RestDay?>(null, doses, settings, today, now) {
         value = withContext(Dispatchers.Default) { ReceptorRest.byDay(doses, settings, today..today, wallClock(now)).firstOrNull() }
     }
-    val shown = finished?.plus(listOfNotNull(running)) ?: return
-    val weeks = remember(shown) { ReceptorRest.weeks(shown) }
+    val done = finished ?: return
+    val shown = ReceptorRest.joined(done, running, days.first)
+    val weeks = remember(done) { ReceptorRest.weeks(done) }
     val hoursFormat = stringResource(R.string.duration_h_mm)
     val minutesFormat = stringResource(R.string.duration_m)
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
@@ -226,7 +230,7 @@ private fun RestCard(entries: List<LogEntry>, settings: Settings, today: Long, n
         DailyRestChart(
             days = shown,
             weeks = weeks,
-            weekLabels = weeks.map { Fmt.hoursMinutes(it.avgMs, hoursFormat, minutesFormat) },
+            weekLabel = { Fmt.hoursMinutes(it.avgMs, hoursFormat, minutesFormat) },
             barColor = MaterialTheme.colorScheme.secondary,
             lineColor = MaterialTheme.colorScheme.onSurface,
             haloColor = MaterialTheme.colorScheme.surfaceVariant,

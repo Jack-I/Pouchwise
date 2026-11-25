@@ -23,6 +23,8 @@ object IntervalPlan {
     const val DATA_MS = 28L * 24 * 3_600_000L
     /** The cap allows a typical pouch this often. */
     const val CAP_EVERY_MS = 2 * 3_600_000L
+    /** However low nicotine is, the next pouch is better no sooner than this after the last one comes out. */
+    const val MIN_BREAK_MS = 3_600_000L
     private const val MIN_SAMPLES = 5
     private const val MINUTE_MS = 60_000L
 
@@ -131,9 +133,6 @@ object IntervalPlan {
             cotinineThreshold = Double.POSITIVE_INFINITY,
             stepMs = MINUTE_MS,
         ).nicotineClearMs
-
-    /** However low nicotine is, the next pouch is better no sooner than this after the last one comes out. */
-    const val MIN_BREAK_MS = 3_600_000L
 
     /** When the next pouch is better, and whether the break after the last one, not the level, sets that time. */
     data class Next(val atMs: Long, val byBreak: Boolean)

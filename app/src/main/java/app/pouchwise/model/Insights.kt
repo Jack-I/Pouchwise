@@ -122,7 +122,7 @@ object Patterns {
     }
 }
 
-/** One Monday-to-Sunday week: answered pouches by their strongest answer, nothing first. */
+/** One Monday-to-Sunday week: answered pouches, a double-decker once, by their strongest answer, nothing first. */
 data class FeltWeek(val monday: Long, val fromDay: Long, val counts: List<Int>)
 
 data class FeltSummary(
@@ -130,6 +130,7 @@ data class FeltSummary(
     val weeks: List<FeltWeek>,
     /** Each day's first pouch, counted the same way. */
     val firstOfDay: List<Int>,
+    /** Pouches with an answer, and all pouches, in the period; pouches in the mouth together count once. */
     val answered: Int,
     val pouches: Int,
 )
@@ -162,14 +163,20 @@ data class RestWeek(val monday: Long, val avgMs: Long)
 
 /** The Body screen's "Receptors at rest today", day by day. */
 object ReceptorRest {
-    /** From the day after the first logged one, whose night before is unknown, through [today]. */
-    fun days(entries: List<LogEntry>, s: Settings, today: Long): LongRange =
-        entries.minOfOrNull { DayKeys.of(it, s.dayStartHour) }?.let { it + 1..today } ?: LongRange.EMPTY
+    /**
+     * From the day after the first pouch's, whose night before is unknown, through [today]. That day is found from the
+     * pouch's time and the day start now in use, not the day it was filed under, so no hour before it counts as rest.
+     */
+    fun days(entries: List<LogEntry>, s: Settings, today: Long, zone: ZoneId = ZoneId.systemDefault()): LongRange =
+        entries.minOfOrNull { it.timestamp }?.let { DayKeys.epochDay(it, s.dayStartHour, zone) + 1..today } ?: LongRange.EMPTY
 
-    /** Each of [days] from its start to the next day's start or [nowMs], whichever comes first. */
-    fun byDay(doses: List<Dose>, s: Settings, days: LongRange, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): List<RestDay> {
+    /** Each of [days] from its start to the next day's start or [nowMs], whichever comes first; [checkpoint] before each. */
+    fun byDay(
+        doses: List<Dose>, s: Settings, days: LongRange, nowMs: Long, zone: ZoneId = ZoneId.systemDefault(), checkpoint: () -> Unit = {},
+    ): List<RestDay> {
         val level = IntervalPlan.restLevelMg(s)
         return days.map { day ->
+            checkpoint()
             val start = DayKeys.startOfDayMs(day, s.dayStartHour, zone)
             val end = DayKeys.endOfDayMs(day, s.dayStartHour, zone)
             RestDay(day, IntervalPlan.restMs(doses, s.pk, level, start, min(end, nowMs)), running = end > nowMs)
@@ -182,4 +189,30 @@ object ReceptorRest {
             .groupBy { it.epochDay - (LocalDate.ofEpochDay(it.epochDay).dayOfWeek.value - 1) }
             .toSortedMap()
             .map { (monday, own) -> RestWeek(monday, own.sumOf { it.restMs } / own.size) }
+
+    /** [finished] days from [firstDay], then [running] if it is the next one: past midnight it waits for the day before. */
+    fun joined(finished: List<RestDay>, running: RestDay?, firstDay: Long): List<RestDay> {
+        val next = (finished.lastOrNull()?.epochDay ?: (firstDay - 1)) + 1
+        return finished + listOfNotNull(running?.takeIf { it.epochDay == next })
+    }
+}
+
+/** Rest on finished days, kept between visits: while the log and the settings stay the same, only new days are worked out. */
+class RestCache {
+    private var doses: List<Dose>? = null
+    private var settings: Settings? = null
+    private var days = LongRange.EMPTY
+    private var rest = emptyList<RestDay>()
+
+    /** [compute] is asked only for the days of [days] not known yet. Call from one thread. */
+    suspend fun get(doses: List<Dose>, s: Settings, days: LongRange, compute: suspend (LongRange) -> List<RestDay>): List<RestDay> {
+        val reuse = doses == this.doses && s == settings && days.first == this.days.first && this.days.last <= days.last
+        val from = if (reuse) this.days.last + 1 else days.first
+        val all = (if (reuse) rest else emptyList()) + (if (from <= days.last) compute(from..days.last) else emptyList())
+        this.doses = doses
+        settings = s
+        this.days = days
+        rest = all
+        return all
+    }
 }

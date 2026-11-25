@@ -72,6 +72,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
@@ -552,13 +553,17 @@ private fun DayStripCanvas(
     val shown = if (widthPx > padL) (widthPx - padL) / slot else 0f
     // The slot at the left edge, fractional; dragging moves it.
     val first = remember { Animatable(0f) }
-    var placed by remember { mutableStateOf(false) }
+    // Where it was put last; while nobody has dragged it away, a new day puts it again.
+    var placedAt by remember { mutableStateOf<Float?>(null) }
     LaunchedEffect(days, shown) {
         if (shown <= 0f) return@LaunchedEffect
-        first.updateBounds(0f, max(days - shown, 0f))
-        if (!placed) {
-            first.snapTo(place(shown))
-            placed = true
+        val at = place(shown)
+        val untouched = placedAt.let { it == null || abs(first.value - it) < 0.01f }
+        val bounds = stripBounds(days, shown, at)
+        first.updateBounds(bounds.start, bounds.endInclusive)
+        if (untouched) {
+            first.snapTo(at)
+            placedAt = first.value
         }
     }
     Canvas(
@@ -572,6 +577,15 @@ private fun DayStripCanvas(
                 onDragStopped = { velocity -> first.animateDecay(-velocity / slot, exponentialDecay()) },
             ),
     ) { draw(DayWindow(slot, padL, first.value, shown)) }
+}
+
+/**
+ * How far the left edge of a strip of [days] slots, [shown] of which fit, can be dragged: from the first day, or from
+ * [place] when that puts it further left because the days do not fill the width, to the last day at the right edge.
+ */
+internal fun stripBounds(days: Int, shown: Float, place: Float): ClosedFloatingPointRange<Float> {
+    val lower = min(0f, place)
+    return lower..max(days - shown, lower)
 }
 
 /** Grid lines from 0 to [top] every [step], each with its value left of [padL]. */
@@ -591,8 +605,9 @@ private fun DrawScope.drawScale(measurer: TextMeasurer, step: Double, top: Doubl
  */
 private fun DrawScope.drawDayLabels(measurer: TextMeasurer, axis: DayAxis, win: DayWindow, firstDay: Long, days: Int, todayIdx: Int, top: Float) {
     val leftMonth = axis.monthName(LocalDate.ofEpochDay(firstDay + floor(win.offset).toInt().coerceIn(0, days - 1)))
-    val leftEnd = win.padL + 2.dp.toPx() + measurer.measure(AnnotatedString(leftMonth), style = axis.plain).size.width + 8.dp.toPx()
-    label(measurer, leftMonth, win.padL + 2.dp.toPx(), 0f, axis.plain)
+    val leftX = leftMonthX(win.padL, win.x(0) - win.slot / 2f) + 2.dp.toPx()
+    val leftEnd = leftX + measurer.measure(AnnotatedString(leftMonth), style = axis.plain).size.width + 8.dp.toPx()
+    label(measurer, leftMonth, leftX, 0f, axis.plain)
     for (i in win.visible(days)) {
         val date = LocalDate.ofEpochDay(firstDay + i)
         val style = when {
@@ -610,6 +625,9 @@ private fun DrawScope.drawDayLabels(measurer: TextMeasurer, axis: DayAxis, win: 
         if (date.dayOfMonth == 1 && monthAt >= leftEnd) label(measurer, axis.monthName(date), monthAt, 0f, axis.plain)
     }
 }
+
+/** Where the leftmost month name starts: at the left edge, or over the first day when the days start further right. */
+internal fun leftMonthX(padL: Float, firstSlotLeft: Float): Float = max(padL, firstSlotLeft)
 
 /** A dashed line down today's slot to the axis. */
 private fun DrawScope.drawTodayLine(x: Float, top: Float, bottom: Float, color: Color) {
@@ -710,13 +728,13 @@ fun DailyBarChart(
 
 /**
  * Receptor rest per day as bars, dragged sideways like [DailyBarChart] with today at the right edge, and a line across
- * each week at its average, [weekLabels] at the line's end. Today, still running, is faded.
+ * each week at its average, [weekLabel] at the line's end. Today, still running, is faded.
  */
 @Composable
 fun DailyRestChart(
     days: List<RestDay>,
     weeks: List<RestWeek>,
-    weekLabels: List<String>,
+    weekLabel: (RestWeek) -> String,
     barColor: Color,
     lineColor: Color,
     /** The card behind the chart, under each week's label so bars do not run through it. */
@@ -732,7 +750,7 @@ fun DailyRestChart(
         val step = niceStep(rawMax, whole = true)
         step to ceil(rawMax * 1.1 / step) * step
     }
-    val description = restDescription(weeks, weekLabels, Fmt::dayRange)
+    val description = restDescription(weeks, weekLabel, Fmt::dayRange)
     val described = if (description.isEmpty()) modifier else modifier.semantics { contentDescription = description }
 
     DayStripCanvas(days.size, 200.dp, place = { shown -> days.size - shown }, described) { win ->
@@ -765,16 +783,16 @@ fun DailyRestChart(
 
             val gap = 2.dp.toPx()
             val pad = 3.dp.toPx()
-            weeks.forEachIndexed { k, week ->
+            weeks.forEach { week ->
                 val slots = weekSlots(week.monday, firstDay, days.lastIndex)
-                if (slots.isEmpty()) return@forEachIndexed
+                if (slots.isEmpty()) return@forEach
                 val left = win.x(slots.first) - win.slot / 2f + gap
                 val right = win.x(slots.last) + win.slot / 2f - gap
-                if (right < win.padL || left > size.width) return@forEachIndexed
+                if (right < win.padL || left > size.width) return@forEach
                 val yw = y(week.avgMs / HOUR_MS)
                 drawLine(lineColor, Offset(left, yw), Offset(right, yw), strokeWidth = 2.5.dp.toPx(), cap = StrokeCap.Round)
-                val text = measurer.measure(AnnotatedString(weekLabels[k]), style = weekStyle)
-                val tx = labelLeft(left, right, text.size.width.toFloat()) ?: return@forEachIndexed
+                val text = measurer.measure(AnnotatedString(weekLabel(week)), style = weekStyle)
+                val tx = labelLeft(left, right, text.size.width.toFloat()) ?: return@forEach
                 val ty = yw - 4.dp.toPx() - text.size.height
                 drawRoundRect(
                     haloColor, Offset(tx - pad, ty), Size(text.size.width + 2 * pad, text.size.height.toFloat()),
@@ -790,13 +808,13 @@ fun DailyRestChart(
 
 private const val HOUR_MS = 3_600_000.0
 
-/** The slots of the week from [monday]; the running week's stop at [lastIdx], today. */
+/** The slots of the week from [monday]; the first week's start at the first day, the running week's stop at [lastIdx], today. */
 internal fun weekSlots(monday: Long, firstDay: Long, lastIdx: Int): IntRange =
-    (monday - firstDay).toInt()..min((monday + 6 - firstDay).toInt(), lastIdx)
+    max((monday - firstDay).toInt(), 0)..min((monday + 6 - firstDay).toInt(), lastIdx)
 
 /** Where a label right-aligned at the end of a line starts; null when it is wider than the line. */
 internal fun labelLeft(lineLeft: Float, lineRight: Float, width: Float): Float? = (lineRight - width).takeIf { it >= lineLeft }
 
-/** The last two weeks for TalkBack, each as its [range] and label. */
-internal fun restDescription(weeks: List<RestWeek>, labels: List<String>, range: (Long, Long) -> String): String =
-    weeks.zip(labels).takeLast(2).joinToString("; ") { (w, text) -> "${range(w.monday, w.monday + 6)}: $text" }
+/** The last two weeks for TalkBack, each as its [range] and [label]. */
+internal fun restDescription(weeks: List<RestWeek>, label: (RestWeek) -> String, range: (Long, Long) -> String): String =
+    weeks.takeLast(2).joinToString("; ") { w -> "${range(w.monday, w.monday + 6)}: ${label(w)}" }

@@ -156,7 +156,7 @@ fun TrackScreen(vm: AppViewModel, onEditPouches: () -> Unit) {
                 onRemove = { vm.finishPouch(e) },
                 marks = feltMarks[e.id].orEmpty(),
                 // Tapping the latest answer again takes it back, for a wrong tap.
-                onFelt = { f -> if (f.level == feltMarks[e.id]?.lastOrNull()?.level) vm.takeBackFelt(e) else vm.addFelt(e, f) },
+                onFelt = { f -> vm.tapFelt(e, f, shown = Felt.of(feltMarks[e.id]?.lastOrNull()?.level)) },
             )
         }
 
