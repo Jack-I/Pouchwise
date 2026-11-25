@@ -107,7 +107,8 @@
     <string name="variant">Flavour or line (optional)</string>
     <string name="brand_info_known">%1$s releases about %2$d%% of its nicotine in the first 20 minutes (lab dissolution data).</string>
     <string name="brand_info_other">Brands outside the study use the average of the measured ones: about %1$d%% in the first 20 minutes.</string>
-    <string name="brand_speed_short">%1$d%% in 20 min</string>
+    <string name="slow_release">slow release</string>
+    <string name="fast_release">fast release</string>
     <string name="pouch_strength">Strength, mg per pouch</string>
     <string name="strong_warning">You\'ve blown your tolerance. Switch to weaker pouches.</string>
     <string name="release_title">Nicotine release</string>

@@ -113,7 +113,8 @@
     <string name="variant">Вкус или линейка (необязательно)</string>
     <string name="brand_info_known">%1$s отдаёт около %2$d%% никотина за первые 20 минут (лабораторные данные).</string>
     <string name="brand_info_other">Бренды вне исследования считаются по среднему: около %1$d%% за первые 20 минут.</string>
-    <string name="brand_speed_short">%1$d%% за 20 мин</string>
+    <string name="slow_release">медленная отдача</string>
+    <string name="fast_release">быстрая отдача</string>
     <string name="pouch_strength">Крепость, мг на пауч</string>
     <string name="strong_warning">Вы просрали свою толерантность. Переключитесь на более слабые паучи.</string>
     <string name="release_title">Отдача никотина</string>

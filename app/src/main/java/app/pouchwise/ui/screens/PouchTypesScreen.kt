@@ -1,5 +1,6 @@
 package app.pouchwise.ui.screens
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -29,7 +30,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.pouchwise.AppViewModel
 import app.pouchwise.R
 import app.pouchwise.data.PouchType
-import app.pouchwise.model.Brands
+import app.pouchwise.data.release
+import app.pouchwise.model.Release
 import app.pouchwise.ui.components.*
 import app.pouchwise.ui.theme.pouchColor
 import app.pouchwise.util.Fmt
@@ -215,9 +217,10 @@ private fun TypeRow(
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(type.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                val label = releaseLabel(type.release())
                 Text(
                     stringResource(R.string.mg_value, Fmt.mg(type.strengthMg)) +
-                        " · " + stringResource(R.string.brand_speed_short, Brands.percentBy20Min(type.releaseK)),
+                        (label?.let { " · " + stringResource(it) } ?: ""),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -225,4 +228,11 @@ private fun TypeRow(
             trailing()
         }
     }
+}
+
+@StringRes
+internal fun releaseLabel(release: Release): Int? = when (release) {
+    Release.SLOW -> R.string.slow_release
+    Release.FAST -> R.string.fast_release
+    Release.NORMAL -> null
 }
